@@ -1,0 +1,66 @@
+GOAL: Enforce a clean, correct frontend/backend separation (Option A).
+
+CONTEXT (IMPORTANT):
+- This repository has BOTH backend and frontend code.
+- The frontend must live ONLY in `doglife-frontend/`.
+- The backend must remain OUTSIDE `doglife-frontend/`.
+- There must be NO duplicate `src/` folders at the repo root.
+
+TARGET ARCHITECTURE (MANDATORY):
+
+/home/runner/workspace/        ← Git repo root (syncs with GitHub)
+│
+├─ server/                     ← Backend (Node / API / server code)
+│
+├─ doglife-frontend/           ← Frontend ONLY (Vite + React)
+│  ├─ package.json
+│  ├─ vite.config.ts
+│  ├─ tsconfig.json
+│  ├─ index.html
+│  ├─ src/
+│  │  ├─ App.tsx
+│  │  ├─ Routes.tsx
+│  │  ├─ components/
+│  │  ├─ hooks/
+│  │  ├─ pages/
+│  │  ├─ lib/
+│  │  ├─ types/
+│  │  └─ utils/
+│  └─ dist/                    ← build output only
+│
+└─ (NO /src folder at repo root)
+
+STRICT REQUIREMENTS:
+1. `doglife-frontend/` is the ONLY frontend project
+2. All React, Vite, Tailwind, and UI files must live under `doglife-frontend/src`
+3. Backend code must NOT be moved into `doglife-frontend`
+4. `/home/runner/workspace/src` MUST NOT EXIST
+5. `dist/` must NEVER be treated as source code
+6. Git history must NOT delete backend files
+
+TASKS:
+1. Verify the current filesystem against the target architecture
+2. If frontend files exist outside `doglife-frontend/`, MOVE them into `doglife-frontend/src`
+3. If duplicate frontend files exist, KEEP ONLY the `doglife-frontend` versions
+4. Ensure `package.json`, `vite.config.ts`, `tsconfig.json`, and `index.html` are present in `doglife-frontend`
+5. Ensure Vite builds successfully from `doglife-frontend`
+6. Ensure backend folders remain untouched
+7. Ensure there is exactly ONE frontend source tree
+
+VERIFICATION (YOU MUST OUTPUT THIS):
+- A tree view of `doglife-frontend/`
+- Confirmation that `/home/runner/workspace/src` does NOT exist
+- `npm run build` result from inside `doglife-frontend`
+- Clear confirmation that frontend and backend are cleanly separated
+
+IMPORTANT:
+- DO NOT create a monorepo
+- DO NOT merge frontend into backend
+- DO NOT change deployment strategy
+- DO NOT delete backend code
+- This setup MUST be compatible with Vercel using:
+  Root Directory: doglife-frontend
+  Build Command: npm run build
+  Output Directory: dist
+
+Proceed carefully and explain each structural change you make.
