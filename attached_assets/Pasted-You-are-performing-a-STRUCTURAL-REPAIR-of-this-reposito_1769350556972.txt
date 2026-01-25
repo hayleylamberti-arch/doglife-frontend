@@ -1,0 +1,96 @@
+You are performing a STRUCTURAL REPAIR of this repository.
+This is a PRODUCTION-BOUND project. Do not improvise.
+
+GOAL (MANDATORY):
+Normalize the repository so that there is ONLY ONE frontend source tree:
+    /home/runner/workspace/doglife-frontend/
+
+The frontend must be fully self-contained and deployable to Vercel.
+The duplicate source directory at /home/runner/workspace/src MUST NOT exist afterward.
+
+━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL RULES (READ CAREFULLY)
+━━━━━━━━━━━━━━━━━━━━━━
+1. DO NOT delete files unless explicitly instructed.
+2. DO NOT create duplicate source trees.
+3. DO NOT move backend code into the frontend.
+4. DO NOT modify build logic unless required for correctness.
+5. DO NOT claim changes were made unless git status proves it.
+6. ALL file operations must be real, not hypothetical.
+7. The final state must pass:
+   - npm run build
+   - npx tsc --noEmit
+   - git status (clean after commit)
+
+━━━━━━━━━━━━━━━━━━━━━━
+CURRENT PROBLEM TO FIX
+━━━━━━━━━━━━━━━━━━━━━━
+There are TWO frontend source trees:
+
+❌ /home/runner/workspace/src
+✅ /home/runner/workspace/doglife-frontend/src
+
+Replit AI previously edited /workspace/src, which is NOT the deploy target.
+Vercel builds from doglife-frontend/.
+
+━━━━━━━━━━━━━━━━━━━━━━
+REQUIRED ACTIONS (IN ORDER)
+━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1 — VERIFY ROOTS
+- Confirm that /home/runner/workspace is the Git repository root.
+- Confirm that doglife-frontend/ is the intended frontend project.
+
+STEP 2 — MIGRATE SOURCE CODE (NO DELETIONS YET)
+- Move ALL frontend source files from:
+    /home/runner/workspace/src/*
+  INTO:
+    /home/runner/workspace/doglife-frontend/src/
+
+- Preserve directory structure:
+  components/, hooks/, pages/, lib/, types/, assets/, styles, etc.
+
+- If files already exist in doglife-frontend/src:
+  - Prefer the NEWER, fully typed versions
+  - Merge carefully, do NOT overwrite blindly
+
+STEP 3 — VERIFY FRONTEND COMPLETENESS
+Ensure doglife-frontend/ contains:
+- package.json
+- tsconfig.json
+- vite.config.ts
+- index.html
+- src/
+
+If any are missing, FIX them.
+
+STEP 4 — DELETE DUPLICATE SOURCE TREE
+ONLY AFTER STEP 3 PASSES:
+- Delete /home/runner/workspace/src completely
+
+STEP 5 — BUILD VERIFICATION (MANDATORY)
+Run from doglife-frontend/:
+- npm install (if needed)
+- npx tsc --noEmit
+- npm run build
+
+STOP if any errors occur and FIX THEM.
+
+STEP 6 — GIT HYGIENE (MANDATORY)
+- Show git status BEFORE commit
+- Commit with message:
+  "Normalize frontend structure and remove duplicate source tree"
+- Show git status AFTER commit (must be clean)
+
+━━━━━━━━━━━━━━━━━━━━━━
+FINAL OUTPUT REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━
+At the end, report ONLY:
+1. Final directory tree for doglife-frontend/
+2. Confirmation that /home/runner/workspace/src no longer exists
+3. Build results (tsc + vite)
+4. git status output
+
+DO NOT provide explanations.
+DO NOT speculate.
+DO NOT skip steps.
