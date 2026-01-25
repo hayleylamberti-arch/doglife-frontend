@@ -1,32 +1,67 @@
-// client/src/hooks/use-auth.ts
 import { createContext, useContext, useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, UseMutationResult } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { AxiosError } from "axios";
+
+export interface User {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  userType: 'owner' | 'provider' | 'admin';
+  profileImageUrl?: string;
+  phone?: string;
+  phoneNumber?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  bio?: string;
+  businessName?: string;
+  serviceTypes?: string[];
+  latitude?: number;
+  longitude?: number;
+  emailVerified?: boolean;
+  isSubscribed?: boolean;
+  subscriptionType?: 'free' | 'basic' | 'premium' | 'enterprise' | 'owner_plus';
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  userType: 'owner' | 'provider';
+  phone?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  user: User;
+}
 
 type AuthContextType = {
-  user: any | null;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  loginMutation: any;
-  registerMutation: any;
+  loginMutation: UseMutationResult<AuthResponse, AxiosError, LoginCredentials>;
+  registerMutation: UseMutationResult<AuthResponse, AxiosError, RegisterData>;
   logout: () => void;
 };
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,
-  loginMutation: null,
-  registerMutation: null,
-  logout: () => {},
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loginMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
+  const loginMutation = useMutation<AuthResponse, AxiosError, LoginCredentials>({
+    mutationFn: async (data) => {
       const response = await api.post("/api/auth/login", data);
       return response.data;
     },
@@ -34,13 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("authToken", data.token);
       setUser(data.user);
     },
-    onError: (error: any) => {
-      console.error("Login failed:", error);
+    onError: (error) => {
+      console.error("Login failed:", error.message);
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: any) => {
+  const registerMutation = useMutation<AuthResponse, AxiosError, RegisterData>({
+    mutationFn: async (data) => {
       const response = await api.post("/api/auth/register", data);
       return response.data;
     },
@@ -48,8 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("authToken", data.token);
       setUser(data.user);
     },
-    onError: (error: any) => {
-      console.error("Registration failed:", error);
+    onError: (error) => {
+      console.error("Registration failed:", error.message);
     },
   });
 
@@ -62,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("authToken");
     if (token) {
       api
-        .get("/api/auth/me", {
+        .get<User>("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => setUser(res.data))
@@ -82,4 +117,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = (): AuthContextType => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
