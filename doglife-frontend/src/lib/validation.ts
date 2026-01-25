@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ServiceType, SupplierUnit, DogSize } from "@prisma/client";
+import { ServiceType, SupplierUnit, DogSize } from "@/types/enums";
 
 // Supplier signup form validation
 export const SupplierSignupSchema = z.object({
@@ -8,12 +8,14 @@ export const SupplierSignupSchema = z.object({
   phone: z.string().min(7, "Valid phone number required"),
   suburbId: z.string().min(1),
   operatingSuburbIds: z.array(z.string()).min(1),
-  services: z.array(z.object({
-    service: z.nativeEnum(ServiceType),
-    unit: z.nativeEnum(SupplierUnit),
-    baseRateRands: z.number().positive(),
-  })),
-  consent: z.boolean()
+  services: z.array(
+    z.object({
+      service: z.nativeEnum(ServiceType),
+      unit: z.nativeEnum(SupplierUnit),
+      baseRateRands: z.number().positive(),
+    })
+  ),
+  consent: z.boolean(),
 });
 
 // Owner signup form validation
@@ -25,7 +27,7 @@ export const OwnerSignupSchema = z.object({
   dog: z.object({
     name: z.string().min(1),
     breed: z.string().min(1),
-    size: z.nativeEnum(DogSize)
+    size: z.nativeEnum(DogSize),
   }),
-  consent: z.boolean()
+  consent: z.boolean(),
 });
