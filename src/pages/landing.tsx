@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Briefcase, Star, Shield, Clock, MapPin, Phone, Mail, ChevronDown, ChevronUp } from "lucide-react";
-import ContactForm from "@/components/contact-form";
-import RegistrationModal from "@/components/registration-modal";
-import AuthModal from "@/components/auth-modal";
 import logoImage from "@/assets/doglife-logo.jpeg";
 
 const serviceCategories = [
@@ -83,20 +80,15 @@ const faqItems = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [showRegistration, setShowRegistration] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
-  const [selectedUserType, setSelectedUserType] = useState<'owner' | 'provider' | null>(null);
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const handleGetStarted = (userType: 'owner' | 'provider') => {
-    setSelectedUserType(userType);
-    setShowRegistration(true);
+    navigate(`/auth?mode=register&type=${userType}`);
   };
 
   const handleLogin = () => {
-    // Open auth modal for user login
-    setShowLogin(true);
+    navigate('/auth');
   };
 
   return (
@@ -119,12 +111,12 @@ export default function Landing() {
             <div className="hidden md:flex items-center space-x-8">
               <a href="#services" className="text-gray-600 hover:text-blue-600 transition-colors">Services</a>
               <a href="#how-it-works" className="text-gray-600 hover:text-blue-600 transition-colors">How It Works</a>
-              <Link href="/about" className="text-gray-600 hover:text-blue-600 transition-colors">About</Link>
+              <Link to="/about" className="text-gray-600 hover:text-blue-600 transition-colors">About</Link>
               <a href="#faq" className="text-gray-600 hover:text-blue-600 transition-colors">FAQ</a>
               <Button variant="ghost" onClick={handleLogin} className="text-blue-600 hover:text-blue-700 font-medium">
                 Sign In
               </Button>
-              <Button onClick={() => setShowRegistration(true)} className="bg-blue-600 text-white hover:bg-blue-700">
+              <Button onClick={() => navigate('/auth?mode=register')} className="bg-blue-600 text-white hover:bg-blue-700">
                 Get Started
               </Button>
             </div>
@@ -148,12 +140,12 @@ export default function Landing() {
               <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t">
                 <a href="#services" className="block px-3 py-2 text-gray-600 hover:text-blue-600">Services</a>
                 <a href="#how-it-works" className="block px-3 py-2 text-gray-600 hover:text-blue-600">How It Works</a>
-                <Link href="/about" className="block px-3 py-2 text-gray-600 hover:text-blue-600">About</Link>
+                <Link to="/about" className="block px-3 py-2 text-gray-600 hover:text-blue-600">About</Link>
                 <a href="#faq" className="block px-3 py-2 text-gray-600 hover:text-blue-600">FAQ</a>
                 <Button variant="ghost" onClick={handleLogin} className="block w-full text-left px-3 py-2 text-blue-600 font-medium">
                   Sign In
                 </Button>
-                <Button onClick={() => setShowRegistration(true)} className="block w-full text-left px-3 py-2 bg-blue-600 text-white rounded-lg mt-2">
+                <Button onClick={() => navigate('/auth?mode=register')} className="block w-full text-left px-3 py-2 bg-blue-600 text-white rounded-lg mt-2">
                   Get Started
                 </Button>
               </div>
@@ -500,7 +492,7 @@ export default function Landing() {
           </div>
           
           <div className="text-center mt-12">
-            <Button onClick={() => setShowRegistration(true)} size="lg" className="bg-doglife-primary text-white hover:bg-blue-700 px-8 py-4 text-lg">
+            <Button onClick={() => navigate('/auth?mode=register')} size="lg" className="bg-doglife-primary text-white hover:bg-blue-700 px-8 py-4 text-lg">
               Get Started Today
             </Button>
             <div className="text-center space-y-2 mt-4">
@@ -564,7 +556,7 @@ export default function Landing() {
           </div>
           
           <div className="text-center mt-8">
-            <Button onClick={() => setShowRegistration(true)} className="bg-doglife-primary text-white hover:bg-blue-700 px-8 py-3 font-medium">
+            <Button onClick={() => navigate('/auth?mode=register')} className="bg-doglife-primary text-white hover:bg-blue-700 px-8 py-3 font-medium">
               View All Providers
             </Button>
           </div>
@@ -642,7 +634,7 @@ export default function Landing() {
               </div>
               
               <div className="mt-8">
-                <Button onClick={() => setShowRegistration(true)} className="bg-doglife-secondary text-doglife-dark hover:bg-amber-600 px-8 py-3 font-semibold text-lg">
+                <Button onClick={() => navigate('/auth?mode=register')} className="bg-doglife-secondary text-doglife-dark hover:bg-amber-600 px-8 py-3 font-semibold text-lg">
                   Get Started Today
                 </Button>
                 <p className="text-sm opacity-80 mt-2">Choose from flexible monthly or annual plans</p>
@@ -667,9 +659,9 @@ export default function Landing() {
                   DogLife to come to your suburb, join our waiting list and we'll notify you when we expand!
                 </p>
                 <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
-                  <Button asChild className="bg-doglife-secondary text-doglife-dark hover:bg-amber-500 px-8 py-3 font-semibold text-lg">
-                    <Link href="/prospect-enquiry">Join Our Waiting List</Link>
-                  </Button>
+                  <Link to="/prospect-enquiry" className="inline-block bg-doglife-secondary text-doglife-dark hover:bg-amber-500 px-8 py-3 font-semibold text-lg rounded-md">
+                    Join Our Waiting List
+                  </Link>
                 </div>
                 <p className="text-lg font-semibold mt-6 opacity-95">
                   🏢 <strong>Gauteng first. South Africa next.</strong>
@@ -757,9 +749,9 @@ export default function Landing() {
             <div>
               <h3 className="font-semibold mb-4">For Dog Owners</h3>
               <ul className="space-y-2">
-                <li><Link href="/search" className="text-gray-300 hover:text-white transition-colors">Find Services</Link></li>
+                <li><Link to="/search" className="text-gray-300 hover:text-white transition-colors">Find Services</Link></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Membership</a></li>
-                <li><Link href="/faq-owners" className="text-gray-300 hover:text-white transition-colors">FAQ for Owners</Link></li>
+                <li><Link to="/faq-owners" className="text-gray-300 hover:text-white transition-colors">FAQ for Owners</Link></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Safety Guidelines</a></li>
               </ul>
             </div>
@@ -769,7 +761,7 @@ export default function Landing() {
               <ul className="space-y-2">
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Become a Provider</a></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Provider Dashboard</a></li>
-                <li><Link href="/faq-providers" className="text-gray-300 hover:text-white transition-colors">FAQ for Providers</Link></li>
+                <li><Link to="/faq-providers" className="text-gray-300 hover:text-white transition-colors">FAQ for Providers</Link></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Verification Process</a></li>
               </ul>
             </div>
@@ -777,7 +769,7 @@ export default function Landing() {
             <div>
               <h3 className="font-semibold mb-4">Support</h3>
               <ul className="space-y-2">
-                <li><Link href="/about" className="text-gray-300 hover:text-white transition-colors">About Us</Link></li>
+                <li><Link to="/about" className="text-gray-300 hover:text-white transition-colors">About Us</Link></li>
                 <li><a href="#" className="text-gray-300 hover:text-white transition-colors">Help Centre</a></li>
                 <li><a href="/legal/terms.html" className="text-gray-300 hover:text-white transition-colors">Terms of Service</a></li>
                 <li><a href="/legal/privacy.html" className="text-gray-300 hover:text-white transition-colors">Privacy Policy</a></li>
@@ -808,7 +800,7 @@ export default function Landing() {
               
               <div>
                 <h3 className="font-semibold mb-4 text-xl">Send us a Message</h3>
-                <ContactForm />
+                <p className="text-gray-400">Contact us at info@doglife.tech</p>
               </div>
             </div>
           </div>
@@ -819,19 +811,6 @@ export default function Landing() {
         </div>
       </footer>
 
-      {/* Registration Modal */}
-      <RegistrationModal 
-        isOpen={showRegistration}
-        onClose={() => setShowRegistration(false)}
-        defaultUserType={selectedUserType}
-      />
-
-      {/* Login Modal */}
-      <AuthModal 
-        isOpen={showLogin}
-        onClose={() => setShowLogin(false)}
-        defaultMode="login"
-      />
     </div>
   );
 }

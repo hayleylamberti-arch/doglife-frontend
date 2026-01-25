@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/use-auth";
 import { MapPin, Star, Phone, Globe, Clock, AlertCircle, CheckCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "@/components/navbar";
 
 interface NearbySupplier {
   id: string;
@@ -195,7 +194,7 @@ export default function NearbyPage() {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar />
+        
         <div className="container mx-auto max-w-4xl p-6">
           <div className="text-center py-8">
             <div className="animate-pulse">Loading...</div>
@@ -213,7 +212,7 @@ export default function NearbyPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar />
+      
       <div className="container mx-auto max-w-4xl p-6 space-y-6">
         {/* Header */}
         <div className="text-center">

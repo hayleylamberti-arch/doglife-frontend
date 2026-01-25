@@ -1,0 +1,55 @@
+You are working in the doglife-frontend repository (frontend-only Vite + React + TypeScript project deployed to Vercel).
+
+CURRENT PROBLEM:
+- Vercel production build fails during `tsc && vite build`
+- Errors come from `src/pages/profile-backup.tsx`
+- This file is a backup / unused file and should NOT be part of the production build
+- Replit previously fixed similar issues by removing unused backup files
+
+GOALS:
+1. Ensure `npm run build` passes locally
+2. Ensure Vercel production build passes
+3. Do NOT break any actively routed pages
+4. Do NOT modify backend code
+5. Do NOT introduce new features
+
+TASKS (DO THESE IN ORDER):
+
+1. Identify all backup, unused, or legacy files that should not be compiled:
+   - Files with names like `*-backup.tsx`, `*-old.tsx`, `*.disabled.tsx`
+   - Especially `src/pages/profile-backup.tsx`
+
+2. Verify which pages are actually used:
+   - Check `App.tsx`, routing configuration, and imports
+   - Confirm which pages are actively referenced
+
+3. For unused backup files:
+   - Either DELETE them safely
+   - OR move them outside `src/` so TypeScript does not compile them
+   - Do NOT leave broken JSX inside `src/`
+
+4. Ensure TypeScript configuration is correct:
+   - `tsconfig.json` should only include valid source files
+   - No backup files should be included in compilation
+
+5. Run and verify:
+   - `npm install`
+   - `npm run build`
+   - Confirm `tsc && vite build` completes successfully with no errors
+
+6. Commit the fix:
+   - Use a clear commit message like:
+     "Remove unused backup files causing Vercel build failure"
+
+IMPORTANT CONSTRAINTS:
+- This is a Vite project (not Next.js)
+- Output directory must remain `dist`
+- Environment variables are already configured in Vercel
+- Root directory in Vercel is correct and empty (repo root)
+
+FINAL OUTPUT REQUIRED:
+- A clean build with zero TypeScript errors
+- No backup files inside `src/`
+- Confirmation that the frontend is ready for Vercel deployment
+
+Proceed carefully and systematically. Do not guess — verify before deleting.

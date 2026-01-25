@@ -5,6 +5,8 @@ import { api } from "@/lib/api";
 
 type AuthContextType = {
   user: any | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
   loginMutation: any;
   registerMutation: any;
   logout: () => void;
@@ -12,6 +14,8 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  isAuthenticated: false,
+  isLoading: true,
   loginMutation: null,
   registerMutation: null,
   logout: () => {},
@@ -19,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loginMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
@@ -61,12 +66,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => setUser(res.data))
-        .catch(() => logout());
+        .catch(() => logout())
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
+  const isAuthenticated = !!user;
+
   return (
-    <AuthContext.Provider value={{ user, loginMutation, registerMutation, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated, isLoading, loginMutation, registerMutation, logout }}>
       {children}
     </AuthContext.Provider>
   );

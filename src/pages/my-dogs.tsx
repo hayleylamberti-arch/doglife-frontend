@@ -45,9 +45,7 @@ const dogSchema = z.object({
   gender: z.string()
     .optional()
     .or(z.literal("")),
-  size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL"], {
-    errorMap: () => ({ message: "Please select a valid size (Small, Medium, Large, or Extra Large)" })
-  }).optional(),
+  size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL"]).optional(),
   birthDate: z.string()
     .optional()
     .refine((date) => {
@@ -87,8 +85,11 @@ export default function MyDogsPage() {
     },
   });
 
+  // Define dog type
+  type Dog = { id: string; name: string; breed?: string; gender?: string; size?: string; birthDate?: string; dateOfBirth?: string; notes?: string; medicalNotes?: string; profileImageUrl?: string };
+
   // Fetch user's dogs using the new API endpoint
-  const { data: dogsResponse, isLoading, error } = useQuery({
+  const { data: dogsResponse, isLoading, error } = useQuery<{ ok: boolean; dogs: Dog[] }>({
     queryKey: ['/api/dogs/mine'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
@@ -566,9 +567,9 @@ export default function MyDogsPage() {
                 <CardContent className="space-y-4">
                   {/* Basic Info */}
                   <div className="flex flex-wrap gap-2">
-                    <Badge className={getSizeColor(dog.size)} data-testid={`badge-size-${dog.id}`}>
+                    <Badge className={getSizeColor(dog.size || 'MEDIUM')} data-testid={`badge-size-${dog.id}`}>
                       <Scale className="mr-1 h-3 w-3" />
-                      {dog.size}
+                      {dog.size || 'Medium'}
                     </Badge>
                     {dog.dateOfBirth && (
                       <Badge variant="secondary" data-testid={`badge-age-${dog.id}`}>

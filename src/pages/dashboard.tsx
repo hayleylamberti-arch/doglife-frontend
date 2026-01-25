@@ -1,5 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
-import Navbar from "@/components/navbar";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
@@ -18,25 +17,25 @@ export default function Dashboard() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
   // Fetch recent bookings
-  const { data: recentBookings = [] } = useQuery({
+  const { data: recentBookings = [] } = useQuery<{ scheduledDate: string; status: string; provider?: { businessName?: string }; owner?: { firstName?: string }; dog?: { name: string }; service?: string }[]>({
     queryKey: ["/api/bookings/owner"],
     enabled: !!user && user.userType === 'owner',
   });
 
   // Fetch provider bookings if user is a provider
-  const { data: providerBookings = [] } = useQuery({
+  const { data: providerBookings = [] } = useQuery<{ scheduledDate: string; status: string; owner?: { firstName?: string }; dog?: { name: string }; service?: string }[]>({
     queryKey: ["/api/bookings/provider"],
     enabled: !!user && user.userType === 'provider',
   });
 
   // Fetch user statistics
-  const { data: userStats } = useQuery({
+  const { data: userStats } = useQuery<{ totalReviews?: number; totalBookings?: number }>({
     queryKey: ["/api/user/stats"],
     enabled: !!user,
   });
 
   // Fetch user badges
-  const { data: userBadges = [] } = useQuery({
+  const { data: userBadges = [] } = useQuery<{ name: string; icon: string }[]>({
     queryKey: ["/api/user/badges"],
     enabled: !!user,
   });
@@ -44,7 +43,7 @@ export default function Dashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        
         <div className="container mx-auto px-4 py-8">
           <div className="space-y-4">
             <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
@@ -63,7 +62,7 @@ export default function Dashboard() {
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-md mx-auto">
             <CardContent className="text-center py-8">
@@ -92,7 +91,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
+      
       <div className="container mx-auto px-4 py-8">
         {/* Welcome Header */}
         <div className="mb-8">

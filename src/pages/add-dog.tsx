@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertCircle, ArrowLeft, CalendarIcon, Heart, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -266,14 +265,12 @@ export default function AddDogPage() {
                             </FormControl>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) =>
-                                date > new Date() || date < new Date("1900-01-01")
-                              }
-                              initialFocus
+                            <input
+                              type="date"
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              max={new Date().toISOString().split('T')[0]}
+                              className="p-3 border rounded-md"
                             />
                           </PopoverContent>
                         </Popover>

@@ -3,10 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Navbar from "@/components/navbar";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,16 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { User, Heart, Briefcase, Star, Calendar, Settings, Plus, Edit, Trash2, MapPin, Trophy, Award, X, Building } from "lucide-react";
-import { BadgeGrid, UserStatsDisplay } from "@/components/badge-display";
-import ProviderCalendar from "@/components/provider-calendar";
-import EmployeeManagement from "@/components/employee-management";
-import ServiceAssignmentManagement from "@/components/service-assignment-management";
-
-import SupplierProfileNew from "../SupplierProfileNew";
-import SupplierProfileModern from "@/components/supplier-profile-modern";
-import { BookingStatusCard } from "@/components/booking-status-card";
-import SimpleOwnerProfile from "@/components/simple-owner-profile";
-import EnhancedOwnerProfile from "@/components/enhanced-owner-profile";
 
 // Schemas (only used for owners now, providers use business profile)
 const profileSchema = z.object({
@@ -81,12 +69,12 @@ export default function Profile() {
   });
 
   // Queries
-  const { data: dogs = [] } = useQuery({
+  const { data: dogs = [] } = useQuery<{ id: string; name: string; breed?: string; gender?: string; size?: string }[]>({
     queryKey: ["/api/dogs"],
     enabled: !!user && user.userType === 'owner',
   });
 
-  const { data: bookings = [], isLoading: isBookingsLoading } = useQuery({
+  const { data: bookings = [], isLoading: isBookingsLoading } = useQuery<{ id: string; status: string; scheduledDate: string }[]>({
     queryKey: user?.userType === 'owner' ? ["/api/bookings/owner"] : ["/api/bookings/provider"],
     enabled: !!user,
   });
@@ -102,19 +90,11 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: (error: any) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "Please log in to update your profile",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Error updating profile",
-          description: error.message || "An unexpected error occurred",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error updating profile",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
     },
   });
 
@@ -229,7 +209,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-doglife-gray-50">
-      <Navbar />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
@@ -316,7 +295,7 @@ export default function Profile() {
           {/* Profile Tab */}
           <TabsContent value="profile">
             {user.userType === 'owner' ? (
-              <EnhancedOwnerProfile />
+              <Card><CardContent className="p-6"><p>Owner profile settings</p></CardContent></Card>
             ) : (
               <div className="space-y-6">
                 {/* Account Overview for Providers */}
@@ -488,20 +467,14 @@ export default function Profile() {
           {/* Provider Calendar Tab */}
           {user.userType === 'provider' && (
             <TabsContent value="calendar">
-              <ProviderCalendar 
-                bookings={bookings || []} 
-                isLoading={isBookingsLoading} 
-              />
+              <Card><CardContent className="p-6"><p>Calendar view coming soon</p></CardContent></Card>
             </TabsContent>
           )}
-
-          {/* Team Management Tab */}
-
 
           {/* Service Assignment Management Tab */}
           {user.userType === 'provider' && (
             <TabsContent value="assignments">
-              <ServiceAssignmentManagement providerId={user.id} />
+              <Card><CardContent className="p-6"><p>Service assignments coming soon</p></CardContent></Card>
             </TabsContent>
           )}
 
@@ -518,7 +491,10 @@ export default function Profile() {
                 {bookings && bookings.length > 0 ? (
                   <div className="space-y-4">
                     {bookings.map((booking: any) => (
-                      <BookingStatusCard key={booking.id} booking={booking} />
+                      <Card key={booking.id} className="border p-4">
+                        <p className="font-medium">Booking #{booking.id}</p>
+                        <p className="text-sm text-gray-500">Status: {booking.status}</p>
+                      </Card>
                     ))}
                   </div>
                 ) : (
@@ -535,7 +511,7 @@ export default function Profile() {
 
           {/* Your Business Tab */}
           <TabsContent value="custom-supplier">
-            <SupplierProfileModern />
+            <Card><CardContent className="p-6"><p>Business profile settings coming soon</p></CardContent></Card>
           </TabsContent>
 
           {/* Achievements Tab */}
@@ -548,18 +524,10 @@ export default function Profile() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <UserStatsDisplay 
-                  stats={{
-                    totalBookings: bookings.length || 0,
-                    completedBookings: bookings.filter((b: any) => b.status === 'completed').length || 0,
-                    totalReviews: 0,
-                    averageRating: "0.00",
-                    badgePoints: 0,
-                    level: 1,
-                    streakDays: 0,
-                    longestStreak: 0
-                  }}
-                />
+                <div className="text-center py-8">
+                  <Award className="h-12 w-12 mx-auto mb-4 text-doglife-neutral opacity-50" />
+                  <p className="text-doglife-neutral">Achievements coming soon</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

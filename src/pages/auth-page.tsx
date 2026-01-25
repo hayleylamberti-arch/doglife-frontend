@@ -37,7 +37,7 @@ const registerSchema = z.object({
   province: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
-  userType: z.enum(['owner', 'provider']).default('owner'),
+  userType: z.enum(['owner', 'provider']),
 });
 
 const forgotPasswordSchema = z.object({

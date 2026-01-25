@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import Navbar from "@/components/navbar";
 import { ArrowLeft, MapPin, Users, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -19,9 +18,7 @@ const enquirySchema = z.object({
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   suburb: z.string().min(2, "Please enter your suburb"),
-  userType: z.enum(["dog_owner", "service_provider"], {
-    required_error: "Please select if you're a dog owner or service provider",
-  }),
+  userType: z.enum(["dog_owner", "service_provider"]),
   serviceType: z.string().optional(),
 }).refine((data) => {
   if (data.userType === "service_provider" && !data.serviceType) {
@@ -92,7 +89,7 @@ export default function ProspectEnquiry() {
   if (isSubmitted) {
     return (
       <>
-        <Navbar />
+        
         <div className="container mx-auto px-4 py-8">
           <Card className="max-w-md mx-auto text-center">
             <CardHeader>
@@ -106,9 +103,9 @@ export default function ProspectEnquiry() {
                 We've received your enquiry and will email you as soon as DogLife 
                 expands to your area. You'll be among the first to know!
               </p>
-              <Button asChild className="w-full">
-                <Link href="/">Back to Home</Link>
-              </Button>
+              <Link to="/" className="inline-block w-full text-center bg-primary text-white py-2 px-4 rounded-md hover:bg-primary/90">
+                Back to Home
+              </Link>
             </CardContent>
           </Card>
         </div>
@@ -118,16 +115,14 @@ export default function ProspectEnquiry() {
 
   return (
     <>
-      <Navbar />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-6">
-            <Button asChild variant="ghost" className="mb-4">
-              <Link href="/">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Home
-              </Link>
-            </Button>
+            <Link to="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
+            </Link>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Join Our Waiting List
             </h1>

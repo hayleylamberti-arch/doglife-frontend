@@ -8,8 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import Navbar from "@/components/navbar";
-import ServiceCard from "@/components/service-card";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { Search, MapPin, Filter, Star, Clock, Shield, Award, Navigation, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -40,11 +38,11 @@ export default function SearchPage() {
   const [isNearMeLoading, setIsNearMeLoading] = useState(false);
   const [locationAddress, setLocationAddress] = useState("");
 
-  const { data: serviceCategories } = useQuery({
+  const { data: serviceCategories } = useQuery<{ id: string; name: string }[]>({
     queryKey: ["/api/service-categories"],
   });
 
-  const { data: services, isLoading } = useQuery({
+  const { data: services, isLoading } = useQuery<{ id: string; name: string; description?: string; price?: number; provider?: { businessName: string } }[]>({
     queryKey: ["/api/services/search", searchFilters],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -140,8 +138,7 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-doglife-gray-50">
-      <Navbar />
-      
+            
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -365,8 +362,16 @@ export default function SearchPage() {
           </div>
         ) : services && services.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {services.map((service: any) => (
-              <ServiceCard key={service.id} service={service} />
+            {services.map((service) => (
+              <Card key={service.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="text-lg">{service.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600">{service.description || 'No description'}</p>
+                  {service.price && <p className="text-sm font-semibold mt-2">R{service.price}</p>}
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : (
