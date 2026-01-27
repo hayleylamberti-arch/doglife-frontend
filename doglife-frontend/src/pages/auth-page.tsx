@@ -221,8 +221,21 @@ export default function AuthPage() {
   };
 
   const onRegister = (data: RegisterFormData) => {
-    registerMutation.mutate(data);
+  const payload = {
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    password: data.password,
+
+    // 🔑 IMPORTANT: backend expects this name + format
+    mobilePhone: data.phoneNumber?.trim() || "",
+
+    // 🔑 IMPORTANT: backend enum
+    role: data.userType === "owner" ? "OWNER" : "SUPPLIER",
   };
+
+  registerMutation.mutate(payload);
+};
 
   const onForgotPassword = (data: ForgotPasswordFormData) => {
     forgotPasswordMutation.mutate(data);
