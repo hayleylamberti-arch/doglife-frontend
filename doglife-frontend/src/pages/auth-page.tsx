@@ -220,17 +220,31 @@ export default function AuthPage() {
     loginMutation.mutate(data);
   };
 
-  const onRegister = (data: RegisterFormData) => {
+const onRegister = (data: RegisterFormData) => {
+  // Normalize phone number to backend-required format: 0XXXXXXXXX
+  const normalizedPhone = (data.phoneNumber || "")
+    .replace(/\D/g, "") // remove spaces, +, etc
+    .trim();
+
+  if (!/^0\d{9}$/.test(normalizedPhone)) {
+    toast({
+      title: "Invalid phone number",
+      description: "Please enter a valid South African mobile number (e.g. 0791234567)",
+      variant: "destructive",
+    });
+    return;
+  }
+
   const payload = {
     firstName: data.firstName,
     lastName: data.lastName,
     email: data.email,
     password: data.password,
 
-    // 🔑 IMPORTANT: backend expects this name + format
-    mobilePhone: data.phoneNumber?.trim() || "",
+    // ✅ backend expects this exact field
+    mobilePhone: normalizedPhone,
 
-    // 🔑 IMPORTANT: backend enum
+    // ✅ backend enum
     role: data.userType === "owner" ? "OWNER" : "SUPPLIER",
   };
 
