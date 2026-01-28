@@ -36,8 +36,9 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  userType: 'owner' | 'provider';
-  phone?: string;
+  
+  mobilePhone: string;
+  role: 'OWNER' | 'SUPPLIER';
 }
 
 interface AuthResponse {
