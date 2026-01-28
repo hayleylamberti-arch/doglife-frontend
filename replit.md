@@ -63,7 +63,6 @@ Configured in both `tsconfig.json` and `vite.config.ts`:
 
 ### Third-Party Services
 - **Google Maps API**: Address autocomplete and geocoding (`VITE_GOOGLE_MAPS_API_KEY`, `VITE_GOOGLE_MAPS_BROWSER_KEY`)
-- **Zoho CRM**: Supplier profile integration (referenced in `zoho-supplier-profile.tsx`)
 
 ### Deployment
 - **Vercel**: Primary deployment platform
