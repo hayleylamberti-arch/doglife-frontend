@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 interface AuthGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  requiredUserType?: 'owner' | 'provider' | 'admin';
+  requiredUserType?: "owner" | "provider" | "admin";
   fallbackPath?: string;
 }
 
@@ -33,18 +33,21 @@ export default function AuthGuard({
     return <Navigate to={fallbackPath} state={{ from: location }} replace />;
   }
 
-  if (requiredUserType && user?.userType !== requiredUserType) {
+  if (
+    requiredUserType &&
+    user?.role !== requiredUserType.toUpperCase()
+  ) {
     return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;
 }
 
-interface OwnerGuardProps {
-  children: React.ReactNode;
-}
+/* -------------------------------------------------------------------------- */
+/* Convenience Guards                                                         */
+/* -------------------------------------------------------------------------- */
 
-export function OwnerGuard({ children }: OwnerGuardProps) {
+export function OwnerGuard({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requireAuth requiredUserType="owner">
       {children}
@@ -52,11 +55,7 @@ export function OwnerGuard({ children }: OwnerGuardProps) {
   );
 }
 
-interface ProviderGuardProps {
-  children: React.ReactNode;
-}
-
-export function ProviderGuard({ children }: ProviderGuardProps) {
+export function ProviderGuard({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard requireAuth requiredUserType="provider">
       {children}
