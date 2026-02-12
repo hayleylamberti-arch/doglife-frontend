@@ -69,9 +69,10 @@ const providerRegistrationSchema = z
     businessAddress: z.string().optional(),
     businessPhone: z.string().optional(),
 
-    termsAccepted: z.literal(true, {
-      errorMap: () => ({ message: "You must accept the terms" }),
-    }),
+    termsAccepted: z.boolean().refine(val => val === true, {
+  message: "You must accept the terms",
+}),
+
   })
   .refine((data) => data.password === data.confirmPassword, {
     path: ["confirmPassword"],
@@ -139,7 +140,7 @@ export default function ProviderRegistrationForm({
       firstName,
       lastName,
       mobilePhone: data.mobileNumber,
-      role: "SUPPLIER", // ✅ REQUIRED BY BACKEND
+      role: "SUPPLIER" as const,
     });
 
     onSuccess?.();
