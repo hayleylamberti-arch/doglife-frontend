@@ -35,7 +35,7 @@ export default function AuthGuard({
 
   if (
     requiredUserType &&
-    user?.role !== requiredUserType.toUpperCase()
+    (user as any)?.role !== requiredUserType.toUpperCase()
   ) {
     return <Navigate to="/dashboard" replace />;
   }
