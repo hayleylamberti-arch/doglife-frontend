@@ -244,7 +244,7 @@ const onRegister = (data: RegisterFormData) => {
     mobilePhone: normalizedPhone,
 
     // ✅ backend enum
-    role: data.userType === "owner" ? "OWNER" : "SUPPLIER",
+    role: (data.userType === "owner" ? "OWNER" : "SUPPLIER") as "OWNER" | "SUPPLIER",
   };
 
   registerMutation.mutate(payload);
