@@ -41,7 +41,6 @@ import {
   MapPin,
   FileText,
 } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 
 /* -------------------------------------------------------------------------- */
@@ -106,7 +105,9 @@ export default function ProviderRegistrationForm({
 }: ProviderRegistrationFormProps) {
 
   const { registerMutation } = useAuth();
+
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+
   const form = useForm<ProviderRegistrationFormData>({
     resolver: zodResolver(providerRegistrationSchema),
     defaultValues: {
