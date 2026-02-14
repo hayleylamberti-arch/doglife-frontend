@@ -587,7 +587,7 @@ const onRegister = (data: RegisterFormData) => {
 
             <TabsContent value="provider">
               <ProviderRegistrationForm 
-                onSuccess={() => navigate("/")} 
+                onSuccess={() => navigate("/supplier-profile")}
               />
             </TabsContent>
           </Tabs>
