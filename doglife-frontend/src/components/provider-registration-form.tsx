@@ -163,8 +163,7 @@ export default function ProviderRegistrationForm({
         </CardDescription>
       </CardHeader>
 
-  <Form {...form}>
-  <form onSubmit={form.handleSubmit(onSubmit)}>
+  <Form {...form} onSubmit={form.handleSubmit(onSubmit)}>
     <CardContent className="space-y-6">
             {/* Basic Info */}
             <FormField
