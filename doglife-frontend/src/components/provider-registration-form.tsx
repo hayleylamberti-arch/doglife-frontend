@@ -136,6 +136,12 @@ export default function ProviderRegistrationForm({
     const [firstName, ...rest] = data.fullName.trim().split(" ");
     const lastName = rest.join(" ") || firstName;
 
+    console.log("Submitting supplier registration:", {
+    email: data.email,
+    firstName,
+    lastName,
+  });
+
     await registerMutation.mutateAsync({
       email: data.email,
       password: data.password,
@@ -145,7 +151,7 @@ export default function ProviderRegistrationForm({
       role: "SUPPLIER" as const,
     });
 
-    onSuccess?.();
+    window.location.href = "/supplier-profile-modern";
   };
 
   return (
@@ -157,9 +163,9 @@ export default function ProviderRegistrationForm({
         </CardDescription>
       </CardHeader>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-6">
+  <Form {...form}>
+  <form onSubmit={form.handleSubmit(onSubmit)}>
+    <CardContent className="space-y-6">
             {/* Basic Info */}
             <FormField
               control={form.control}
@@ -280,7 +286,6 @@ export default function ProviderRegistrationForm({
               )}
             </Button>
           </CardContent>
-        </form>
       </Form>
     </Card>
   );
