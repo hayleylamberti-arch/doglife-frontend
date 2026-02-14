@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -103,9 +104,9 @@ interface ProviderRegistrationFormProps {
 export default function ProviderRegistrationForm({
   onSuccess,
 }: ProviderRegistrationFormProps) {
+
   const { registerMutation } = useAuth();
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
-
   const form = useForm<ProviderRegistrationFormData>({
     resolver: zodResolver(providerRegistrationSchema),
     defaultValues: {
