@@ -55,13 +55,13 @@ const providerRegistrationSchema = z
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
 
-    suburb: z.string().min(1, "Please enter your suburb"),
+    suburb: z.string().optional(),
     address: z.string().optional(),
     city: z.string().optional(),
     province: z.string().optional(),
 
-    selectedServices: z.array(z.string()).min(1),
-    aboutServices: z.string().min(10),
+    selectedServices: z.array(z.string()).optional(),
+    aboutServices: z.string().optional(),
 
     providerType: z.enum(["business", "individual"]),
 
