@@ -15,8 +15,12 @@ const getBaseURL = (): string => {
   return "http://localhost:5000";
 };
 
+const baseURL = getBaseURL();
+
+console.log("🚨 API BASE URL =", baseURL);
+
 export const api = axios.create({
-  baseURL: getBaseURL(),
+  baseURL,
 });
 
 api.interceptors.request.use((config) => {

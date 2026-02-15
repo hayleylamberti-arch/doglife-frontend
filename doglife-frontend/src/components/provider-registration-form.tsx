@@ -286,8 +286,8 @@ export default function ProviderRegistrationForm({
               )}
             </Button>
           </CardContent>
-      </form>
-      </Form>
+        </form>
+</Form>
     </Card>
   );
 }
