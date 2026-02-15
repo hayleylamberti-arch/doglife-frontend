@@ -10,6 +10,7 @@ import OwnerSignup from "@/pages/owner-signup";
 import RolloutLead from "@/pages/rollout-lead";
 import MyDogsPage from "@/pages/my-dogs";
 import AddDogPage from "@/pages/add-dog";
+import SupplierProfileModern from "@/components/supplier-profile-modern";
 import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
 import { useAuth } from "@/hooks/use-auth";
@@ -40,13 +41,17 @@ export default function AppRoutes() {
         <Route path="/rollout-lead" element={<RolloutLead />} />
 
         {/* Protected section */}
-        <Route element={<ProtectedLayout />}>
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/nearby" element={<Nearby />} />
-          <Route path="/my-dogs" element={<MyDogsPage />} />
-          <Route path="/add-dog" element={<AddDogPage />} />
-        </Route>
+<Route element={<ProtectedLayout />}>
+  <Route path="/profile" element={<Profile />} />
+  <Route path="/dashboard" element={<Dashboard />} />
+  <Route path="/nearby" element={<Nearby />} />
+  <Route path="/my-dogs" element={<MyDogsPage />} />
+  <Route path="/add-dog" element={<AddDogPage />} />
+  <Route
+  path="/supplier-profile-modern"
+  element={<SupplierProfileModern supplierId="test" />}
+/>
+</Route>
 
         {/* 404 */}
         <Route path="*" element={<div>404</div>} />
