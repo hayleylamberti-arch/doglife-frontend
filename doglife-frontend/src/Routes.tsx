@@ -47,10 +47,7 @@ export default function AppRoutes() {
   <Route path="/nearby" element={<Nearby />} />
   <Route path="/my-dogs" element={<MyDogsPage />} />
   <Route path="/add-dog" element={<AddDogPage />} />
-  <Route
-  path="/supplier-profile-modern"
-  element={<SupplierProfileModern supplierId="test" />}
-/>
+ <Route path="/supplier-profile-modern" element={<SupplierProfileModern supplierId="demo" />} /> 
 </Route>
 
         {/* 404 */}
