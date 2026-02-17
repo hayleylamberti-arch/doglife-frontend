@@ -4,8 +4,8 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/((?!assets|favicon.ico|robots.txt|sitemap.xml).*)",
-      "destination": "/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
