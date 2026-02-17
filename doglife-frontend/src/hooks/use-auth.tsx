@@ -61,18 +61,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const loginMutation = useMutation<AuthResponse, AxiosError, LoginCredentials>({
-    mutationFn: async (data) => {
-      const response = await api.post("/api/auth/login", data);
-      return response.data;
-    },
-    onSuccess: (data) => {
-      localStorage.setItem("authToken", data.token);
-      setUser(data.user);
-    },
-    onError: (error) => {
-      console.error("Login failed:", error.message);
-    },
-  });
+  mutationFn: async (data) => {
+    const response = await api.post("/api/auth/login", data);
+    return response.data;
+  },
+
+  onSuccess: (data) => {
+    console.log("LOGIN RESPONSE:", data); // 👈 keep this for debugging
+    localStorage.setItem("authToken", data.token);
+    setUser(data.user);
+  },
+
+  onError: (error) => {
+    console.error("Login failed:", error.message);
+  },
+});
 
   const registerMutation = useMutation<AuthResponse, AxiosError, RegisterData>({
     mutationFn: async (data) => {
