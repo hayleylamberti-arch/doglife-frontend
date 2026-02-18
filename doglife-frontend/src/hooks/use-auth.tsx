@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   },
 
   onSuccess: (data) => {
-    console.log("LOGIN RESPONSE:", data); // 👈 keep this for debugging
+    console.log("LOGIN RESPONSE:", data);
     localStorage.setItem("authToken", data.token);
     setUser(data.user);
   },
