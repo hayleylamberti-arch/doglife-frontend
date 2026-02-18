@@ -1,5 +1,5 @@
 // client/src/Routes.tsx
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Landing from "@/pages/landing";
 import Profile from "@/pages/profile";
 import Dashboard from "@/pages/dashboard";
@@ -27,7 +27,7 @@ function ProtectedLayout() {
 
 export default function AppRoutes() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
         {/* Public */}
         <Route path="/" element={<Landing />} />
@@ -53,6 +53,6 @@ export default function AppRoutes() {
         {/* 404 */}
         <Route path="*" element={<div>404</div>} />
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
