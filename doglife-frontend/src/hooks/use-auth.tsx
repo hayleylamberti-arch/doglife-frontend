@@ -62,9 +62,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginMutation = useMutation<AuthResponse, AxiosError, LoginCredentials>({
   mutationFn: async (data) => {
-    const response = await api.post("/api/auth/login", data);
-    return response.data;
-  },
+  const response = await api.post("/api/auth/login", data);
+  return {
+    token: response.data.token,
+    user: response.data.user,
+  };
+},
 
   onSuccess: (data) => {
     console.log("LOGIN RESPONSE:", data);
@@ -80,12 +83,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerMutation = useMutation<AuthResponse, AxiosError, RegisterData>({
     mutationFn: async (data) => {
       const response = await api.post("/api/auth/register", data);
-      return response.data;
-    },
+        return {
+    token: response.data.token,
+    user: response.data.user,
+  };
+},
+
     onSuccess: (data) => {
       localStorage.setItem("authToken", data.token);
       setUser(data.user);
     },
+    
     onError: (error) => {
       console.error("Registration failed:", error.message);
     },
