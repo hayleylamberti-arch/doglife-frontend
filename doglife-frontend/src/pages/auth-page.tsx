@@ -86,8 +86,8 @@ export default function AuthPage() {
   console.log("AUTH PAGE USER:", user);
 
   if (user && !resetToken) {
-    console.log("Redirecting to home...");
-    navigate("/", { replace: true });
+     console.log("Redirecting to dashboard...");
+    navigate("/dashboard", { replace: true });
   }
 }, [user, resetToken, navigate]);
 
