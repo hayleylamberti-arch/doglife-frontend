@@ -82,12 +82,11 @@ export default function AuthPage() {
     }
   }, []);
 
-  // Redirect if already authenticated (but not if we have a reset token)
   useEffect(() => {
-    if (user && !resetToken) {
-      navigate("/");
-    }
-  }, [user, resetToken, navigate]);
+  if (user && !resetToken) {
+    navigate("/", { replace: true });
+  }
+}, [user, resetToken, navigate]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
