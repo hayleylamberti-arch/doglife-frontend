@@ -8,7 +8,14 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
-  userType: 'owner' | 'provider' | 'admin';
+
+  // 👇 ADD THESE
+  role?: "OWNER" | "SUPPLIER" | "ADMIN";
+  onboardingCompleted?: boolean;
+  onboardingStep?: number;
+
+  userType?: 'owner' | 'provider' | 'admin';
+
   profileImageUrl?: string;
   phone?: string;
   phoneNumber?: string;

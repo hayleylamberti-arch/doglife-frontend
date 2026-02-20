@@ -83,12 +83,20 @@ export default function AuthPage() {
   }, []);
 
   useEffect(() => {
-  console.log("AUTH PAGE USER:", user);
+  if (!user || resetToken) return;
 
-  if (user && !resetToken) {
-     console.log("Redirecting to dashboard...");
-    navigate("/dashboard", { replace: true });
+  // If supplier and not onboarded → go to onboarding
+  if (
+    user.role === "SUPPLIER" &&
+    !user.onboardingCompleted
+  ) {
+    navigate("/supplier-onboarding", { replace: true });
+    return;
   }
+
+  // Otherwise → dashboard
+  navigate("/dashboard", { replace: true });
+
 }, [user, resetToken, navigate]);
 
   const loginForm = useForm<LoginFormData>({
