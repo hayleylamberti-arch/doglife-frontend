@@ -14,6 +14,7 @@ import SupplierProfileModern from "@/components/supplier-profile-modern";
 import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
 import { useAuth } from "@/hooks/use-auth";
+import SupplierOnboarding from "@/pages/supplier-onboarding";
 
 // v6-style protected route using <Outlet />
 function ProtectedLayout() {
@@ -47,6 +48,7 @@ export default function AppRoutes() {
   <Route path="/nearby" element={<Nearby />} />
   <Route path="/my-dogs" element={<MyDogsPage />} />
   <Route path="/add-dog" element={<AddDogPage />} />
+  <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
  <Route path="/supplier-profile-modern" element={<SupplierProfileModern supplierId="demo" />} /> 
 </Route>
 
