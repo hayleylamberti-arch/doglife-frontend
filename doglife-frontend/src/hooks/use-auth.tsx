@@ -118,7 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .get<User>("/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` },
         })
-        .then((res) => setUser(res.data))
+        .then((res) => {
+  console.log("FULL USER FROM /me:", res.data);
+  setUser(res.data);
+})
         .catch(() => logout())
         .finally(() => setIsLoading(false));
     } else {
