@@ -1,83 +1,129 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import { useAuth } from "@/hooks/use-auth";
+
+interface Suburb {
+  id: string;
+  suburbName: string;
+  city: string;
+  province: string;
+}
 
 export default function SupplierOnboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+
+  const [suburbs, setSuburbs] = useState<Suburb[]>([]);
+  const [loadingSuburbs, setLoadingSuburbs] = useState(true);
 
   const [businessName, setBusinessName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [suburb, setSuburb] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [aboutServices, setAboutServices] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [suburbId, setSuburbId] = useState("");
 
-  const handleSubmit = async () => {
-    if (!businessName) {
-      setError("Business name is required");
-      return;
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // 🔹 Fetch suburbs on load
+  useEffect(() => {
+    async function fetchSuburbs() {
+      try {
+        const res = await api.get("/api/suburbs");
+        setSuburbs(res.data.suburbs);
+      } catch (err) {
+        console.error("Failed to load suburbs", err);
+      } finally {
+        setLoadingSuburbs(false);
+      }
     }
+
+    fetchSuburbs();
+  }, []);
+
+  // 🔹 Submit Step 1
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
 
     try {
-      setIsSaving(true);
-      setError(null);
-
-      await api.patch("/api/suppliers/onboarding", {
+      await api.post("/api/supplier/profile", {
         businessName,
-        phoneNumber,
-        suburb,
+        aboutServices,
+        businessAddress,
+        businessPhone,
+        suburbId,
       });
 
-      // Redirect to dashboard after success
-      navigate("/dashboard", { replace: true });
+      // 👉 Move to Step 2
+      navigate("/supplier-onboarding?step=2");
 
     } catch (err: any) {
+      console.error(err);
       setError("Failed to save details");
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
-  };
+  }
 
   return (
-    <div className="mx-auto max-w-lg p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Supplier Onboarding</h1>
-      <p className="text-muted-foreground">
-        Step 1: Complete your business details.
-      </p>
+    <div style={{ maxWidth: 500, margin: "40px auto" }}>
+      <h1>Supplier Onboarding</h1>
+      <p>Step 1: Complete your business details.</p>
 
-      <div className="space-y-3">
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        
         <input
-          className="w-full border rounded px-3 py-2"
           placeholder="Business Name"
           value={businessName}
           onChange={(e) => setBusinessName(e.target.value)}
+          required
+        />
+
+        <textarea
+          placeholder="Describe your services"
+          value={aboutServices}
+          onChange={(e) => setAboutServices(e.target.value)}
+          required
         />
 
         <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Phone Number"
-          value={phoneNumber}
-          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="Business Address"
+          value={businessAddress}
+          onChange={(e) => setBusinessAddress(e.target.value)}
+          required
         />
 
         <input
-          className="w-full border rounded px-3 py-2"
-          placeholder="Suburb"
-          value={suburb}
-          onChange={(e) => setSuburb(e.target.value)}
+          placeholder="Business Phone"
+          value={businessPhone}
+          onChange={(e) => setBusinessPhone(e.target.value)}
+          required
         />
-      </div>
 
-      {error && <p className="text-red-600">{error}</p>}
+        {loadingSuburbs ? (
+          <p>Loading suburbs...</p>
+        ) : (
+          <select
+            value={suburbId}
+            onChange={(e) => setSuburbId(e.target.value)}
+            required
+          >
+            <option value="">Select Suburb</option>
+            {suburbs.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.suburbName} ({s.city})
+              </option>
+            ))}
+          </select>
+        )}
 
-      <button
-        className="w-full bg-black text-white rounded py-2 disabled:opacity-50"
-        onClick={handleSubmit}
-        disabled={isSaving}
-      >
-        {isSaving ? "Saving..." : "Continue"}
-      </button>
+        {error && <p style={{ color: "red" }}>{error}</p>}
+
+        <button type="submit" disabled={saving}>
+          {saving ? "Saving..." : "Continue"}
+        </button>
+      </form>
     </div>
   );
 }
