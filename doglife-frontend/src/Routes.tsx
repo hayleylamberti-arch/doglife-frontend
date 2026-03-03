@@ -15,6 +15,7 @@ import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
 import { useAuth } from "@/hooks/use-auth";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
+import ResetPassword from "./pages/reset-password";
 
 // v6-style protected route using <Outlet />
 function ProtectedLayout() {
@@ -40,6 +41,7 @@ export default function AppRoutes() {
         <Route path="/prospect-enquiry" element={<ProspectEnquiry />} />
         <Route path="/owner-signup" element={<OwnerSignup />} />
         <Route path="/rollout-lead" element={<RolloutLead />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected section */}
 <Route element={<ProtectedLayout />}>
