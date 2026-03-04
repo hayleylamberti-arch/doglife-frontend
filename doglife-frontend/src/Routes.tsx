@@ -1,5 +1,5 @@
 // client/src/Routes.tsx
-import { HashRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Landing from "@/pages/landing";
 import Profile from "@/pages/profile";
 import Dashboard from "@/pages/dashboard";
@@ -15,13 +15,13 @@ import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
 import { useAuth } from "@/hooks/use-auth";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
-import ResetPassword from "./pages/reset-password";
+import ResetPassword from "@/pages/reset-password";
 
 // v6-style protected route using <Outlet />
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return null;          // or a spinner component
+  if (isLoading) return null; // or a spinner component
   if (!isAuthenticated) return <Navigate to="/" replace />; // bounce to Landing
 
   return <Outlet />; // render child route
@@ -29,8 +29,9 @@ function ProtectedLayout() {
 
 export default function AppRoutes() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <Routes>
+
         {/* Public */}
         <Route path="/" element={<Landing />} />
 
@@ -44,19 +45,23 @@ export default function AppRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected section */}
-<Route element={<ProtectedLayout />}>
-  <Route path="/profile" element={<Profile />} />
-  <Route path="/dashboard" element={<Dashboard />} />
-  <Route path="/nearby" element={<Nearby />} />
-  <Route path="/my-dogs" element={<MyDogsPage />} />
-  <Route path="/add-dog" element={<AddDogPage />} />
-  <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
- <Route path="/supplier-profile-modern" element={<SupplierProfileModern supplierId="demo" />} /> 
-</Route>
+        <Route element={<ProtectedLayout />}>
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/nearby" element={<Nearby />} />
+          <Route path="/my-dogs" element={<MyDogsPage />} />
+          <Route path="/add-dog" element={<AddDogPage />} />
+          <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
+          <Route
+            path="/supplier-profile-modern"
+            element={<SupplierProfileModern supplierId="demo" />}
+          />
+        </Route>
 
         {/* 404 */}
         <Route path="*" element={<div>404</div>} />
+
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
