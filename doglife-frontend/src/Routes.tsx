@@ -1,5 +1,6 @@
-// client/src/Routes.tsx
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+// client/src/Routes.tsx (or doglife-frontend/src/Routes.tsx)
+import { HashRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+
 import Landing from "@/pages/landing";
 import Profile from "@/pages/profile";
 import Dashboard from "@/pages/dashboard";
@@ -13,29 +14,27 @@ import AddDogPage from "@/pages/add-dog";
 import SupplierProfileModern from "@/components/supplier-profile-modern";
 import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
-import { useAuth } from "@/hooks/use-auth";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
 import ResetPassword from "@/pages/reset-password";
+
+import { useAuth } from "@/hooks/use-auth";
 
 // v6-style protected route using <Outlet />
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return null; // or a spinner component
-  if (!isAuthenticated) return <Navigate to="/" replace />; // bounce to Landing
+  if (!isAuthenticated) return <Navigate to="/" replace />;
 
-  return <Outlet />; // render child route
+  return <Outlet />;
 }
 
 export default function AppRoutes() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <Routes>
-
         {/* Public */}
         <Route path="/" element={<Landing />} />
-
-        {/* Public routes */}
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/suppliers" element={<Suppliers />} />
@@ -44,7 +43,7 @@ export default function AppRoutes() {
         <Route path="/rollout-lead" element={<RolloutLead />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected section */}
+        {/* Protected */}
         <Route element={<ProtectedLayout />}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -60,8 +59,7 @@ export default function AppRoutes() {
 
         {/* 404 */}
         <Route path="*" element={<div>404</div>} />
-
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
