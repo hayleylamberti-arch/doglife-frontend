@@ -644,38 +644,34 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Coming Soon Section */}
-      <section className="py-16 bg-gradient-to-r from-doglife-primary to-blue-600 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center items-center">
-            {/* Content Column */}
-            <div className="text-center max-w-2xl">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
-                <h2 className="font-bold text-3xl lg:text-4xl mb-4">
-                  Want DogLife in other areas?
-                </h2>
-                <p className="text-xl opacity-90 mb-6">
-                  We're currently serving Gauteng areas. If you'd like 
-                  DogLife to come to your suburb, join our waiting list and we'll notify you when we expand!
-                </p>
-                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-6 border border-white/30">
-                  <Link to="/prospect-enquiry" className="inline-block bg-doglife-secondary text-doglife-dark hover:bg-amber-500 px-8 py-3 font-semibold text-lg rounded-md">
-                    Join Our Waiting List
-                  </Link>
-                </div>
-                <p className="text-lg font-semibold mt-6 opacity-95">
-                  🏢 <strong>Gauteng first. South Africa next.</strong>
-                </p>
-                <p className="text-sm opacity-80 mt-2">
-                  Headquarters: Kyalami, Midrand
-                </p>
-              </div>
-            </div>
-            
+    {/* Neighbourhood Launch Waitlist */}
+<section className="py-20 bg-gradient-to-r from-doglife-primary to-blue-600 text-white">
 
-          </div>
-        </div>
-      </section>
+  <div className="max-w-4xl mx-auto px-6 text-center">
+
+    <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+      Want DogLife in your neighbourhood?
+    </h2>
+
+    <p className="text-lg opacity-90 mb-8">
+      We're launching city by city starting in Gauteng.  
+      Join the waitlist and we'll notify you when DogLife launches near you.
+    </p>
+
+    <Link
+      to="/prospect-enquiry"
+      className="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-gray-100 transition"
+    >
+      Join the Waitlist
+    </Link>
+
+    <p className="mt-6 text-sm opacity-80">
+      Gauteng first. South Africa next.
+    </p>
+
+  </div>
+
+</section>
 
       {/* FAQ Section */}
       <section id="faq" className="py-16 bg-white">
