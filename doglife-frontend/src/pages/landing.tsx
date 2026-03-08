@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Briefcase, Star, Shield, Clock, MapPin, Phone, Mail, ChevronDown, ChevronUp } from "lucide-react";
-import logoImage from "@/assets/doglife-logo.jpeg";
+import logoImage from "@/assets/doglife-logo.png";
 
 const serviceCategories = [
   { id: 1, name: "Dog Walking", icon: "🚶", description: "Daily exercise and fresh air" },
