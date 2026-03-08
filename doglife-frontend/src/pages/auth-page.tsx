@@ -85,17 +85,23 @@ export default function AuthPage() {
   useEffect(() => {
   if (!user || resetToken) return;
 
-  // If supplier and not onboarded → go to onboarding
-  if (
-    user.role === "SUPPLIER" &&
-    !user.onboardingCompleted
-  ) {
+  // Supplier onboarding
+  if (user.role === "SUPPLIER" && !user.onboardingCompleted) {
     navigate("/supplier-onboarding", { replace: true });
     return;
   }
 
-  // Otherwise → dashboard
-  navigate("/dashboard", { replace: true });
+  // Supplier dashboard
+  if (user.role === "SUPPLIER") {
+    navigate("/dashboard", { replace: true });
+    return;
+  }
+
+  // Owner onboarding → add first dog
+  if (user.role === "OWNER") {
+    navigate("/add-dog", { replace: true });
+    return;
+  }
 
 }, [user, resetToken, navigate]);
 
