@@ -85,24 +85,14 @@ export default function MyDogsPage() {
     },
   });
 
-  // Define dog type
-  type Dog = { id: string; name: string; breed?: string; gender?: string; size?: string; birthDate?: string; dateOfBirth?: string; notes?: string; medicalNotes?: string; profileImageUrl?: string };
-
   // Fetch user's dogs using the new API endpoint
   const { data: dogsResponse, isLoading, error } = useQuery<{ ok: boolean; dogs: Dog[] }>({
-    queryKey: ['/api/dogs/mine'],
-    queryFn: async () => {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token');
-      
-      const response = await fetch('/api/dogs/mine', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch dogs');
-      return response.json();
-    }
-  });
+  queryKey: ['/api/owner/dogs'],
+  queryFn: async () => {
+    const res = await apiRequest("/api/owner/dogs");
+    return res.json();
+  }
+});
   
   // API returns { ok: true, dogs: Dog[] }
   const dogs = dogsResponse?.dogs || [];
@@ -124,7 +114,7 @@ export default function MyDogsPage() {
         notes: data.notes?.trim() || undefined
       };
       
-      const response = await fetch('/api/dogs', {
+      const response = await fetch('/api/owner/dogs', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -145,7 +135,7 @@ export default function MyDogsPage() {
         title: "Dog added successfully!",
         description: "Your furry friend has been added to your profile.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/dogs/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owner/dogs'] });
       setShowAddForm(false);
       form.reset();
     },
@@ -195,7 +185,7 @@ export default function MyDogsPage() {
         title: "Dog updated successfully!",
         description: "Your dog's information has been updated.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/dogs/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owner/dogs'] });
       setEditingDog(null);
       form.reset();
     },
@@ -231,7 +221,7 @@ export default function MyDogsPage() {
         title: "Dog removed",
         description: "Your dog has been successfully removed from your profile.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/dogs/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owner/dogs'] });
       setDeletingDogId(null);
     },
     onError: (error: any) => {

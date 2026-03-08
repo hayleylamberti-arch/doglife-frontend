@@ -65,7 +65,8 @@ export default function AddDogPage() {
         title: "Dog added successfully!",
         description: "Your furry friend has been added to your profile.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/dogs/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/owner/dogs'] });
+      
       navigate("/my-dogs");
     },
     onError: (error: any) => {
