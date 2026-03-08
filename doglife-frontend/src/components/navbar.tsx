@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import Logo from "@/components/Logo";
+import Brand from "@/components/Brand";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,8 +57,8 @@ export default function Navbar() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-  <Logo className="h-8 w-auto" />
+          <Link to="/" className="flex items-center">
+  <Brand />
 </Link>
 
           {/* Desktop Navigation */}
