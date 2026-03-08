@@ -1,6 +1,6 @@
-import logo from "@/assets/doglife-logo.jpeg";
+import logo from "@/assets/doglife-logo.png";
 
-export default function Logo({ className = "h-12 w-auto" }) {
+export default function Logo({ className = "h-10 w-auto" }) {
   return (
     <img
       src={logo}
