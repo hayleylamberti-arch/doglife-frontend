@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import ProviderRegistrationForm from "@/components/provider-registration-form";
-import logoImage from "@/assets/doglife-logo.jpeg";
+import Brand from "@/components/Brand";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -288,19 +288,9 @@ const onRegister = (data: RegisterFormData) => {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <img 
-                src={logoImage} 
-                alt="DogLife" 
-                className="h-12 w-auto mr-3"
-              />
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-left">DogLife</h1>
-                <p className="text-sm italic text-muted-foreground opacity-90 text-left">
-                  Because they're family
-                </p>
-              </div>
-            </div>
+           <div className="mb-6 flex justify-center">
+  <Brand />
+</div>        
             <p className="text-muted-foreground mt-2">
               Connect with trusted dog service providers in your area
             </p>

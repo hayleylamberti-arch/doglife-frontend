@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import Logo from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,9 +58,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <PawPrint className="h-8 w-8 text-[hsl(24,100%,50%)]" />
-            <span className="font-bold text-xl text-gray-900">DogLife</span>
-          </Link>
+  <Logo className="h-8 w-auto" />
+</Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
