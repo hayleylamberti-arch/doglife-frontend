@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertCircle, ArrowLeft, CalendarIcon, Heart, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarIcon, Heart, Loader2, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ const addDogSchema = z.object({
   size: z.enum(["SMALL", "MEDIUM", "LARGE", "XL"]).optional(),
   birthDate: z.string().optional(), // Will be converted to Date
   notes: z.string().optional(),
+  photoUrl: z.string().optional()
 });
 
 type AddDogFormData = z.infer<typeof addDogSchema>;
@@ -44,32 +45,21 @@ export default function AddDogPage() {
       size: "MEDIUM",
       birthDate: "",
       notes: "",
+      photoUrl:""
     },
   });
 
   // Add dog mutation using our new API
   const addDogMutation = useMutation({
-    mutationFn: async (data: AddDogFormData) => {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) throw new Error('No authentication token');
-      
-      const response = await fetch('/api/dogs', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to add dog');
-      }
-      
-      return response.json();
-    },
+  mutationFn: async (data: AddDogFormData) => {
+    const res = await apiRequest("/api/owner/dogs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+
+    return res.json();
+  },
+    
     onSuccess: () => {
       toast({
         title: "Dog added successfully!",
@@ -94,12 +84,175 @@ export default function AddDogPage() {
   };
 
   const dogBreeds = [
-    "Golden Retriever", "Labrador Retriever", "German Shepherd", "Bulldog",
-    "Poodle", "Beagle", "Rottweiler", "Yorkshire Terrier", "Dachshund",
-    "Siberian Husky", "Boxer", "Border Collie", "Australian Shepherd",
-    "Jack Russell Terrier", "Boston Terrier", "Cocker Spaniel", "Chihuahua",
-    "Shih Tzu", "Maltese", "Pomeranian", "Mixed Breed", "Other"
-  ];
+"Afghan Hound",
+"Airedale Terrier",
+"Akita",
+"Alaskan Malamute",
+"American Bulldog",
+"American Eskimo Dog",
+"American Foxhound",
+"American Staffordshire Terrier",
+"Anatolian Shepherd Dog",
+"Australian Cattle Dog",
+"Australian Shepherd",
+"Australian Terrier",
+"Basenji",
+"Basset Hound",
+"Beagle",
+"Bearded Collie",
+"Bedlington Terrier",
+"Belgian Malinois",
+"Belgian Sheepdog",
+"Belgian Tervuren",
+"Bernese Mountain Dog",
+"Bichon Frise",
+"Black Russian Terrier",
+"Bloodhound",
+"Border Collie",
+"Border Terrier",
+"Borzoi",
+"Boston Terrier",
+"Bouvier des Flandres",
+"Boxer",
+"Boykin Spaniel",
+"Briard",
+"Brittany",
+"Brussels Griffon",
+"Bulldog",
+"Bull Terrier",
+"Bulmastiff",
+"Cairn Terrier",
+"Canaan Dog",
+"Cane Corso",
+"Cardigan Welsh Corgi",
+"Cavalier King Charles Spaniel",
+"Chesapeake Bay Retriever",
+"Chihuahua",
+"Chinese Crested",
+"Chow Chow",
+"Clumber Spaniel",
+"Cocker Spaniel",
+"Collie",
+"Curly-Coated Retriever",
+"Dachshund",
+"Dalmatian",
+"Dandie Dinmont Terrier",
+"Doberman Pinscher",
+"Dogo Argentino",
+"Dogue de Bordeaux",
+"English Cocker Spaniel",
+"English Foxhound",
+"English Setter",
+"English Springer Spaniel",
+"English Toy Spaniel",
+"Entlebucher Mountain Dog",
+"Field Spaniel",
+"Finnish Spitz",
+"Flat-Coated Retriever",
+"French Bulldog",
+"German Pinscher",
+"German Shepherd",
+"German Shorthaired Pointer",
+"German Wirehaired Pointer",
+"Giant Schnauzer",
+"Glen of Imaal Terrier",
+"Golden Retriever",
+"Gordon Setter",
+"Great Dane",
+"Great Pyrenees",
+"Greater Swiss Mountain Dog",
+"Greyhound",
+"Havanese",
+"Irish Setter",
+"Irish Terrier",
+"Irish Water Spaniel",
+"Irish Wolfhound",
+"Italian Greyhound",
+"Jack Russell Terrier",
+"Japanese Chin",
+"Keeshond",
+"Kerry Blue Terrier",
+"Komondor",
+"Kuvasz",
+"Labrador Retriever",
+"Lagotto Romagnolo",
+"Lakeland Terrier",
+"Leonberger",
+"Lhasa Apso",
+"Lowchen",
+"Maltese",
+"Manchester Terrier",
+"Mastiff",
+"Miniature Bull Terrier",
+"Miniature Pinscher",
+"Miniature Schnauzer",
+"Neapolitan Mastiff",
+"Newfoundland",
+"Norfolk Terrier",
+"Norwegian Elkhound",
+"Norwich Terrier",
+"Nova Scotia Duck Tolling Retriever",
+"Old English Sheepdog",
+"Otterhound",
+"Papillon",
+"Parson Russell Terrier",
+"Pekingese",
+"Pembroke Welsh Corgi",
+"Petit Basset Griffon Vendeen",
+"Pharaoh Hound",
+"Plott",
+"Pointer",
+"Polish Lowland Sheepdog",
+"Pomeranian",
+"Poodle",
+"Portuguese Water Dog",
+"Pug",
+"Puli",
+"Pumi",
+"Rat Terrier",
+"Redbone Coonhound",
+"Rhodesian Ridgeback",
+"Rottweiler",
+"Saint Bernard",
+"Saluki",
+"Samoyed",
+"Schipperke",
+"Scottish Deerhound",
+"Scottish Terrier",
+"Sealyham Terrier",
+"Shetland Sheepdog",
+"Shiba Inu",
+"Shih Tzu",
+"Siberian Husky",
+"Silky Terrier",
+"Skye Terrier",
+"Sloughi",
+"Soft Coated Wheaten Terrier",
+"Spanish Water Dog",
+"Spinone Italiano",
+"Springer Spaniel",
+"Staffordshire Bull Terrier",
+"Standard Schnauzer",
+"Sussex Spaniel",
+"Tibetan Mastiff",
+"Tibetan Spaniel",
+"Tibetan Terrier",
+"Toy Fox Terrier",
+"Vizsla",
+"Weimaraner",
+"Welsh Springer Spaniel",
+"Welsh Terrier",
+"West Highland White Terrier",
+"Whippet",
+"Wire Fox Terrier",
+"Wirehaired Pointing Griffon",
+"Xoloitzcuintli",
+"Yorkshire Terrier",
+"Boerboel",
+"Africanis",
+"Mixed Breed",
+"Other"
+];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -138,6 +291,42 @@ export default function AddDogPage() {
           
           <CardContent>
             <Form {...form}>
+             <FormField
+  control={form.control}
+  name="photoUrl"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Dog Photo URL (optional)</FormLabel>
+
+      <FormControl>
+        <Input
+          placeholder="Paste an image URL"
+          {...field}
+        />
+      </FormControl>
+
+      <FormDescription>
+Paste a link to a photo of your dog.
+</FormDescription>
+
+  <div className="mt-3">
+  {form.watch("photoUrl") ? (
+    <img
+      src={form.watch("photoUrl")}
+      alt="Dog preview"
+      className="w-28 h-28 rounded-full object-cover border-2 border-gray-200"
+    />
+  ) : (
+    <div className="w-28 h-28 rounded-full bg-gray-200 flex flex-col items-center justify-center text-gray-500">
+  <Camera className="w-6 h-6 mb-1 opacity-70" />
+  <span className="text-xs">Add Photo</span>
+</div>
+  )}
+</div>    
+
+    </FormItem>
+  )}
+/> 
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Basic Information */}
                 <div className="grid gap-6">
