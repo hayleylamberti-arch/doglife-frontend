@@ -16,6 +16,7 @@ import AuthPage from "@/pages/auth-page";
 import SearchPage from "@/pages/search";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
 import ResetPassword from "@/pages/reset-password";
+import DogProfilePage from "@/pages/dog-profile";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -50,6 +51,7 @@ export default function AppRoutes() {
           <Route path="/nearby" element={<Nearby />} />
           <Route path="/my-dogs" element={<MyDogsPage />} />
           <Route path="/add-dog" element={<AddDogPage />} />
+          <Route path="/dogs/:id" element={<DogProfilePage />} />
           <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
           <Route
             path="/supplier-profile-modern"

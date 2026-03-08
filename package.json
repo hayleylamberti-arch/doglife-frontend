@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "cloudinary-react": "^1.8.1",
+    "recharts": "^3.8.0"
+  }
+}
