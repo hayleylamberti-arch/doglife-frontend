@@ -50,7 +50,8 @@ export default function AddDogPage() {
   // Add dog mutation using our new API
   const addDogMutation = useMutation({
     mutationFn: async (data: AddDogFormData) => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken');
+      
       if (!token) throw new Error('No authentication token');
       
       const response = await fetch('/api/dogs', {
