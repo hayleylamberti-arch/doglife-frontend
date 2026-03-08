@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Mail, Lock, User, Phone, UserCheck, Building, ArrowLeft } from "lucide-react";
-import logoImage from "@/assets/image_1749888549328.png";
 import { AddressAutocomplete } from "@/components/address-autocomplete";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import ProviderRegistrationForm from "@/components/provider-registration-form";
+import logoImage from "@/assets/doglife-logo.jpeg";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -292,7 +292,7 @@ const onRegister = (data: RegisterFormData) => {
               <img 
                 src={logoImage} 
                 alt="DogLife" 
-                className="h-16 w-auto mr-3"
+                className="h-12 w-auto mr-3"
               />
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-left">DogLife</h1>
