@@ -5,6 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Heart, Briefcase, Star, Shield, Clock, MapPin, Phone, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import logoImage from "@/assets/doglife-logo.png";
+import Hero from "@/components/Hero";
+import NeighbourhoodWaitlist from "@/components/NeighbourhoodWaitlist";
+import ServiceCategories from "@/components/ServiceCategories";
 
 const serviceCategories = [
   { id: 1, name: "Dog Walking", icon: "🚶", description: "Daily exercise and fresh air" },
@@ -154,166 +157,16 @@ export default function Landing() {
         </nav>
       </header>
 
-      {/* New Pricing Banner */}
-      <div className="bg-gradient-to-r from-blue-700 to-blue-800 text-white py-3">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <span className="font-semibold">🎉 Welcome to DogLife!</span>
-            <span className="ml-2">Dog Owners: Start Free Forever or upgrade to DogLife+ | Service Providers: Plans from Free to R249/month</span>
-          </div>
-        </div>
-      </div>
+     <>
+  <Hero />
 
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-100 to-blue-50 py-12 lg:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:grid lg:grid-cols-2 lg:gap-8 items-center">
-            <div className="mb-8 lg:mb-0">
-              <h1 className="font-bold text-4xl lg:text-5xl text-gray-900 mb-6 leading-tight">
-                Connect with Trusted Dog Services in 
-                <span className="text-blue-600"> Gauteng</span>
-              </h1>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed">
-                Find reliable dog walkers, trainers, groomers, and more. Join dog owners and service providers building a trusted community.
-              </p>
-              
-              {/* Pricing Highlight */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-                <div className="flex items-center">
-                  <Star className="h-5 w-5 text-blue-600 mr-2" />
-                  <span className="text-blue-800 font-medium">Start Free Forever or upgrade to DogLife+ for just R29/month</span>
-                </div>
-                <p className="text-blue-700 text-sm mt-1">Free: 2 bookings/month | DogLife+: Unlimited bookings and premium features</p>
-                <p className="text-blue-600 text-xs mt-2 font-medium">💡 Membership covers booking fees only - you pay service providers directly for their services</p>
-              </div>
-              
-              {/* User Type Selection */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                <Card className="border-2 border-transparent hover:border-blue-600 transition-all cursor-pointer hover-lift" onClick={() => handleGetStarted('owner')}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center mb-3">
-                      <Heart className="h-6 w-6 text-yellow-500 mr-3" />
-                      <h3 className="font-semibold text-gray-900">Dog Owner</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">Find trusted services for your furry friend</p>
-                    
-                    {/* Pricing Options */}
-                    <div className="space-y-2 mb-4 bg-blue-50 rounded-lg p-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-green-600 font-semibold">👛 Free Forever</span>
-                        <span className="text-green-600 font-bold">R0</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-blue-600 font-semibold">⭐ DogLife+</span>
-                        <span className="text-blue-600 font-bold">R29/month</span>
-                      </div>
-                      <p className="text-xs text-blue-600 font-medium mt-2">💳 Booking fees only - service rates separate</p>
-                    </div>
-                    
-                    <Button className="w-full bg-blue-600 text-white hover:bg-blue-700">
-                      Find Services
-                    </Button>
-                  </CardContent>
-                </Card>
-                
-                <Card className="border-2 border-transparent hover:border-doglife-accent transition-all cursor-pointer hover-lift" onClick={() => handleGetStarted('provider')}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center mb-3">
-                      <Briefcase className="h-6 w-6 text-doglife-accent mr-3" />
-                      <h3 className="font-semibold text-doglife-dark">Service Provider</h3>
-                    </div>
-                    <p className="text-sm text-doglife-neutral mb-4">Offer your dog services to local owners</p>
-                    
-                    {/* Pricing Options */}
-                    <div className="space-y-2 mb-4 bg-orange-50 rounded-lg p-3">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-600 font-semibold">🐾 Starter</span>
-                        <span className="text-gray-600 font-bold">Free</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-orange-600 font-semibold">🐶 Pro</span>
-                        <span className="text-orange-600 font-bold">R149/month</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-purple-600 font-semibold">🥇 Pro+ Verified</span>
-                        <span className="text-purple-600 font-bold">R249/month</span>
-                      </div>
-                      <p className="text-xs text-orange-600 font-medium mt-2">💼 Platform fees - you set your service rates</p>
-                    </div>
-                    
-                    <Button className="w-full bg-doglife-accent text-white hover:bg-green-700">
-                      Start Offering
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Trust Indicators */}
-              <div className="flex items-center space-x-6 text-sm text-doglife-neutral">
-                <div className="flex items-center">
-                  <Shield className="h-4 w-4 text-doglife-accent mr-2" />
-                  <span>Verified Providers</span>
-                </div>
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-doglife-secondary mr-2" />
-                  <span>Rated Services</span>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="h-4 w-4 text-doglife-primary mr-2" />
-                  <span>24/7 Support</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="lg:pl-8 flex flex-col items-center justify-center">
-              {/* Large Logo Display */}
-              <div className="bg-gradient-to-br from-blue-50 to-white p-8 rounded-3xl shadow-2xl mb-6">
-                <img 
-                  src={logoImage} 
-                  alt="DogLife - Connecting dog owners with trusted services" 
-                  className="h-32 w-32 md:h-40 md:w-40 mx-auto"
-                />
-              </div>
-              
-              {/* Supporting Hero Image */}
-              <img 
-                src="https://images.unsplash.com/photo-1601758228041-f3b2795255f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
-                alt="Happy dog owner with their golden retriever in a park" 
-                className="rounded-2xl shadow-lg w-full h-auto max-w-md" 
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+  <NeighbourhoodWaitlist />
 
-      {/* Service Categories */}
-      <section id="services" className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="font-bold text-3xl lg:text-4xl text-doglife-dark mb-4">
-              All Your Dog's Needs, One Platform
-            </h2>
-            <p className="text-lg text-doglife-neutral max-w-2xl mx-auto">
-              From daily walks to special care, find the perfect service provider for every occasion
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {serviceCategories.map((category) => (
-              <Card key={category.id} className="bg-doglife-gray-50 hover:shadow-lg transition-shadow cursor-pointer group hover-lift">
-                <CardContent className="p-6 text-center">
-                  <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">
-                    {category.icon}
-                  </div>
-                  <h3 className="font-semibold text-doglife-dark mb-2">{category.name}</h3>
-                  <p className="text-sm text-doglife-neutral">{category.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
+  <ServiceCategories />
 
+  {/* existing sections */}
+</>
+ 
       {/* How It Works */}
       <section id="how-it-works" className="py-16 bg-doglife-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
