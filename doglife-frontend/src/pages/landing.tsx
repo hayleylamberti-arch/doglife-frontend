@@ -29,9 +29,9 @@ export default function Landing() {
 
       <HowItWorks />
 
-      <Pricing />
-
       <FeaturedProviders />
+
+      <Pricing />
 
       <TrustSection />
 
