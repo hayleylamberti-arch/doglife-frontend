@@ -1,33 +1,31 @@
-import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 export default function NeighbourhoodWaitlist() {
   return (
-    <section className="py-20 bg-gradient-to-r from-doglife-primary to-blue-600 text-white">
+    <section className="py-16 bg-blue-50">
+      <div className="max-w-xl mx-auto px-6 text-center">
 
-      <div className="max-w-4xl mx-auto px-6 text-center">
-
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
           Want DogLife in your neighbourhood?
         </h2>
 
-        <p className="text-lg opacity-90 mb-8">
-          We're launching city by city starting in Gauteng.  
-          Join the waitlist and we'll notify you when DogLife launches near you.
+        <p className="text-gray-600 mb-8">
+          We're launching in Gauteng first. Want DogLife in your suburb?
+Join the waitlist and we'll notify you when we launch near you.
         </p>
 
-        <Link
-          to="/prospect-enquiry"
-          className="inline-block bg-white text-blue-600 font-semibold px-8 py-3 rounded-lg hover:bg-gray-100 transition"
-        >
-          Join the Waitlist
-        </Link>
+        <div className="space-y-4">
+          <Input placeholder="Enter your suburb" />
 
-        <p className="mt-6 text-sm opacity-80">
-          Gauteng first. South Africa next.
-        </p>
+          <Input placeholder="Enter your email" type="email" />
+
+          <Button className="w-full">
+            Join the Waitlist
+          </Button>
+        </div>
 
       </div>
-
     </section>
-  );
+  )
 }
