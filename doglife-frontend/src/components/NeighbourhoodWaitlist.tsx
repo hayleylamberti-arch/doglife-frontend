@@ -12,7 +12,8 @@ export default function NeighbourhoodWaitlist() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const suburbs = [
+  const provinceSuburbs: Record<string, string[]> = {
+  "Gauteng": [
     "Sandton",
     "Fourways",
     "Midrand",
@@ -20,19 +21,48 @@ export default function NeighbourhoodWaitlist() {
     "Randburg",
     "Centurion",
     "Pretoria"
-  ]
+  ],
 
-  const provinces = [
-    "Gauteng",
-    "Western Cape",
-    "KwaZulu-Natal",
-    "Eastern Cape",
-    "Free State",
-    "Mpumalanga",
-    "Limpopo",
-    "North West",
-    "Northern Cape"
+  "Western Cape": [
+    "Cape Town",
+    "Claremont",
+    "Sea Point",
+    "Stellenbosch",
+    "Bellville"
+  ],
+
+  "KwaZulu-Natal": [
+    "Durban",
+    "Umhlanga",
+    "Ballito",
+    "Pinetown"
+  ],
+
+  "Eastern Cape": [
+    "Port Elizabeth",
+    "East London"
+  ],
+
+  "Free State": [
+    "Bloemfontein"
+  ],
+
+  "Limpopo": [
+    "Polokwane"
+  ],
+
+  "Mpumalanga": [
+    "Nelspruit"
+  ],
+
+  "North West": [
+    "Rustenburg"
+  ],
+
+  "Northern Cape": [
+    "Kimberley"
   ]
+}
 
   const services = [
     "Dog Walking",
@@ -114,27 +144,37 @@ export default function NeighbourhoodWaitlist() {
           </select>
 
           <select
-            value={suburb}
-            onChange={(e) => setSuburb(e.target.value)}
-            className="w-full p-3 border rounded-lg"
-            required
-          >
-            <option value="">Select your suburb</option>
-            {suburbs.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-
-          <select
             value={province}
-            onChange={(e) => setProvince(e.target.value)}
+            onChange={(e) => {
+              setProvince(e.target.value)
+              setSuburb("")
+            }}
             className="w-full p-3 border rounded-lg"
             required
           >
             <option value="">Select province</option>
-            {provinces.map((p) => (
+            {Object.keys(provinceSuburbs).map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
+          </select>
+
+          <select
+            value={suburb}
+            onChange={(e) => setSuburb(e.target.value)}
+            className="w-full p-3 border rounded-lg"
+            required
+            disabled={!province}
+          >
+            <option value="">
+              {province ? "Select suburb" : "Select province first"}
+            </option>
+
+            {province &&
+              provinceSuburbs[province].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))
+            }
+
           </select>
 
           <input
@@ -185,6 +225,6 @@ export default function NeighbourhoodWaitlist() {
         )}
 
       </div>
-     </section>
+    </section>
   )
 }
