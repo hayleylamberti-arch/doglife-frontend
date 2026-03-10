@@ -1,8 +1,5 @@
-"use client"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 
 export default function NeighbourhoodWaitlist() {
 
@@ -15,9 +12,44 @@ export default function NeighbourhoodWaitlist() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const suburbs = [
+    "Sandton",
+    "Fourways",
+    "Midrand",
+    "Rosebank",
+    "Randburg",
+    "Centurion",
+    "Pretoria"
+  ]
+
+  const provinces = [
+    "Gauteng",
+    "Western Cape",
+    "KwaZulu-Natal",
+    "Eastern Cape",
+    "Free State",
+    "Mpumalanga",
+    "Limpopo",
+    "North West",
+    "Northern Cape"
+  ]
+
+  const services = [
+    "Dog Walking",
+    "Dog Grooming",
+    "Dog Training",
+    "Boarding",
+    "Mobile Vet",
+    "Pet Transport"
+  ]
+
+  const businessOptions = [
+    "Yes — established business",
+    "No — starting soon"
+  ]
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
     setLoading(true)
 
     try {
@@ -81,38 +113,63 @@ export default function NeighbourhoodWaitlist() {
             <option value="provider">Service Provider</option>
           </select>
 
-          <Input
-            placeholder="Suburb (e.g. Sandton)"
+          <select
             value={suburb}
             onChange={(e) => setSuburb(e.target.value)}
-          />
+            className="w-full p-3 border rounded-lg"
+            required
+          >
+            <option value="">Select your suburb</option>
+            {suburbs.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
 
-          <Input
-            placeholder="Province (e.g. Gauteng)"
+          <select
             value={province}
             onChange={(e) => setProvince(e.target.value)}
-          />
+            className="w-full p-3 border rounded-lg"
+            required
+          >
+            <option value="">Select province</option>
+            {provinces.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
 
-          <Input
+          <input
             type="email"
             placeholder="Email address"
+            className="w-full p-3 border rounded-lg"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           {userType === "provider" && (
             <>
-              <Input
-                placeholder="Service offered (e.g. Dog Walking)"
+              <select
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-              />
+                className="w-full p-3 border rounded-lg"
+                required
+              >
+                <option value="">Service offered</option>
+                {services.map((service) => (
+                  <option key={service} value={service}>{service}</option>
+                ))}
+              </select>
 
-              <Input
-                placeholder="Are you an existing business? (optional)"
+              <select
                 value={businessStatus}
                 onChange={(e) => setBusinessStatus(e.target.value)}
-              />
+                className="w-full p-3 border rounded-lg"
+              >
+                <option value="">Are you an existing business?</option>
+                {businessOptions.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
             </>
           )}
 
@@ -128,6 +185,6 @@ export default function NeighbourhoodWaitlist() {
         )}
 
       </div>
-    </section>
+     </section>
   )
 }
