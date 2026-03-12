@@ -74,21 +74,6 @@ export default function AuthPage() {
     }
   }, [user, resetToken, navigate]);
 
-  /* ------------------ redirect loading screen ------------------ */
-
-  if (user && !resetToken) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <p className="text-sm text-muted-foreground">
-            Preparing your dashboard...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   /* ------------------ forms unchanged ------------------ */
 
   const loginForm = useForm({
