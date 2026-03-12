@@ -17,6 +17,8 @@ import SearchPage from "@/pages/search";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
 import ResetPassword from "@/pages/reset-password";
 import DogProfilePage from "@/pages/dog-profile";
+import SupplierProfilePage from "@/pages/supplier-profile";
+import AppLayout from "@/components/AppLayout";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -31,14 +33,21 @@ function ProtectedLayout() {
 }
 
 export default function AppRoutes() {
-  return (
-    <HashRouter>
-      <Routes>
+return (
+  <HashRouter>
+    <Routes>
+
+      {/* Auth page WITHOUT layout */}
+      <Route path="/auth" element={<AuthPage />} />
+
+      {/* Layout wrapper */}
+      <Route element={<AppLayout />}>
+
         {/* Public */}
         <Route path="/" element={<Landing />} />
-        <Route path="/auth" element={<AuthPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/suppliers" element={<Suppliers />} />
+        <Route path="/supplier/:id" element={<SupplierProfilePage />} />
         <Route path="/prospect-enquiry" element={<ProspectEnquiry />} />
         <Route path="/owner-signup" element={<OwnerSignup />} />
         <Route path="/rollout-lead" element={<RolloutLead />} />
@@ -53,15 +62,20 @@ export default function AppRoutes() {
           <Route path="/add-dog" element={<AddDogPage />} />
           <Route path="/dogs/:id" element={<DogProfilePage />} />
           <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
-          <Route
-            path="/supplier-profile-modern"
-            element={<SupplierProfileModern supplierId="demo" />}
-          />
         </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<div>404</div>} />
-      </Routes>
-    </HashRouter>
-  );
-}
+      </Route>
+
+      {/* Optional demo route */}
+      <Route
+        path="/supplier-profile-modern"
+        element={<SupplierProfileModern supplierId="demo" />}
+      />
+
+      {/* 404 */}
+      <Route path="*" element={<div>404</div>} />
+
+   </Routes>
+</HashRouter>
+);
+} 
