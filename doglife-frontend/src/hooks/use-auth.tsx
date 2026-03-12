@@ -77,17 +77,8 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
 
-  loginMutation: UseMutationResult<
-    AuthResponse,
-    AxiosError,
-    LoginCredentials
-  >;
-
-  registerMutation: UseMutationResult<
-    AuthResponse,
-    AxiosError,
-    RegisterData
-  >;
+  loginMutation: UseMutationResult<AuthResponse, AxiosError, LoginCredentials>;
+  registerMutation: UseMutationResult<AuthResponse, AxiosError, RegisterData>;
 
   logout: () => void;
 };
@@ -119,8 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (data) => {
       console.log("LOGIN SUCCESS:", data);
 
+      // Save token
       localStorage.setItem("authToken", data.token);
 
+      // Attach token immediately to axios
+      api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+
+      // Set user
       setUser(data.user);
     },
 
@@ -153,6 +149,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem("authToken", data.token);
 
+      // Attach token immediately
+      api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+
       setUser(data.user);
     },
 
@@ -172,6 +171,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("authToken");
+
+    // Remove token from axios
+    delete api.defaults.headers.common.Authorization;
+
     setUser(null);
   };
 
@@ -187,17 +190,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Attach token before restore request
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+
     api
-      .get<User>("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      .get<User>("/api/auth/me")
       .then((res) => {
         console.log("SESSION RESTORED:", res.data);
         setUser(res.data);
       })
-      .catch((err) => {
+      .catch(() => {
         console.warn("Session restore failed");
         logout();
       })
