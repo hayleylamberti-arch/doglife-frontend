@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
-import Brand from "@/components/Brand";
-import { Loader2 } from "lucide-react";
 
 interface Suburb {
   id: string;
@@ -26,7 +24,6 @@ export default function SupplierOnboarding() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Fetch suburbs
   useEffect(() => {
     async function fetchSuburbs() {
       try {
@@ -42,11 +39,10 @@ export default function SupplierOnboarding() {
     fetchSuburbs();
   }, []);
 
-  // Submit Step 1
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setSaving(true);
+    setError("");
 
     try {
       await api.post("/api/supplier/profile", {
@@ -58,6 +54,7 @@ export default function SupplierOnboarding() {
       });
 
       navigate("/supplier-onboarding?step=2");
+
     } catch (err) {
       console.error(err);
       setError("Failed to save details");
@@ -67,100 +64,120 @@ export default function SupplierOnboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center pt-12 px-4">
+    <div className="flex justify-center py-12">
 
-      {/* Logo */}
-      <div className="mb-6">
-        <Brand />
-      </div>
+      <div className="w-full max-w-lg">
 
-      {/* Title */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold">
-          Set up your DogLife business profile
+        <h1 className="text-2xl font-semibold mb-1">
+          Create your business profile
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Step 1 of 3 — Business details
+
+        <p className="text-sm text-muted-foreground mb-6">
+          Step 1 of 3
         </p>
-      </div>
 
-      {/* Form Card */}
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-6">
+        {/* Progress Bar */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
+          <div className="bg-blue-600 h-2 rounded-full w-1/3"></div>
+        </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 bg-white border rounded-lg p-6 shadow-sm"
+        >
 
-          <input
-            className="border rounded-md px-3 py-2"
-            placeholder="Business Name"
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            required
-          />
-
-          <textarea
-            className="border rounded-md px-3 py-2"
-            placeholder="Describe your services"
-            value={aboutServices}
-            onChange={(e) => setAboutServices(e.target.value)}
-            rows={4}
-            required
-          />
-
-          <input
-            className="border rounded-md px-3 py-2"
-            placeholder="Business Address"
-            value={businessAddress}
-            onChange={(e) => setBusinessAddress(e.target.value)}
-            required
-          />
-
-          <input
-            className="border rounded-md px-3 py-2"
-            placeholder="Business Phone"
-            value={businessPhone}
-            onChange={(e) => setBusinessPhone(e.target.value)}
-            required
-          />
-
-          {loadingSuburbs ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading suburbs...
-            </div>
-          ) : (
-            <select
-              className="border rounded-md px-3 py-2"
-              value={suburbId}
-              onChange={(e) => setSuburbId(e.target.value)}
+          <div>
+            <label className="text-sm font-medium">
+              Business Name
+            </label>
+            <input
+              className="w-full border rounded-md px-3 py-2 mt-1"
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
               required
-            >
-              <option value="">Select Suburb</option>
-              {suburbs.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.suburbName} ({s.city})
-                </option>
-              ))}
-            </select>
-          )}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              Describe your services
+            </label>
+            <textarea
+              className="w-full border rounded-md px-3 py-2 mt-1"
+              rows={3}
+              value={aboutServices}
+              onChange={(e) => setAboutServices(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              Business Address
+            </label>
+            <input
+              className="w-full border rounded-md px-3 py-2 mt-1"
+              value={businessAddress}
+              onChange={(e) => setBusinessAddress(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              Business Phone
+            </label>
+            <input
+              className="w-full border rounded-md px-3 py-2 mt-1"
+              value={businessPhone}
+              onChange={(e) => setBusinessPhone(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium">
+              Service Area
+            </label>
+
+            {loadingSuburbs ? (
+              <p className="text-sm text-muted-foreground mt-2">
+                Loading suburbs...
+              </p>
+            ) : (
+              <select
+                className="w-full border rounded-md px-3 py-2 mt-1"
+                value={suburbId}
+                onChange={(e) => setSuburbId(e.target.value)}
+                required
+              >
+                <option value="">Select suburb</option>
+
+                {suburbs.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.suburbName} ({s.city})
+                  </option>
+                ))}
+
+              </select>
+            )}
+          </div>
 
           {error && (
-            <p className="text-red-500 text-sm">{error}</p>
+            <p className="text-red-600 text-sm">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={saving}
-            className="bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition"
+            className="w-full bg-blue-600 text-white rounded-md py-2 font-medium hover:bg-blue-700"
           >
             {saving ? "Saving..." : "Continue"}
           </button>
 
         </form>
-
-        {/* Progress */}
-        <div className="text-center text-xs text-muted-foreground mt-6">
-          Step 1 of 3
-        </div>
 
       </div>
 
