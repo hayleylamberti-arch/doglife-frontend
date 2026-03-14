@@ -15,11 +15,22 @@ const SERVICES = [
   "MOBILE_VET"
 ];
 
+/* Service label formatter with icons */
+
 function formatService(service: string) {
-  return service
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+
+  const map: Record<string,string> = {
+    WALKING: "🚶 Dog Walking",
+    GROOMING: "✂️ Grooming",
+    BOARDING: "🏠 Boarding",
+    TRAINING: "🎓 Training",
+    DAYCARE: "🐾 Daycare",
+    PET_SITTING: "🛏️ Pet Sitting",
+    PET_TRANSPORT: "🚗 Transport",
+    MOBILE_VET: "🩺 Mobile Vet"
+  };
+
+  return map[service] ?? service;
 }
 
 export default function SuppliersPage() {
@@ -30,10 +41,11 @@ export default function SuppliersPage() {
   const [service, setService] = useState(sp.get("service") ?? "");
   const [q, setQ] = useState(sp.get("q") ?? "");
 
-  const [limit, setLimit] = useState(Number(sp.get("limit") ?? 20));
+  const [limit] = useState(Number(sp.get("limit") ?? 20));
   const [offset, setOffset] = useState(Number(sp.get("offset") ?? 0));
 
   useEffect(() => {
+
     const params: Record<string, string> = {};
 
     if (suburb) params.suburb = suburb;
@@ -74,13 +86,13 @@ export default function SuppliersPage() {
         Find Dog Service Providers
       </h1>
 
-      {/* Search Filters */}
+      {/* Sticky Search Filters */}
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="sticky top-16 bg-white z-10 grid gap-3 md:grid-cols-4 p-4 border rounded-lg">
 
         <input
           className="border rounded px-3 py-2"
-          placeholder="Search name..."
+          placeholder="Search provider..."
           value={q}
           onChange={(e) => {
             setOffset(0);
@@ -110,7 +122,7 @@ export default function SuppliersPage() {
 
           {SERVICES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {formatService(s)}
             </option>
           ))}
 
@@ -132,70 +144,92 @@ export default function SuppliersPage() {
         </p>
       )}
 
+      {/* Empty State */}
+
+      {!isLoading && data?.items.length === 0 && (
+
+        <div className="text-center py-20">
+
+          <div className="text-5xl mb-4">
+            🐶
+          </div>
+
+          <h3 className="text-lg font-semibold">
+            No providers found
+          </h3>
+
+          <p className="text-muted-foreground mt-2">
+            Try adjusting your filters or searching another suburb.
+          </p>
+
+        </div>
+
+      )}
+
       {/* Supplier Cards */}
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
         {data?.items.map((s) => (
 
-         <div
-  key={s.userId}
-  className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition"
->
+          <div
+            key={s.userId}
+            className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200"
+          >
 
-  {/* Photo */}
+            {/* Provider Image */}
 
-  <div className="h-40 bg-gray-200 flex items-center justify-center text-3xl">
-    🐶
-  </div>
+            <div className="h-40 bg-gray-200 flex items-center justify-center text-3xl">
+              🐶
+            </div>
 
-  {/* Content */}
+            {/* Card Content */}
 
-  <div className="p-4">
+            <div className="p-4">
 
-    <h2 className="text-lg font-semibold">
-      {s.businessName}
-    </h2>
+              <h2 className="text-lg font-semibold">
+                {s.businessName}
+              </h2>
 
-    <div className="text-sm text-yellow-500 mt-1">
-      ⭐ 4.9 <span className="text-gray-500">(120 reviews)</span>
-    </div>
+              <div className="text-sm text-yellow-500 mt-1">
+                ⭐ 4.9 <span className="text-gray-500">(120 reviews)</span>
+              </div>
 
-    <p className="text-sm text-muted-foreground mt-1">
-      📍 {s.suburb ?? "Unknown location"}
-    </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                📍 {s.suburb ?? "Unknown location"}
+              </p>
 
-    {/* Services */}
+              {/* Services */}
 
-    <div className="flex flex-wrap gap-2 mt-3">
-      {(s.serviceTypes ?? []).map((service: string) => (
-        <span
-          key={service}
-          className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
-        >
-          {formatService(service)}
-        </span>
-      ))}
-    </div>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {(s.serviceTypes ?? []).map((service: string) => (
+                  <span
+                    key={service}
+                    className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
+                  >
+                    {formatService(service)}
+                  </span>
+                ))}
+              </div>
 
-    {/* Price */}
+              {/* Price */}
 
-    <p className="mt-3 text-sm font-medium">
-      From R150
-    </p>
+              <p className="mt-3 text-sm font-medium">
+                From R150
+              </p>
 
-    {/* Button */}
+              {/* Button */}
 
-    <Link
-      to={`/supplier/${s.userId}`}
-      className="block mt-4 text-center bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
-    >
-      View Profile
-    </Link>
+              <Link
+                to={`/supplier/${s.userId}`}
+                className="block mt-4 text-center bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+              >
+                View Profile
+              </Link>
 
-  </div>
+            </div>
 
-</div>
+          </div>
 
         ))}
 
@@ -230,6 +264,8 @@ export default function SuppliersPage() {
     </div>
   );
 }
+
+/* Debounce search */
 
 function useDebounced<T>(value: T, ms = 300) {
 
