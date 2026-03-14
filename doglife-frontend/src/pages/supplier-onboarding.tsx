@@ -41,37 +41,34 @@ export default function SupplierOnboarding() {
     fetchSuburbs();
   }, []);
 
-  /* Submit form */
+  async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  setError("");
+  setSaving(true);
 
-    if (!suburbId) {
-      setError("Please select a suburb");
-      return;
-    }
+  try {
+    const res = await api.post("/api/supplier/profile", {
+      businessName,
+      aboutServices,
+      businessAddress,
+      businessPhone,
+      suburbId,
+    });
 
-    setSaving(true);
-    setError("");
+    console.log("Profile created:", res.data);
 
-    try {
-      await api.post("/api/supplier/profile", {
-        businessName,
-        aboutServices,
-        businessAddress,
-        businessPhone,
-        suburbId,
-      });
+    navigate("/supplier-dashboard", { replace: true });
 
-      navigate("/supplier-dashboard");
+  } catch (err: any) {
 
-    } catch (err) {
-      console.error(err);
-      setError("Failed to save business details");
-    } finally {
-      setSaving(false);
-    }
-  };
+    console.error(err);
+    setError("Failed to save business details");
+
+  } finally {
+    setSaving(false);
+  }
+}
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-8">
