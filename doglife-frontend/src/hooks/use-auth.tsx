@@ -74,6 +74,8 @@ interface AuthResponse {
 
 type AuthContextType = {
   user: User | null;
+  role: "OWNER" | "SUPPLIER" | "ADMIN" | null;
+
   isAuthenticated: boolean;
   isLoading: boolean;
 
@@ -110,13 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     onSuccess: (data) => {
       console.log("LOGIN SUCCESS:", data);
 
-      // Save token
       localStorage.setItem("authToken", data.token);
 
-      // Attach token immediately to axios
       api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
-      // Set user
       setUser(data.user);
     },
 
@@ -149,7 +148,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem("authToken", data.token);
 
-      // Attach token immediately
       api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
       setUser(data.user);
@@ -172,7 +170,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     localStorage.removeItem("authToken");
 
-    // Remove token from axios
     delete api.defaults.headers.common.Authorization;
 
     setUser(null);
@@ -190,7 +187,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Attach token before restore request
     api.defaults.headers.common.Authorization = `Bearer ${token}`;
 
     api
@@ -210,10 +206,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = !!user;
 
+  const role = user?.role ?? null;
+
   return (
     <AuthContext.Provider
       value={{
         user,
+        role,
         isAuthenticated,
         isLoading,
         loginMutation,

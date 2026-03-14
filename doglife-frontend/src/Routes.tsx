@@ -24,6 +24,10 @@ import SupplierLayout from "@/components/SupplierLayout";
 
 import { useAuth } from "@/hooks/use-auth";
 
+/* ===============================
+   Protected Layout (login required)
+================================ */
+
 function ProtectedLayout() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -35,6 +39,46 @@ function ProtectedLayout() {
 
   return <Outlet />;
 }
+
+/* ===============================
+   Supplier Role Guard
+================================ */
+
+function SupplierProtected() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  if (!user || user.role !== "SUPPLIER") {
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />;
+}
+
+/* ===============================
+   Supplier Onboarding Guard
+================================ */
+
+function SupplierOnboardingGuard() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (!user.onboardingCompleted) {
+    return <Navigate to="/supplier-onboarding" replace />;
+  }
+
+  return <Outlet />;
+}
+
+/* ===============================
+   Routes
+================================ */
 
 export default function AppRoutes() {
   return (
@@ -69,24 +113,34 @@ export default function AppRoutes() {
             <Route path="/add-dog" element={<AddDogPage />} />
             <Route path="/dogs/:id" element={<DogProfilePage />} />
 
-            {/* Supplier Layout */}
+            {/* Supplier Routes */}
 
-            <Route element={<SupplierLayout />}>
+            <Route element={<SupplierProtected />}>
 
-              <Route
-                path="/supplier-dashboard"
-                element={<SupplierDashboard />}
-              />
-
-              <Route
-                path="/supplier-profile"
-                element={<SupplierProfilePage />}
-              />
-
+              {/* Onboarding always allowed */}
               <Route
                 path="/supplier-onboarding"
                 element={<SupplierOnboarding />}
               />
+
+              {/* Everything else requires onboarding */}
+              <Route element={<SupplierOnboardingGuard />}>
+
+                <Route element={<SupplierLayout />}>
+
+                  <Route
+                    path="/supplier-dashboard"
+                    element={<SupplierDashboard />}
+                  />
+
+                  <Route
+                    path="/supplier-profile"
+                    element={<SupplierProfilePage />}
+                  />
+
+                </Route>
+
+              </Route>
 
             </Route>
 
