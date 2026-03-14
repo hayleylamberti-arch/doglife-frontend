@@ -2,6 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 
+/* Format service names */
+
 function formatService(service: string) {
   const map: Record<string, string> = {
     WALKING: "🚶 Dog Walking",
@@ -17,9 +19,34 @@ function formatService(service: string) {
   return map[service] ?? service;
 }
 
+/* Friendly date formatting */
+
+function formatBookingTime(dateString: string) {
+  const date = new Date(dateString);
+
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(today.getDate() + 1);
+
+  const time = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  if (date.toDateString() === today.toDateString()) {
+    return `Today • ${time}`;
+  }
+
+  if (date.toDateString() === tomorrow.toDateString()) {
+    return `Tomorrow • ${time}`;
+  }
+
+  return `${date.toLocaleDateString()} • ${time}`;
+}
+
 export default function SupplierDashboard() {
 
-  /* Supplier Profile */
+  /* Supplier profile */
 
   const { data, isLoading } = useQuery({
     queryKey: ["supplier-profile"],
@@ -29,7 +56,7 @@ export default function SupplierDashboard() {
     }
   });
 
-  /* Supplier Bookings */
+  /* Supplier bookings */
 
   const { data: bookingsData } = useQuery({
     queryKey: ["supplier-bookings"],
@@ -40,11 +67,7 @@ export default function SupplierDashboard() {
   });
 
   if (isLoading) {
-    return (
-      <div className="p-10">
-        Loading dashboard...
-      </div>
-    );
+    return <div className="p-10">Loading dashboard...</div>;
   }
 
   const supplier = data?.supplier;
@@ -59,8 +82,27 @@ export default function SupplierDashboard() {
     )
     .slice(0, 5);
 
-  return (
+  const today = new Date().toDateString();
 
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(new Date().getDate() + 1);
+  const tomorrow = tomorrowDate.toDateString();
+
+  const todayBookings = upcomingBookings.filter(
+    (b: any) => new Date(b.startAt).toDateString() === today
+  );
+
+  const tomorrowBookings = upcomingBookings.filter(
+    (b: any) => new Date(b.startAt).toDateString() === tomorrow
+  );
+
+  const laterBookings = upcomingBookings.filter(
+    (b: any) =>
+      new Date(b.startAt).toDateString() !== today &&
+      new Date(b.startAt).toDateString() !== tomorrow
+  );
+
+  return (
     <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-[240px_1fr] gap-8">
 
       {/* Sidebar */}
@@ -128,39 +170,18 @@ export default function SupplierDashboard() {
         <div className="grid md:grid-cols-3 gap-6">
 
           <div className="border rounded-xl p-6 bg-white shadow-sm">
-
-            <p className="text-sm text-muted-foreground">
-              Upcoming Bookings
-            </p>
-
-            <p className="text-2xl font-semibold">
-              {upcomingBookings.length}
-            </p>
-
+            <p className="text-sm text-muted-foreground">Upcoming Bookings</p>
+            <p className="text-2xl font-semibold">{upcomingBookings.length}</p>
           </div>
 
           <div className="border rounded-xl p-6 bg-white shadow-sm">
-
-            <p className="text-sm text-muted-foreground">
-              Reviews
-            </p>
-
-            <p className="text-2xl font-semibold">
-              ⭐ 0
-            </p>
-
+            <p className="text-sm text-muted-foreground">Reviews</p>
+            <p className="text-2xl font-semibold">⭐ 0</p>
           </div>
 
           <div className="border rounded-xl p-6 bg-white shadow-sm">
-
-            <p className="text-sm text-muted-foreground">
-              Profile Views
-            </p>
-
-            <p className="text-2xl font-semibold">
-              0
-            </p>
-
+            <p className="text-sm text-muted-foreground">Profile Views</p>
+            <p className="text-2xl font-semibold">0</p>
           </div>
 
         </div>
@@ -187,6 +208,13 @@ export default function SupplierDashboard() {
           >
             Edit profile →
           </Link>
+
+          <Link
+  to="/supplier-availability"
+  className="px-3 py-2 rounded-md hover:bg-gray-100"
+>
+  Availability
+</Link>
 
         </div>
 
@@ -234,41 +262,147 @@ export default function SupplierDashboard() {
           </h2>
 
           {upcomingBookings.length === 0 && (
-
             <p className="text-muted-foreground text-sm">
               You don't have any upcoming bookings yet.
             </p>
-
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-6">
 
-            {upcomingBookings.map((booking: any) => (
+            {/* Today */}
 
-              <div
-                key={booking.id}
-                className="flex justify-between items-center border rounded-lg p-3"
-              >
+            {todayBookings.length > 0 && (
 
-                <div>
+              <div>
 
-                  <p className="font-medium">
-                    {formatService(booking.serviceType)}
-                  </p>
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">
+                  Today
+                </h3>
 
-                  <p className="text-sm text-gray-500">
-                    {new Date(booking.startAt).toLocaleString()}
-                  </p>
+                <div className="space-y-2">
+
+                  {todayBookings.map((booking: any) => (
+
+                    <div
+                      key={booking.id}
+                      className="flex justify-between items-center border rounded-lg p-3"
+                    >
+
+                      <div>
+
+                        <p className="font-medium">
+                          {formatService(booking.serviceType)}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          {formatBookingTime(booking.startAt)}
+                        </p>
+
+                      </div>
+
+                      <span className="text-sm text-gray-500">
+                        {booking.status}
+                      </span>
+
+                    </div>
+
+                  ))}
 
                 </div>
 
-                <span className="text-sm text-gray-500">
-                  {booking.status}
-                </span>
+              </div>
+
+            )}
+
+            {/* Tomorrow */}
+
+            {tomorrowBookings.length > 0 && (
+
+              <div>
+
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">
+                  Tomorrow
+                </h3>
+
+                <div className="space-y-2">
+
+                  {tomorrowBookings.map((booking: any) => (
+
+                    <div
+                      key={booking.id}
+                      className="flex justify-between items-center border rounded-lg p-3"
+                    >
+
+                      <div>
+
+                        <p className="font-medium">
+                          {formatService(booking.serviceType)}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          {formatBookingTime(booking.startAt)}
+                        </p>
+
+                      </div>
+
+                      <span className="text-sm text-gray-500">
+                        {booking.status}
+                      </span>
+
+                    </div>
+
+                  ))}
+
+                </div>
 
               </div>
 
-            ))}
+            )}
+
+            {/* Later */}
+
+            {laterBookings.length > 0 && (
+
+              <div>
+
+                <h3 className="text-sm font-semibold text-gray-500 mb-2">
+                  Upcoming
+                </h3>
+
+                <div className="space-y-2">
+
+                  {laterBookings.map((booking: any) => (
+
+                    <div
+                      key={booking.id}
+                      className="flex justify-between items-center border rounded-lg p-3"
+                    >
+
+                      <div>
+
+                        <p className="font-medium">
+                          {formatService(booking.serviceType)}
+                        </p>
+
+                        <p className="text-sm text-gray-500">
+                          {formatBookingTime(booking.startAt)}
+                        </p>
+
+                      </div>
+
+                      <span className="text-sm text-gray-500">
+                        {booking.status}
+                      </span>
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              </div>
+
+            )}
 
           </div>
 
@@ -277,7 +411,5 @@ export default function SupplierDashboard() {
       </main>
 
     </div>
-
   );
-
 }

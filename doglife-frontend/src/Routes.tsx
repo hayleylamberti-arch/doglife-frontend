@@ -22,6 +22,7 @@ import SupplierProfileModern from "@/components/supplier-profile-modern";
 import AppLayout from "@/components/AppLayout";
 import SupplierLayout from "@/components/SupplierLayout";
 import SupplierBookings from "@/pages/supplier-bookings";
+import SupplierAvailability from "@/pages/supplier-availability";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -127,6 +128,11 @@ export default function AppRoutes() {
               <Route
   path="/supplier-bookings"
   element={<SupplierBookings />}
+/>
+
+<Route
+  path="/supplier-availability"
+  element={<SupplierAvailability />}
 />
 
               {/* Everything else requires onboarding */}
