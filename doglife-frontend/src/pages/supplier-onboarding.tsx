@@ -25,7 +25,35 @@ export default function SupplierOnboarding() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  /* Fetch suburbs */
+  /* -------------------------------- */
+  /* Check if supplier already exists */
+  /* -------------------------------- */
+
+  useEffect(() => {
+
+    async function checkProfile() {
+
+      try {
+
+        const res = await api.get("/api/supplier/profile");
+
+        if (res.data?.profile) {
+          navigate("/supplier-dashboard");
+        }
+
+      } catch (err) {
+        // If profile does not exist we stay on onboarding
+      }
+
+    }
+
+    checkProfile();
+
+  }, []);
+
+  /* ------------------- */
+  /* Fetch suburbs list  */
+  /* ------------------- */
 
   useEffect(() => {
 
@@ -34,7 +62,6 @@ export default function SupplierOnboarding() {
       try {
 
         const res = await api.get("/api/suburbs");
-
         setSuburbs(res.data.suburbs);
 
       } catch (err) {
@@ -53,7 +80,9 @@ export default function SupplierOnboarding() {
 
   }, []);
 
-  /* Submit form */
+  /* ------------------- */
+  /* Submit form         */
+  /* ------------------- */
 
   async function handleSubmit(e: React.FormEvent) {
 
@@ -74,7 +103,7 @@ export default function SupplierOnboarding() {
 
       navigate("/supplier-dashboard");
 
-    } catch (err: any) {
+    } catch (err) {
 
       console.error(err);
       setError("Failed to save business details");
@@ -91,10 +120,7 @@ export default function SupplierOnboarding() {
 
     <div className="max-w-xl mx-auto p-6 space-y-8">
 
-      {/* Header */}
-
       <div>
-
         <h1 className="text-3xl font-semibold">
           Set up your business
         </h1>
@@ -102,10 +128,7 @@ export default function SupplierOnboarding() {
         <p className="text-muted-foreground mt-1">
           Step 1 of 2 — Tell customers about your services
         </p>
-
       </div>
-
-      {/* Form */}
 
       <form
         onSubmit={handleSubmit}
