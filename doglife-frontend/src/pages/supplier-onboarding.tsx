@@ -10,7 +10,6 @@ interface Suburb {
 }
 
 export default function SupplierOnboarding() {
-
   const navigate = useNavigate();
 
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
@@ -25,74 +24,37 @@ export default function SupplierOnboarding() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  /* -------------------------------- */
-  /* Check if supplier already exists */
-  /* -------------------------------- */
+  /* Fetch suburbs ONLY ONCE */
 
   useEffect(() => {
-
-    async function checkProfile() {
-
+    const fetchSuburbs = async () => {
       try {
-
-        const res = await api.get("/api/supplier/profile");
-
-        if (res.data?.profile) {
-          navigate("/supplier-dashboard");
-        }
-
-      } catch (err) {
-        // If profile does not exist we stay on onboarding
-      }
-
-    }
-
-    checkProfile();
-
-  }, []);
-
-  /* ------------------- */
-  /* Fetch suburbs list  */
-  /* ------------------- */
-
-  useEffect(() => {
-
-    async function fetchSuburbs() {
-
-      try {
-
         const res = await api.get("/api/suburbs");
-        setSuburbs(res.data.suburbs);
-
+        setSuburbs(res.data.suburbs || []);
       } catch (err) {
-
         console.error("Failed to load suburbs", err);
-
       } finally {
-
         setLoadingSuburbs(false);
-
       }
-
-    }
+    };
 
     fetchSuburbs();
-
   }, []);
 
-  /* ------------------- */
-  /* Submit form         */
-  /* ------------------- */
+  /* Submit form */
 
-  async function handleSubmit(e: React.FormEvent) {
-
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    setError("");
+    if (!suburbId) {
+      setError("Please select a suburb");
+      return;
+    }
+
     setSaving(true);
+    setError("");
 
     try {
-
       await api.post("/api/supplier/profile", {
         businessName,
         aboutServices,
@@ -104,20 +66,14 @@ export default function SupplierOnboarding() {
       navigate("/supplier-dashboard");
 
     } catch (err) {
-
       console.error(err);
       setError("Failed to save business details");
-
     } finally {
-
       setSaving(false);
-
     }
-
-  }
+  };
 
   return (
-
     <div className="max-w-xl mx-auto p-6 space-y-8">
 
       <div>
@@ -138,7 +94,6 @@ export default function SupplierOnboarding() {
         {/* Business Name */}
 
         <div className="space-y-1">
-
           <label className="text-sm font-medium">
             Business Name
           </label>
@@ -150,13 +105,11 @@ export default function SupplierOnboarding() {
             onChange={(e) => setBusinessName(e.target.value)}
             required
           />
-
         </div>
 
         {/* Description */}
 
         <div className="space-y-1">
-
           <label className="text-sm font-medium">
             Describe your services
           </label>
@@ -168,13 +121,11 @@ export default function SupplierOnboarding() {
             onChange={(e) => setAboutServices(e.target.value)}
             required
           />
-
         </div>
 
         {/* Address */}
 
         <div className="space-y-1">
-
           <label className="text-sm font-medium">
             Business Address
           </label>
@@ -186,13 +137,11 @@ export default function SupplierOnboarding() {
             onChange={(e) => setBusinessAddress(e.target.value)}
             required
           />
-
         </div>
 
         {/* Phone */}
 
         <div className="space-y-1">
-
           <label className="text-sm font-medium">
             Business Phone
           </label>
@@ -204,51 +153,38 @@ export default function SupplierOnboarding() {
             onChange={(e) => setBusinessPhone(e.target.value)}
             required
           />
-
         </div>
 
         {/* Suburb */}
 
         <div className="space-y-1">
-
           <label className="text-sm font-medium">
             Suburb
           </label>
 
           {loadingSuburbs ? (
-
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Loading suburbs...
             </p>
-
           ) : (
-
             <select
               className="w-full border rounded-md px-3 py-2"
               value={suburbId}
               onChange={(e) => setSuburbId(e.target.value)}
               required
             >
-
               <option value="">
                 Select suburb
               </option>
 
               {suburbs.map((s) => (
-
                 <option key={s.id} value={s.id}>
                   {s.suburbName} ({s.city})
                 </option>
-
               ))}
-
             </select>
-
           )}
-
         </div>
-
-        {/* Error */}
 
         {error && (
           <p className="text-red-600 text-sm">
@@ -256,21 +192,15 @@ export default function SupplierOnboarding() {
           </p>
         )}
 
-        {/* Submit */}
-
         <button
           type="submit"
           disabled={saving}
           className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-
           {saving ? "Saving..." : "Continue"}
-
         </button>
 
       </form>
-
     </div>
-
   );
 }
