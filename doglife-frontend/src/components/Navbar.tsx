@@ -31,7 +31,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: "Home", href: "/", icon: <Home className="h-4 w-4" /> },
   { label: "Search", href: "/search", icon: <Search className="h-4 w-4" /> },
-  { label: "Dashboard", href: "/supplier-dashboard", icon: <LayoutDashboard className="h-4 w-4" />, requiresAuth: true },
+  { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" />, requiresAuth: true },
   { label: "My Dogs", href: "/my-dogs", icon: <Dog className="h-4 w-4" />, requiresAuth: true },
   { label: "Profile", href: "/profile", icon: <User className="h-4 w-4" />, requiresAuth: true },
 ];

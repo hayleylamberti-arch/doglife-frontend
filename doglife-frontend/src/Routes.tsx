@@ -14,11 +14,14 @@ import Profile from "@/pages/profile";
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierOnboarding from "@/pages/supplier-onboarding";
 import SupplierProfile from "@/pages/supplier-profile";
+import RoleDashboardRedirect from "@/components/RoleDashboardRedirect";
 
 export default function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+
+        <Route path="/dashboard" element={<RoleDashboardRedirect />} />
 
         {/* OWNER AREA */}
 
