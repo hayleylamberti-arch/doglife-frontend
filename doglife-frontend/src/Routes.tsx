@@ -18,87 +18,50 @@ import SupplierProfile from "@/pages/supplier-profile";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
-
       <Routes>
 
         {/* OWNER AREA */}
 
-        <Route element={<OwnerLayout />}>
-
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <Search />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/my-dogs"
-            element={
-              <ProtectedRoute>
-                <MyDogs />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-
+        <Route
+          element={
+            <ProtectedRoute>
+              <OwnerLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/my-dogs" element={<MyDogs />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
 
 
         {/* SUPPLIER AREA */}
 
-        <Route element={<SupplierLayout />}>
-
-          <Route
-            path="/supplier-dashboard"
-            element={
-              <SupplierProtectedRoute>
-                <SupplierDashboard />
-              </SupplierProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/supplier-profile"
-            element={
-              <SupplierProtectedRoute>
-                <SupplierProfile />
-              </SupplierProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/supplier-onboarding"
-            element={
-              <ProtectedRoute>
-                <SupplierOnboarding />
-              </ProtectedRoute>
-            }
-          />
-
+        <Route
+          element={
+            <SupplierProtectedRoute>
+              <SupplierLayout />
+            </SupplierProtectedRoute>
+          }
+        >
+          <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
+          <Route path="/supplier-profile" element={<SupplierProfile />} />
         </Route>
 
-      </Routes>
 
+        {/* SUPPLIER ONBOARDING */}
+
+        <Route
+          path="/supplier-onboarding"
+          element={
+            <ProtectedRoute>
+              <SupplierOnboarding />
+            </ProtectedRoute>
+          }
+        />
+
+      </Routes>
     </BrowserRouter>
   );
 }
