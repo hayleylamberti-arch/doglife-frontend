@@ -67,7 +67,7 @@ export default function Navbar() {
 
     if (item.requiresAuth && !isAuthenticated) return false;
 
-    if (item.role && user?.role !== item.role) return false;
+   if (item.role && (user as any)?.role !== item.role) return false; 
 
     return true;
 
