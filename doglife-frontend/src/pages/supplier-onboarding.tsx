@@ -24,8 +24,7 @@ export default function SupplierOnboarding() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  /* Fetch suburbs ONLY ONCE */
-
+  // Load suburbs once
   useEffect(() => {
     const fetchSuburbs = async () => {
       try {
@@ -42,33 +41,36 @@ export default function SupplierOnboarding() {
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
+    e.preventDefault();
 
-  setError("");
-  setSaving(true);
+    if (!suburbId) {
+      setError("Please select a suburb");
+      return;
+    }
 
-  try {
-    const res = await api.post("/api/supplier/profile", {
-      businessName,
-      aboutServices,
-      businessAddress,
-      businessPhone,
-      suburbId,
-    });
+    setSaving(true);
+    setError("");
 
-    console.log("Profile created:", res.data);
+    try {
+      const res = await api.post("/api/supplier/profile", {
+        businessName,
+        aboutServices,
+        businessAddress,
+        businessPhone,
+        suburbId,
+      });
 
-    navigate("/supplier-dashboard", { replace: true });
+      console.log("Supplier profile saved:", res.data);
 
-  } catch (err: any) {
+      navigate("/supplier-dashboard", { replace: true });
 
-    console.error(err);
-    setError("Failed to save business details");
-
-  } finally {
-    setSaving(false);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save business details");
+    } finally {
+      setSaving(false);
+    }
   }
-}
 
   return (
     <div className="max-w-xl mx-auto p-6 space-y-8">
@@ -88,8 +90,6 @@ export default function SupplierOnboarding() {
         className="space-y-5 bg-white border rounded-xl p-6 shadow-sm"
       >
 
-        {/* Business Name */}
-
         <div className="space-y-1">
           <label className="text-sm font-medium">
             Business Name
@@ -103,8 +103,6 @@ export default function SupplierOnboarding() {
             required
           />
         </div>
-
-        {/* Description */}
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
@@ -120,8 +118,6 @@ export default function SupplierOnboarding() {
           />
         </div>
 
-        {/* Address */}
-
         <div className="space-y-1">
           <label className="text-sm font-medium">
             Business Address
@@ -136,8 +132,6 @@ export default function SupplierOnboarding() {
           />
         </div>
 
-        {/* Phone */}
-
         <div className="space-y-1">
           <label className="text-sm font-medium">
             Business Phone
@@ -151,8 +145,6 @@ export default function SupplierOnboarding() {
             required
           />
         </div>
-
-        {/* Suburb */}
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
@@ -198,6 +190,7 @@ export default function SupplierOnboarding() {
         </button>
 
       </form>
+
     </div>
   );
 }
