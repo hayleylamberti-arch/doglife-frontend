@@ -2,6 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 
+function formatService(service: string) {
+  const map: Record<string,string> = {
+    WALKING: "🚶 Dog Walking",
+    GROOMING: "✂️ Grooming",
+    BOARDING: "🏠 Boarding",
+    TRAINING: "🎓 Training",
+    DAYCARE: "🐾 Daycare",
+    PET_SITTING: "🛏️ Pet Sitting",
+    PET_TRANSPORT: "🚗 Transport",
+    MOBILE_VET: "🩺 Mobile Vet"
+  };
+
+  return map[service] ?? service;
+}
+
 export default function SupplierDashboard() {
 
   const { data, isLoading } = useQuery({
@@ -64,9 +79,61 @@ export default function SupplierDashboard() {
 
       <main className="space-y-8">
 
-        <h1 className="text-3xl font-semibold">
-          Supplier Dashboard
-        </h1>
+        {/* Header */}
+
+        <div>
+
+          <h1 className="text-3xl font-semibold">
+            Welcome{supplier?.businessName ? `, ${supplier.businessName}` : ""} 👋
+          </h1>
+
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage your services, bookings and profile
+          </p>
+
+        </div>
+
+        {/* Stats */}
+
+        <div className="grid md:grid-cols-3 gap-6">
+
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+
+            <p className="text-sm text-muted-foreground">
+              Upcoming Bookings
+            </p>
+
+            <p className="text-2xl font-semibold">
+              0
+            </p>
+
+          </div>
+
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+
+            <p className="text-sm text-muted-foreground">
+              Reviews
+            </p>
+
+            <p className="text-2xl font-semibold">
+              ⭐ 0
+            </p>
+
+          </div>
+
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+
+            <p className="text-sm text-muted-foreground">
+              Profile Views
+            </p>
+
+            <p className="text-2xl font-semibold">
+              0
+            </p>
+
+          </div>
+
+        </div>
 
         {/* Business Profile */}
 
@@ -93,51 +160,9 @@ export default function SupplierDashboard() {
 
         </div>
 
-        {/* Stats */}
-
-        <div className="grid md:grid-cols-3 gap-6">
-
-          <div className="border rounded-xl p-6 bg-white">
-
-            <p className="text-sm text-muted-foreground">
-              Bookings
-            </p>
-
-            <p className="text-2xl font-semibold">
-              0
-            </p>
-
-          </div>
-
-          <div className="border rounded-xl p-6 bg-white">
-
-            <p className="text-sm text-muted-foreground">
-              Reviews
-            </p>
-
-            <p className="text-2xl font-semibold">
-              ⭐ 0
-            </p>
-
-          </div>
-
-          <div className="border rounded-xl p-6 bg-white">
-
-            <p className="text-sm text-muted-foreground">
-              Profile Views
-            </p>
-
-            <p className="text-2xl font-semibold">
-              0
-            </p>
-
-          </div>
-
-        </div>
-
         {/* Services */}
 
-        <div className="border rounded-xl p-6 bg-white">
+        <div className="border rounded-xl p-6 bg-white shadow-sm">
 
           <h2 className="text-xl font-semibold mb-3">
             Your Services
@@ -153,7 +178,7 @@ export default function SupplierDashboard() {
                   key={service}
                   className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
                 >
-                  {service}
+                  {formatService(service)}
                 </span>
 
               ))}
@@ -167,6 +192,48 @@ export default function SupplierDashboard() {
             </p>
 
           )}
+
+        </div>
+
+        {/* Quick Actions */}
+
+        <div className="border rounded-xl p-6 bg-white shadow-sm">
+
+          <h2 className="text-xl font-semibold mb-4">
+            Quick Actions
+          </h2>
+
+          <div className="flex flex-wrap gap-3">
+
+            <Link
+              to="/supplier-onboarding"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Update Profile
+            </Link>
+
+            <Link
+              to="/supplier-profile"
+              className="border px-4 py-2 rounded-md hover:bg-gray-50"
+            >
+              View Public Profile
+            </Link>
+
+          </div>
+
+        </div>
+
+        {/* Upcoming Bookings Placeholder */}
+
+        <div className="border rounded-xl p-6 bg-white shadow-sm">
+
+          <h2 className="text-xl font-semibold mb-3">
+            Upcoming Bookings
+          </h2>
+
+          <p className="text-muted-foreground text-sm">
+            You don't have any upcoming bookings yet.
+          </p>
 
         </div>
 

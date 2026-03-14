@@ -132,9 +132,7 @@ export default function SuppliersPage() {
 
       {/* Loading */}
 
-      {isLoading && (
-        <p>Loading providers...</p>
-      )}
+      {isLoading && <p>Loading providers...</p>}
 
       {/* Error */}
 
@@ -174,35 +172,35 @@ export default function SuppliersPage() {
 
           <div
             key={s.userId}
-            className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-md transition hover:-translate-y-1 duration-200"
+            className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition hover:-translate-y-1 duration-200"
           >
 
             {/* Provider Image */}
 
-            <div className="h-40 bg-gray-200 flex items-center justify-center text-3xl">
+            <div className="h-44 bg-gray-200 flex items-center justify-center text-4xl">
               🐶
             </div>
 
             {/* Card Content */}
 
-            <div className="p-4">
+            <div className="p-4 space-y-2">
 
               <h2 className="text-lg font-semibold">
                 {s.businessName}
               </h2>
 
-              <div className="text-sm text-yellow-500 mt-1">
+              <div className="text-sm text-yellow-500">
                 ⭐ 4.9 <span className="text-gray-500">(120 reviews)</span>
               </div>
 
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-gray-500">
                 📍 {s.suburb ?? "Unknown location"}
               </p>
 
               {/* Services */}
 
-              <div className="flex flex-wrap gap-2 mt-3">
-                {(s.serviceTypes ?? []).map((service: string) => (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {(s.serviceTypes ?? []).slice(0,3).map((service: string) => (
                   <span
                     key={service}
                     className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
@@ -212,20 +210,37 @@ export default function SuppliersPage() {
                 ))}
               </div>
 
+              {/* Trust signals */}
+
+              <div className="text-xs text-gray-500 pt-2 space-y-1">
+                <div>✔ Responds quickly</div>
+                <div>✔ Trusted provider</div>
+              </div>
+
               {/* Price */}
 
-              <p className="mt-3 text-sm font-medium">
+              <p className="text-sm font-medium pt-2">
                 From R150
               </p>
 
-              {/* Button */}
+              {/* Actions */}
 
-              <Link
-                to={`/supplier/${s.userId}`}
-                className="block mt-4 text-center bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
-              >
-                View Profile
-              </Link>
+              <div className="flex gap-2 pt-3">
+
+                <Link
+                  to={`/supplier/${s.userId}`}
+                  className="flex-1 text-center border border-gray-300 py-2 rounded-md hover:bg-gray-50"
+                >
+                  View Profile
+                </Link>
+
+                <button
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+                >
+                  Request Booking
+                </button>
+
+              </div>
 
             </div>
 
