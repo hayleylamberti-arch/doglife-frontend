@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 
 function formatService(service: string) {
-  const map: Record<string,string> = {
+  const map: Record<string, string> = {
     WALKING: "🚶 Dog Walking",
     GROOMING: "✂️ Grooming",
     BOARDING: "🏠 Boarding",
@@ -19,10 +19,22 @@ function formatService(service: string) {
 
 export default function SupplierDashboard() {
 
+  /* Supplier Profile */
+
   const { data, isLoading } = useQuery({
     queryKey: ["supplier-profile"],
     queryFn: async () => {
       const res = await api.get("/api/supplier/profile");
+      return res.data;
+    }
+  });
+
+  /* Supplier Bookings */
+
+  const { data: bookingsData } = useQuery({
+    queryKey: ["supplier-bookings"],
+    queryFn: async () => {
+      const res = await api.get("/api/supplier/bookings");
       return res.data;
     }
   });
@@ -37,7 +49,18 @@ export default function SupplierDashboard() {
 
   const supplier = data?.supplier;
 
+  const bookings = bookingsData?.bookings || [];
+
+  const upcomingBookings = bookings
+    .filter((b: any) => b.status !== "CANCELLED")
+    .sort(
+      (a: any, b: any) =>
+        new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    )
+    .slice(0, 5);
+
   return (
+
     <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-[240px_1fr] gap-8">
 
       {/* Sidebar */}
@@ -71,6 +94,13 @@ export default function SupplierDashboard() {
             Edit Business Info
           </Link>
 
+          <Link
+            to="/supplier-bookings"
+            className="px-3 py-2 rounded-md hover:bg-gray-100"
+          >
+            Booking Requests
+          </Link>
+
         </nav>
 
       </aside>
@@ -84,7 +114,7 @@ export default function SupplierDashboard() {
         <div>
 
           <h1 className="text-3xl font-semibold">
-            Welcome{supplier?.businessName ? `, ${supplier.businessName}` : ""} 👋
+            Welcome {supplier?.businessName ? `, ${supplier.businessName}` : ""}
           </h1>
 
           <p className="text-muted-foreground text-sm mt-1">
@@ -104,7 +134,7 @@ export default function SupplierDashboard() {
             </p>
 
             <p className="text-2xl font-semibold">
-              0
+              {upcomingBookings.length}
             </p>
 
           </div>
@@ -195,50 +225,59 @@ export default function SupplierDashboard() {
 
         </div>
 
-        {/* Quick Actions */}
+        {/* Upcoming Bookings */}
 
         <div className="border rounded-xl p-6 bg-white shadow-sm">
 
           <h2 className="text-xl font-semibold mb-4">
-            Quick Actions
-          </h2>
-
-          <div className="flex flex-wrap gap-3">
-
-            <Link
-              to="/supplier-onboarding"
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              Update Profile
-            </Link>
-
-            <Link
-              to="/supplier-profile"
-              className="border px-4 py-2 rounded-md hover:bg-gray-50"
-            >
-              View Public Profile
-            </Link>
-
-          </div>
-
-        </div>
-
-        {/* Upcoming Bookings Placeholder */}
-
-        <div className="border rounded-xl p-6 bg-white shadow-sm">
-
-          <h2 className="text-xl font-semibold mb-3">
             Upcoming Bookings
           </h2>
 
-          <p className="text-muted-foreground text-sm">
-            You don't have any upcoming bookings yet.
-          </p>
+          {upcomingBookings.length === 0 && (
+
+            <p className="text-muted-foreground text-sm">
+              You don't have any upcoming bookings yet.
+            </p>
+
+          )}
+
+          <div className="space-y-3">
+
+            {upcomingBookings.map((booking: any) => (
+
+              <div
+                key={booking.id}
+                className="flex justify-between items-center border rounded-lg p-3"
+              >
+
+                <div>
+
+                  <p className="font-medium">
+                    {formatService(booking.serviceType)}
+                  </p>
+
+                  <p className="text-sm text-gray-500">
+                    {new Date(booking.startAt).toLocaleString()}
+                  </p>
+
+                </div>
+
+                <span className="text-sm text-gray-500">
+                  {booking.status}
+                </span>
+
+              </div>
+
+            ))}
+
+          </div>
 
         </div>
 
       </main>
 
     </div>
+
   );
+
 }

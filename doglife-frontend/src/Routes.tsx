@@ -21,6 +21,7 @@ import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfileModern from "@/components/supplier-profile-modern";
 import AppLayout from "@/components/AppLayout";
 import SupplierLayout from "@/components/SupplierLayout";
+import SupplierBookings from "@/pages/supplier-bookings";
 
 import { useAuth } from "@/hooks/use-auth";
 
@@ -122,6 +123,11 @@ export default function AppRoutes() {
                 path="/supplier-onboarding"
                 element={<SupplierOnboarding />}
               />
+
+              <Route
+  path="/supplier-bookings"
+  element={<SupplierBookings />}
+/>
 
               {/* Everything else requires onboarding */}
               <Route element={<SupplierOnboardingGuard />}>
