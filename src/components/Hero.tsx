@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function Hero() {
-
   const navigate = useNavigate();
 
   const suburbs = [
@@ -12,7 +12,7 @@ export default function Hero() {
     "Pretoria",
     "Rosebank",
     "Centurion",
-    "Randburg"
+    "Randburg",
   ];
 
   const [location, setLocation] = useState("");
@@ -23,6 +23,7 @@ export default function Hero() {
   );
 
   const handleSearch = () => {
+    if (!location) return;
     navigate(`/search?location=${encodeURIComponent(location)}`);
   };
 
@@ -33,7 +34,6 @@ export default function Hero() {
 
   return (
     <section className="py-20 text-center bg-white">
-
       <div className="max-w-3xl mx-auto px-6">
 
         <div className="mb-4 text-sm text-blue-600 font-medium">
@@ -50,11 +50,8 @@ export default function Hero() {
         </p>
 
         {/* Search Bar */}
-
         <div className="relative flex flex-col sm:flex-row gap-3 justify-center">
-
           <div className="relative w-full sm:w-80">
-
             <input
               type="text"
               placeholder="Enter your suburb (e.g. Sandton)"
@@ -67,8 +64,7 @@ export default function Hero() {
             />
 
             {showDropdown && location && (
-              <div className="absolute left-0 right-0 bg-white border rounded-lg mt-1 shadow-lg z-10">
-
+              <div className="absolute left-0 right-0 bg-white border rounded-lg mt-1 shadow">
                 {filteredSuburbs.map((suburb) => (
                   <div
                     key={suburb}
@@ -78,38 +74,37 @@ export default function Hero() {
                     {suburb}
                   </div>
                 ))}
-
               </div>
             )}
-
           </div>
 
-          <button
-            type="button"
-            onClick={handleSearch}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-          >
+          <Button size="lg" onClick={handleSearch}>
             Find Services
-          </button>
-
+          </Button>
         </div>
 
+        {/* Provider CTA */}
+        <div className="mt-4">
+          <Link to="/auth">
+            <Button variant="outline" size="lg">
+              Become a Provider
+            </Button>
+          </Link>
+        </div>
+
+        {/* Popular suburbs */}
         <div className="mt-6 text-sm text-gray-500">
           Popular: Sandton • Fourways • Midrand • Pretoria
         </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8 text-sm text-gray-600">
-
+        {/* Trust indicators */}
+        <div className="flex flex-col sm:flex-row justify-center gap-6 mt-6 text-sm text-gray-600">
           <div>✔ Verified Providers</div>
-
           <div>⭐ Rated by Local Dog Owners</div>
-
           <div>📍 Local Neighbourhood Services</div>
-
         </div>
 
       </div>
-
     </section>
   );
 }

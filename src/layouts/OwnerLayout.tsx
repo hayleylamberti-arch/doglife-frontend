@@ -1,16 +1,14 @@
 import { Outlet } from "react-router-dom";
-import RoleNavbar from "@/components/RoleNavbar";
+import Navbar from "@/components/Navbar";
 
 export default function OwnerLayout() {
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
 
-     <RoleNavbar /> 
-
-      <main className="max-w-6xl mx-auto p-6">
+      <main className="flex-1">
         <Outlet />
       </main>
-
     </div>
   );
 }

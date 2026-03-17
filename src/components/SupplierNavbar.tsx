@@ -9,11 +9,17 @@ export default function SupplierNavbar() {
           DogLife
         </Link>
 
-        <Link to="/supplier-dashboard">Dashboard</Link>
+        <Link to="/supplier-dashboard">
+          Dashboard
+        </Link>
 
-        <Link to="/supplier-profile">Profile</Link>
+        <Link to="/supplier-profile">
+          Profile
+        </Link>
 
-        <Link to="/supplier-onboarding">Edit Business Info</Link>
+        <Link to="/supplier-onboarding">
+          Edit Business Info
+        </Link>
 
       </div>
     </nav>

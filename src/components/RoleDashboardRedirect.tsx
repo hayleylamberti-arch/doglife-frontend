@@ -12,5 +12,5 @@ export default function RoleDashboardRedirect() {
     return <Navigate to="/supplier-dashboard" replace />;
   }
 
-  return <Navigate to="/" replace />;
+  return <Navigate to="/owner-dashboard" replace />;
 }

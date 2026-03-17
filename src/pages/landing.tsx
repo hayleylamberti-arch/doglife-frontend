@@ -11,29 +11,19 @@ import Suburbs from "../components/Suburbs";
 export default function Landing() {
   return (
     <div>
-
       <div className="bg-blue-50 border-b text-center py-2 text-sm text-blue-700">
-        🐾 Now launching in Gauteng — Sandton, Fourways, Midrand, Pretoria & surrounding suburbs
+        🐾 Now launching in Gauteng – Sandton, Fourways, Midrand, Pretoria & surrounding suburbs
       </div>
 
       <Hero />
-
       <Suburbs />
-
       <NeighbourhoodWaitlist />
-
       <ServiceCategories />
-
       <HowItWorks />
-
       <FeaturedProviders />
-
       <Pricing />
-
       <TrustSection />
-
       <FAQ />
-
     </div>
   );
 }
