@@ -11,34 +11,37 @@ export default function SearchPage() {
   const [error, setError] = useState("");
 
   const fetchSuppliers = async () => {
-  try {
-    setLoading(true);
-    setError("");
+    try {
+      setLoading(true);
+      setError("");
 
-    const res = await api.get("/api/suppliers");
+      const res = await api.get("/api/suppliers");
 
-    console.log("FULL RESPONSE:", res);   // 👈 ADD THIS
-    console.log("DATA:", res.data);       // 👈 ADD THIS
+      console.log("FULL RESPONSE:", res);
+      console.log("DATA:", res.data);
 
-    const data = res.data?.suppliers || [];
+      const data = res.data?.suppliers || [];
 
-    setSuppliers(data);
-
-  } catch (err) {
-    console.error("FETCH ERROR:", err);   // 👈 IMPORTANT
-    setError("Failed to load suppliers");
-  } finally {
-    setLoading(false);
-  }
-};
+      setSuppliers(data);
+    } catch (err) {
+      console.error("FETCH ERROR:", err);
+      setError("Failed to load suppliers");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchSuppliers();
   }, []);
 
-  const filtered = suppliers.filter((s: any) =>
-    (s.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = suppliers
+    .filter((s: any) => s.businessName) // only show valid suppliers
+    .filter((s: any) =>
+      (s.businessName || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="min-h-screen bg-doglife-gray-50">
@@ -69,16 +72,23 @@ export default function SearchPage() {
             <Card key={service.id} className="hover:shadow-lg transition">
               <CardContent className="p-6 space-y-3">
 
+                {/* Header */}
                 <div className="flex justify-between items-center">
-                 <h3 className="text-lg font-semibold">
-  {service.businessName || "No business name"}
-</h3>
-</div>
+                  <h3 className="text-lg font-semibold">
+                    {service.businessName || "No business name"}
+                  </h3>
 
-<p className="text-sm text-gray-600">
-  {service.aboutServices || "No description provided"}
-</p>    
+                  <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">
+                    Verified
+                  </span>
+                </div>
 
+                {/* Description */}
+                <p className="text-sm text-gray-600">
+                  {service.aboutServices || "No description provided"}
+                </p>
+
+                {/* Footer */}
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-yellow-500">★★★★★</span>
 
