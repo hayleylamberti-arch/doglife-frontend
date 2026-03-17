@@ -1,6 +1,6 @@
 import OwnerNavbar from "./OwnerNavbar";
 import SupplierNavbar from "./SupplierNavbar";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function RoleNavbar() {
   const { user } = useAuth();

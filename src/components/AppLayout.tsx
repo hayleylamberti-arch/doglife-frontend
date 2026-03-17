@@ -1,6 +1,6 @@
 import { Outlet, Link } from "react-router-dom";
 import Brand from "@/components/Brand";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
