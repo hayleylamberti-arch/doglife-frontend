@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useMutation, UseMutationResult } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { AxiosError } from "axios";
+import { useNavigate } from "react-router-dom";
 
 /* ===============================
    User Model
@@ -94,6 +95,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   /* ===============================
      LOGIN
@@ -109,15 +111,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     },
 
-    onSuccess: (data) => {
-      console.log("LOGIN SUCCESS:", data);
+   onSuccess: (data) => {
+  console.log("LOGIN SUCCESS:", data);
 
-      localStorage.setItem("authToken", data.token);
+  localStorage.setItem("authToken", data.token);
 
-      api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+  api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
-      setUser(data.user);
-    },
+  setUser(data.user);
+
+  // 👇 ADD THIS
+  if (data.user.role === "SUPPLIER") {
+    navigate("/supplier-dashboard");
+  } else {
+    navigate("/dashboard");
+  }
+}, 
 
     onError: (error) => {
       const message =
