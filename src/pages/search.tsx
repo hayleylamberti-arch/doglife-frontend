@@ -11,27 +11,26 @@ export default function SearchPage() {
   const [error, setError] = useState("");
 
   const fetchSuppliers = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  try {
+    setLoading(true);
+    setError("");
 
-      const res = await api.get("/api/suppliers"); // adjust if needed
+    const res = await api.get("/api/suppliers");
 
-      console.log("API RESPONSE:", res.data);
+    console.log("FULL RESPONSE:", res);   // 👈 ADD THIS
+    console.log("DATA:", res.data);       // 👈 ADD THIS
 
-      // VERY IMPORTANT: handle different response shapes
-      const data = Array.isArray(res.data)
-        ? res.data
-        : res.data?.data || [];
+    const data = res.data?.suppliers || [];
 
-      setSuppliers(data);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load suppliers");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setSuppliers(data);
+
+  } catch (err) {
+    console.error("FETCH ERROR:", err);   // 👈 IMPORTANT
+    setError("Failed to load suppliers");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchSuppliers();
