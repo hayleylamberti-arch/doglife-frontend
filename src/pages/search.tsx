@@ -70,17 +70,14 @@ export default function SearchPage() {
               <CardContent className="p-6 space-y-3">
 
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">
-                    {service.name || "No name"}
-                  </h3>
-                  <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">
-                    Verified
-                  </span>
-                </div>
+                 <h3 className="text-lg font-semibold">
+  {service.businessName || "No business name"}
+</h3>
+</div>
 
-                <p className="text-sm text-gray-600">
-                  {service.description || "No description"}
-                </p>
+<p className="text-sm text-gray-600">
+  {service.aboutServices || "No description provided"}
+</p>    
 
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-yellow-500">★★★★★</span>
