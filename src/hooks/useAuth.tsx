@@ -43,7 +43,7 @@ export interface User {
 }
 
 /* ===============================
-   Auth Request Types
+   Types
 ================================ */
 
 export interface LoginCredentials {
@@ -60,23 +60,18 @@ export interface RegisterData {
   role: "OWNER" | "SUPPLIER";
 }
 
-/* ===============================
-   API Response
-================================ */
-
 interface AuthResponse {
   token: string;
   user: User;
 }
 
 /* ===============================
-   Context Type
+   Context
 ================================ */
 
 type AuthContextType = {
   user: User | null;
   role: "OWNER" | "SUPPLIER" | "ADMIN" | null;
-
   isAuthenticated: boolean;
   isLoading: boolean;
 
@@ -104,29 +99,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginMutation = useMutation<AuthResponse, AxiosError, LoginCredentials>({
     mutationFn: async (data) => {
       const response = await api.post("/api/auth/login", data);
-
       return {
         token: response.data.token,
         user: response.data.user,
       };
     },
 
-   onSuccess: (data) => {
-  console.log("LOGIN SUCCESS:", data);
+    onSuccess: async (data) => {
+      console.log("LOGIN SUCCESS:", data);
 
-  localStorage.setItem("authToken", data.token);
+      localStorage.setItem("authToken", data.token);
+      api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
-  api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+      setUser(data.user);
 
-  setUser(data.user);
+      if (data.user.role === "SUPPLIER") {
+        try {
+          const res = await api.get("/api/supplier/profile");
 
-  // 👇 ADD THIS
-  if (data.user.role === "SUPPLIER") {
-    navigate("/supplier-dashboard");
-  } else {
-    navigate("/dashboard");
-  }
-}, 
+          console.log("SUPPLIER PROFILE:", res.data);
+
+          if (res.data?.supplier) {
+            navigate("/supplier-dashboard");
+          } else {
+            navigate("/supplier-onboarding");
+          }
+        } catch (err) {
+          console.warn("Supplier profile fetch failed");
+          navigate("/supplier-onboarding");
+        }
+      } else {
+        navigate("/dashboard");
+      }
+    },
 
     onError: (error) => {
       const message =
@@ -145,7 +150,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerMutation = useMutation<AuthResponse, AxiosError, RegisterData>({
     mutationFn: async (data) => {
       const response = await api.post("/api/auth/register", data);
-
       return {
         token: response.data.token,
         user: response.data.user,
@@ -156,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("REGISTER SUCCESS:", data);
 
       localStorage.setItem("authToken", data.token);
-
       api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
       setUser(data.user);
@@ -178,9 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem("authToken");
-
     delete api.defaults.headers.common.Authorization;
-
     setUser(null);
   };
 
@@ -214,7 +215,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isAuthenticated = !!user;
-
   const role = user?.role ?? null;
 
   return (
