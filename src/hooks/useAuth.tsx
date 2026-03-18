@@ -97,51 +97,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ================================= */
 
   const loginMutation = useMutation<AuthResponse, AxiosError, LoginCredentials>({
-    mutationFn: async (data) => {
-      const response = await api.post("/api/auth/login", data);
-      return {
-        token: response.data.token,
-        user: response.data.user,
-      };
-    },
+  mutationFn: async (data) => {
+    const response = await api.post("/api/auth/login", data);
+    return {
+      token: response.data.token,
+      user: response.data.user,
+    };
+  },
 
-    onSuccess: async (data) => {
-      console.log("LOGIN SUCCESS:", data);
+  onSuccess: async (data) => {
+    console.log("LOGIN SUCCESS:", data);
 
-      localStorage.setItem("authToken", data.token);
-      api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+    localStorage.setItem("authToken", data.token);
+    api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
-      setUser(data.user);
+    setUser(data.user);
 
-      if (data.user.role === "SUPPLIER") {
-        try {
-          const res = await api.get("/api/supplier/profile");
+    if (data.user.role === "SUPPLIER") {
+      try {
+        const res = await api.get("/api/supplier/profile");
 
-          console.log("SUPPLIER PROFILE:", res.data);
+        console.log("SUPPLIER PROFILE:", res.data);
 
-          if (res.data?.supplier) {
-            navigate("/supplier-dashboard");
-          } else {
-            navigate("/supplier-onboarding");
-          }
-        } catch (err) {
-          console.warn("Supplier profile fetch failed");
+        if (res.data && Object.keys(res.data).length > 0) {
+          navigate("/supplier-dashboard");
+        } else {
           navigate("/supplier-onboarding");
         }
-      } else {
-        navigate("/dashboard");
+
+      } catch (err) {
+        console.warn("Supplier profile fetch failed");
+        navigate("/supplier-onboarding");
       }
-    },
+    } else {
+      navigate("/dashboard");
+    }
+  }, // ✅ IMPORTANT COMMA HERE
 
-    onError: (error) => {
-      const message =
-        (error.response?.data as any)?.message ||
-        "Login failed. Please check your email and password.";
+  onError: (error) => {
+    const message =
+      (error.response?.data as any)?.message ||
+      "Login failed. Please check your email and password.";
 
-      console.error("LOGIN FAILED:", message);
-      alert(message);
-    },
-  });
+    console.error("LOGIN FAILED:", message);
+    alert(message);
+  },
+});
 
   /* ===============================
      REGISTER
