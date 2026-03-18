@@ -72,7 +72,7 @@ export default function SupplierDashboard() {
   }
 
   // ✅ FIXED HERE
-  const supplier = data;
+  const supplier = data?.profile;
 
   const bookings = bookingsData?.bookings || [];
 
