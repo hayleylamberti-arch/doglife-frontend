@@ -63,24 +63,39 @@ export default function SupplierDashboard() {
     }
   });
 
-console.log("DASHBOARD DATA:", data);
+  console.log("DASHBOARD DATA:", data);
+
+  /* ===============================
+     SAFETY GUARDS (CRITICAL)
+  =============================== */
 
   if (isLoading) {
     return <div className="p-10">Loading dashboard...</div>;
   }
 
-  // ✅ CRITICAL FIX: safe profile handling
+  if (!data) {
+    return <div className="p-10">No data available</div>;
+  }
+
+  // Safe profile extraction
   const supplier = data?.profile ?? {};
 
-  const bookings = bookingsData?.bookings || [];
+  // Safe bookings
+  const bookings = Array.isArray(bookingsData?.bookings)
+    ? bookingsData.bookings
+    : [];
 
   const upcomingBookings = bookings
-    .filter((b: any) => b.status !== "CANCELLED")
+    .filter((b: any) => b?.status !== "CANCELLED")
     .sort(
       (a: any, b: any) =>
-        new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+        new Date(a?.startAt).getTime() - new Date(b?.startAt).getTime()
     )
     .slice(0, 5);
+
+  /* ===============================
+     UI
+  =============================== */
 
   return (
     <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-[240px_1fr] gap-8">
@@ -161,28 +176,26 @@ console.log("DASHBOARD DATA:", data);
         </div>
 
         {/* Services */}
-<div className="border rounded-xl p-6 bg-white shadow-sm">
-  <h2 className="text-xl font-semibold mb-3">
-    Your Services
-  </h2>
+        <div className="border rounded-xl p-6 bg-white shadow-sm">
+          <h2 className="text-xl font-semibold mb-3">Your Services</h2>
 
-  {Array.isArray(supplier?.serviceTypes) && supplier.serviceTypes.length > 0 ? (
-    <div className="flex flex-wrap gap-2">
-      {supplier.serviceTypes.map((service: string) => (
-        <span
-          key={service}
-          className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
-        >
-          {formatService(service)}
-        </span>
-      ))}
-    </div>
-  ) : (
-    <p className="text-muted-foreground text-sm">
-      No services added yet.
-    </p>
-  )}
-</div>
+          {Array.isArray(supplier?.serviceTypes) && supplier.serviceTypes.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {supplier.serviceTypes.map((service: string) => (
+                <span
+                  key={service}
+                  className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
+                >
+                  {formatService(service)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No services added yet.
+            </p>
+          )}
+        </div>
 
       </main>
     </div>
