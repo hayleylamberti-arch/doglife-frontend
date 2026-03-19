@@ -63,6 +63,8 @@ export default function SupplierDashboard() {
     }
   });
 
+console.log("DASHBOARD DATA:", data);
+
   if (isLoading) {
     return <div className="p-10">Loading dashboard...</div>;
   }

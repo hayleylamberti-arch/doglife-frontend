@@ -119,11 +119,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log("SUPPLIER PROFILE:", res.data);
 
-        if (res.data && Object.keys(res.data).length > 0) {
-          navigate("/supplier-dashboard");
-        } else {
-          navigate("/supplier-onboarding");
-        }
+        const profile = res.data?.profile;
+
+if (profile && profile.businessName?.trim()) {
+  navigate("/supplier-dashboard");
+} else {
+  navigate("/supplier-onboarding");
+}
 
       } catch (err) {
         console.warn("Supplier profile fetch failed");
