@@ -1,7 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 
 import OwnerLayout from "@layouts/OwnerLayout";
-import SupplierRoutes from "./SupplierRoutes";
 
 import Landing from "@pages/landing";
 import Search from "@pages/search";
@@ -15,16 +14,28 @@ import DogProfile from "@pages/dog-profile";
 import Nearby from "@pages/nearby";
 import Profile from "@pages/profile";
 
+import SupplierLayout from "@layouts/SupplierLayout";
+import SupplierProtectedRoute from "@components/SupplierProtectedRoute";
+import SupplierDashboard from "@pages/supplier-dashboard";
+import SupplierProfile from "@pages/supplier-profile";
+import SupplierOnboarding from "@pages/supplier-onboarding";
+
 export default function AppRoutes() {
   return (
     <Routes>
 
-      {/* ✅ Supplier routes (separate system) */}
-      <SupplierRoutes />
+      {/* ✅ SUPPLIER ROUTES (INLINE — FIXED) */}
+      <Route element={<SupplierProtectedRoute />}>
+        <Route element={<SupplierLayout />}>
+          <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
+          <Route path="/supplier-profile" element={<SupplierProfile />} />
+        </Route>
+      </Route>
 
-      {/* Owner routes */}
+      <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
+
+      {/* OWNER ROUTES */}
       <Route element={<OwnerLayout />}>
-        
         <Route path="/" element={<Landing />} />
         <Route path="/search" element={<Search />} />
         <Route path="/auth" element={<AuthPage />} />
@@ -38,8 +49,8 @@ export default function AppRoutes() {
 
         <Route path="/nearby" element={<Nearby />} />
         <Route path="/profile" element={<Profile />} />
-
       </Route>
+
     </Routes>
   );
 }
