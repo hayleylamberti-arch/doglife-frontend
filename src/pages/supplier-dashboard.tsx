@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 
 /* Format service names */
-
 function formatService(service: string) {
   const map: Record<string, string> = {
     WALKING: "🚶 Dog Walking",
@@ -20,7 +19,6 @@ function formatService(service: string) {
 }
 
 /* Friendly date formatting */
-
 function formatBookingTime(dateString: string) {
   const date = new Date(dateString);
 
@@ -46,8 +44,6 @@ function formatBookingTime(dateString: string) {
 
 export default function SupplierDashboard() {
 
-  /* Supplier profile */
-
   const { data, isLoading } = useQuery({
     queryKey: ["supplier-profile"],
     queryFn: async () => {
@@ -57,8 +53,6 @@ export default function SupplierDashboard() {
     }
   });
 
-  /* Supplier bookings */
-
   const { data: bookingsData } = useQuery({
     queryKey: ["supplier-bookings"],
     queryFn: async () => {
@@ -67,19 +61,12 @@ export default function SupplierDashboard() {
     }
   });
 
-  /* ✅ CRITICAL FIX SECTION */
-
   if (isLoading) {
     return <div className="p-10">Loading dashboard...</div>;
   }
 
-  const supplier = data?.profile;
-
-  if (!supplier) {
-    return <div className="p-10">No supplier data found</div>;
-  }
-
-  /* ---------------------- */
+  // ✅ SAFE FIX (prevents crash)
+  const supplier = data?.profile || {};
 
   const bookings = bookingsData?.bookings || [];
 
@@ -91,31 +78,10 @@ export default function SupplierDashboard() {
     )
     .slice(0, 5);
 
-  const today = new Date().toDateString();
-
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(new Date().getDate() + 1);
-  const tomorrow = tomorrowDate.toDateString();
-
-  const todayBookings = upcomingBookings.filter(
-    (b: any) => new Date(b.startAt).toDateString() === today
-  );
-
-  const tomorrowBookings = upcomingBookings.filter(
-    (b: any) => new Date(b.startAt).toDateString() === tomorrow
-  );
-
-  const laterBookings = upcomingBookings.filter(
-    (b: any) =>
-      new Date(b.startAt).toDateString() !== today &&
-      new Date(b.startAt).toDateString() !== tomorrow
-  );
-
   return (
     <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-[240px_1fr] gap-8">
 
       {/* Sidebar */}
-
       <aside className="space-y-4">
         <h2 className="text-xl font-semibold">Supplier</h2>
 
@@ -138,8 +104,7 @@ export default function SupplierDashboard() {
         </nav>
       </aside>
 
-      {/* Main Content */}
-
+      {/* Main */}
       <main className="space-y-8">
 
         <div>
@@ -152,8 +117,25 @@ export default function SupplierDashboard() {
           </p>
         </div>
 
-        {/* Business Profile */}
+        {/* Stats */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+            <p className="text-sm text-muted-foreground">Upcoming Bookings</p>
+            <p className="text-2xl font-semibold">{upcomingBookings.length}</p>
+          </div>
 
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+            <p className="text-sm text-muted-foreground">Reviews</p>
+            <p className="text-2xl font-semibold">⭐ 0</p>
+          </div>
+
+          <div className="border rounded-xl p-6 bg-white shadow-sm">
+            <p className="text-sm text-muted-foreground">Profile Views</p>
+            <p className="text-2xl font-semibold">0</p>
+          </div>
+        </div>
+
+        {/* Business Profile */}
         <div className="border rounded-xl p-6 bg-white shadow-sm">
           <h2 className="text-xl font-semibold mb-3">Business Profile</h2>
 
@@ -174,7 +156,6 @@ export default function SupplierDashboard() {
         </div>
 
       </main>
-
     </div>
   );
 }
