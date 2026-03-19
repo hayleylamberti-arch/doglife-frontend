@@ -70,7 +70,7 @@ console.log("DASHBOARD DATA:", data);
   }
 
   // ✅ CRITICAL FIX: safe profile handling
-  const supplier = data?.profile ?? null;
+  const supplier = data?.profile ?? {};
 
   const bookings = bookingsData?.bookings || [];
 
@@ -160,27 +160,29 @@ console.log("DASHBOARD DATA:", data);
           </Link>
         </div>
 
-        {/* Services (SAFE FIX) */}
-        <div className="border rounded-xl p-6 bg-white shadow-sm">
-          <h2 className="text-xl font-semibold mb-3">Your Services</h2>
+        {/* Services */}
+<div className="border rounded-xl p-6 bg-white shadow-sm">
+  <h2 className="text-xl font-semibold mb-3">
+    Your Services
+  </h2>
 
-          {supplier?.serviceTypes?.length ? (
-            <div className="flex flex-wrap gap-2">
-              {supplier.serviceTypes.map((service: string) => (
-                <span
-                  key={service}
-                  className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
-                >
-                  {formatService(service)}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              No services added yet.
-            </p>
-          )}
-        </div>
+  {Array.isArray(supplier?.serviceTypes) && supplier.serviceTypes.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {supplier.serviceTypes.map((service: string) => (
+        <span
+          key={service}
+          className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
+        >
+          {formatService(service)}
+        </span>
+      ))}
+    </div>
+  ) : (
+    <p className="text-muted-foreground text-sm">
+      No services added yet.
+    </p>
+  )}
+</div>
 
       </main>
     </div>
