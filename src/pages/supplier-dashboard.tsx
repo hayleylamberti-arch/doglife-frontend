@@ -44,6 +44,7 @@ function formatBookingTime(dateString: string) {
 
 export default function SupplierDashboard() {
 
+  /* Supplier profile */
   const { data, isLoading } = useQuery({
     queryKey: ["supplier-profile"],
     queryFn: async () => {
@@ -53,6 +54,7 @@ export default function SupplierDashboard() {
     }
   });
 
+  /* Supplier bookings */
   const { data: bookingsData } = useQuery({
     queryKey: ["supplier-bookings"],
     queryFn: async () => {
@@ -65,12 +67,8 @@ export default function SupplierDashboard() {
     return <div className="p-10">Loading dashboard...</div>;
   }
 
-  // ✅ SAFEST possible handling
+  // ✅ CRITICAL FIX: safe profile handling
   const supplier = data?.profile ?? null;
-
-  if (!supplier) {
-    return <div className="p-10">No supplier data found</div>;
-  }
 
   const bookings = bookingsData?.bookings || [];
 
@@ -111,6 +109,7 @@ export default function SupplierDashboard() {
       {/* Main */}
       <main className="space-y-8">
 
+        {/* Header */}
         <div>
           <h1 className="text-3xl font-semibold">
             Welcome {supplier?.businessName ? `, ${supplier.businessName}` : ""}
@@ -144,11 +143,11 @@ export default function SupplierDashboard() {
           <h2 className="text-xl font-semibold mb-3">Business Profile</h2>
 
           <p className="text-lg font-medium">
-            {supplier?.businessName ?? "Business name not set"}
+            {supplier?.businessName || "Business name not set"}
           </p>
 
           <p className="text-sm text-muted-foreground">
-            📍 {supplier?.suburb ?? "Location not set"}
+            📍 {supplier?.suburb || "Location not set"}
           </p>
 
           <Link
@@ -157,6 +156,28 @@ export default function SupplierDashboard() {
           >
             Edit profile →
           </Link>
+        </div>
+
+        {/* Services (SAFE FIX) */}
+        <div className="border rounded-xl p-6 bg-white shadow-sm">
+          <h2 className="text-xl font-semibold mb-3">Your Services</h2>
+
+          {supplier?.serviceTypes?.length ? (
+            <div className="flex flex-wrap gap-2">
+              {supplier.serviceTypes.map((service: string) => (
+                <span
+                  key={service}
+                  className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
+                >
+                  {formatService(service)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No services added yet.
+            </p>
+          )}
         </div>
 
       </main>
