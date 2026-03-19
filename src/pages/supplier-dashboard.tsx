@@ -140,12 +140,12 @@ export default function SupplierDashboard() {
           <h2 className="text-xl font-semibold mb-3">Business Profile</h2>
 
           <p className="text-lg font-medium">
-            {supplier.businessName || "Business name not set"}
-          </p>
+  {supplier?.businessName || "Business name not set"}
+</p>
 
-          <p className="text-sm text-muted-foreground">
-            📍 {supplier.suburb || "Location not set"}
-          </p>
+<p className="text-sm text-muted-foreground">
+  📍 {supplier?.suburb || "Location not set"}
+</p>
 
           <Link
             to="/supplier-onboarding"
