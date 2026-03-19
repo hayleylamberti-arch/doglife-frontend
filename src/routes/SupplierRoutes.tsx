@@ -10,17 +10,15 @@ import SupplierOnboarding from "@/pages/supplier-onboarding";
 export default function SupplierRoutes() {
   return (
     <>
-      <Route
-        element={
-          <SupplierProtectedRoute>
-            <SupplierLayout />
-          </SupplierProtectedRoute>
-        }
-      >
-        <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-        <Route path="/supplier-profile" element={<SupplierProfile />} />
+      {/* Protected routes */}
+      <Route element={<SupplierProtectedRoute />}>
+        <Route element={<SupplierLayout />}>
+          <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
+          <Route path="/supplier-profile" element={<SupplierProfile />} />
+        </Route>
       </Route>
 
+      {/* Public route */}
       <Route
         path="/supplier-onboarding"
         element={<SupplierOnboarding />}
