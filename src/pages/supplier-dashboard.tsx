@@ -65,8 +65,12 @@ export default function SupplierDashboard() {
     return <div className="p-10">Loading dashboard...</div>;
   }
 
-  // ✅ SAFE FIX (prevents crash)
-  const supplier = data?.profile || {};
+  // ✅ SAFEST possible handling
+  const supplier = data?.profile ?? null;
+
+  if (!supplier) {
+    return <div className="p-10">No supplier data found</div>;
+  }
 
   const bookings = bookingsData?.bookings || [];
 
@@ -109,7 +113,7 @@ export default function SupplierDashboard() {
 
         <div>
           <h1 className="text-3xl font-semibold">
-            Welcome {supplier.businessName ? `, ${supplier.businessName}` : ""}
+            Welcome {supplier?.businessName ? `, ${supplier.businessName}` : ""}
           </h1>
 
           <p className="text-muted-foreground text-sm mt-1">
@@ -140,12 +144,12 @@ export default function SupplierDashboard() {
           <h2 className="text-xl font-semibold mb-3">Business Profile</h2>
 
           <p className="text-lg font-medium">
-  {supplier?.businessName || "Business name not set"}
-</p>
+            {supplier?.businessName ?? "Business name not set"}
+          </p>
 
-<p className="text-sm text-muted-foreground">
-  📍 {supplier?.suburb || "Location not set"}
-</p>
+          <p className="text-sm text-muted-foreground">
+            📍 {supplier?.suburb ?? "Location not set"}
+          </p>
 
           <Link
             to="/supplier-onboarding"
