@@ -98,8 +98,8 @@ export default function SupplierDashboard() {
             Dashboard
           </Link>
 
-          {/* ✅ SAFE PUBLIC PROFILE LINK */}
-          {supplier?.id && (
+          {/* ✅ FIXED PUBLIC PROFILE LINK */}
+          {supplier && typeof supplier.id === "string" && (
             <Link
               to={`/supplier/${supplier.id}`}
               className="px-3 py-2 rounded-md hover:bg-gray-100"
