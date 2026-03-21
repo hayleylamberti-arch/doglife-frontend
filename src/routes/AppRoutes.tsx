@@ -42,7 +42,7 @@ export default function AppRoutes() {
       <Route element={<SupplierProtectedRoute />}>
         <Route element={<SupplierLayout />}>
           <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-          <Route path="/supplier-profile" element={<SupplierProfile />} />
+          <Route path="/supplier/:id" element={<SupplierProfile />} />
         </Route>
       </Route>
 
