@@ -7,33 +7,39 @@ export default function SupplierProfilePage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier", id],
+    enabled: !!id, // prevents undefined calls
     queryFn: async () => {
-      const res = await api.get(`/api/supplier/${id}`);
+      const res = await api.get(`/api/public/suppliers/${id}`); // ✅ FIXED ENDPOINT
       return res.data;
-    }
+    },
   });
 
   if (isLoading) {
     return <div className="p-6">Loading provider...</div>;
   }
 
-  if (error || !data) {
-    return <div className="p-6 text-red-600">Failed to load provider</div>;
+  if (error || !data || !data.supplier) {
+    return (
+      <div className="p-6 text-red-600">
+        Failed to load provider
+      </div>
+    );
   }
 
-  const supplier = data?.supplier ?? {};
+  const supplier = data.supplier;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
-
       <div className="grid md:grid-cols-3 gap-6">
+        {/* Image */}
         <div className="h-64 bg-gray-200 rounded-xl flex items-center justify-center text-5xl">
           🐶
         </div>
 
+        {/* Info */}
         <div className="md:col-span-2 space-y-3">
           <h1 className="text-3xl font-semibold">
-            {supplier.businessName}
+            {supplier.businessName || "Unnamed Business"}
           </h1>
 
           <p className="text-muted-foreground">
@@ -41,7 +47,6 @@ export default function SupplierProfilePage() {
           </p>
 
           <div className="flex gap-3 pt-3">
-
             <Link
               to={`/book/${supplier.id}`}
               className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 inline-block"
@@ -52,11 +57,9 @@ export default function SupplierProfilePage() {
             <button className="border px-6 py-3 rounded-md hover:bg-gray-50">
               Message
             </button>
-
           </div>
         </div>
       </div>
-
     </div>
   );
 }
