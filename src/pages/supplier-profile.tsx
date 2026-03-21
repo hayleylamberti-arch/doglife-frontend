@@ -8,7 +8,7 @@ export default function SupplierProfilePage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier", id],
     queryFn: async () => {
-      const res = await api.get(`/api/suppliers/${id}`);
+      const res = await api.get(`/api/supplier/${id}`);
       return res.data;
     }
   });
