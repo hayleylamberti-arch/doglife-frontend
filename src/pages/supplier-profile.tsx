@@ -7,9 +7,9 @@ export default function SupplierProfilePage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier", id],
-    enabled: !!id, // prevents undefined calls
+    enabled: !!id,
     queryFn: async () => {
-      const res = await api.get(`/api/public/suppliers/${id}`); // ✅ FIXED ENDPOINT
+      const res = await api.get(`/api/public/suppliers/${id}`);
       return res.data;
     },
   });
@@ -31,6 +31,7 @@ export default function SupplierProfilePage() {
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-10">
       <div className="grid md:grid-cols-3 gap-6">
+        
         {/* Image */}
         <div className="h-64 bg-gray-200 rounded-xl flex items-center justify-center text-5xl">
           🐶
@@ -42,8 +43,14 @@ export default function SupplierProfilePage() {
             {supplier.businessName || "Unnamed Business"}
           </h1>
 
+          {/* ✅ FIXED FIELD */}
           <p className="text-muted-foreground">
-            {supplier.suburb || "Unknown suburb"}
+            📍 {supplier.businessAddress || "Location not set"}
+          </p>
+
+          {/* ✅ ADD SERVICES */}
+          <p className="text-sm">
+            {supplier.aboutServices || "No services listed"}
           </p>
 
           <div className="flex gap-3 pt-3">
