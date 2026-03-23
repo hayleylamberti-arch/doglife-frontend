@@ -26,6 +26,7 @@ import SupplierProtectedRoute from "@components/SupplierProtectedRoute";
 import SupplierDashboard from "@pages/supplier-dashboard";
 import SupplierProfile from "@pages/supplier-profile";
 import SupplierOnboarding from "@pages/supplier-onboarding";
+import SupplierServicesPage from "@pages/supplier-services";
 
 /* ===============================
    BOOKING (NEW)
@@ -40,11 +41,14 @@ export default function AppRoutes() {
           SUPPLIER ROUTES (PROTECTED)
       =============================== */}
       <Route element={<SupplierProtectedRoute />}>
-        <Route element={<SupplierLayout />}>
-          <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-          <Route path="/supplier/:id" element={<SupplierProfile />} />
-        </Route>
-      </Route>
+  <Route element={<SupplierLayout />}>
+    <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
+    <Route path="/supplier/:id" element={<SupplierProfile />} />
+
+    {/* ✅ FIX: MOVE THIS INSIDE */}
+    <Route path="/supplier-services" element={<SupplierServicesPage />} />
+  </Route>
+</Route>
 
       {/* Public supplier onboarding */}
       <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
