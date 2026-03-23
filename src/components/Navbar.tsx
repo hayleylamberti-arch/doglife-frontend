@@ -8,6 +8,16 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  /* ================================
+     AUTH STATE
+  ================================ */
+  const token = localStorage.getItem("token");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/";
+  };
+
   const navItems = [
     { label: "Home", href: "/", icon: <Home className="h-4 w-4" /> },
     { label: "Search", href: "/search", icon: <Search className="h-4 w-4" /> },
@@ -42,15 +52,39 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Auth buttons */}
+          {/* ================================
+             AUTH / USER ACTIONS (DESKTOP)
+          ================================ */}
           <div className="hidden md:flex items-center space-x-3">
-            <Link to="/auth" className="text-gray-600 hover:text-gray-900">
-              Sign In
-            </Link>
 
-            <Link to="/auth">
-              <Button>Join DogLife</Button>
-            </Link>
+            {!token ? (
+              <>
+                <Link to="/auth" className="text-gray-600 hover:text-gray-900">
+                  Sign In
+                </Link>
+
+                <Link to="/auth">
+                  <Button>Join DogLife</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="text-gray-600 hover:text-gray-900"
+                >
+                  Dashboard
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+
           </div>
 
           {/* Mobile menu button */}
@@ -62,9 +96,12 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile menu */}
+        {/* ================================
+           MOBILE MENU
+        ================================ */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 space-y-2 border-t">
+
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -76,19 +113,41 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <Link
-              to="/auth"
-              className="block px-4 py-2 text-gray-600"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Sign In
-            </Link>
+            {!token ? (
+              <>
+                <Link
+                  to="/auth"
+                  className="block px-4 py-2 text-gray-600"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
 
-            <div className="px-4">
-              <Link to="/auth">
-                <Button className="w-full">Join DogLife</Button>
-              </Link>
-            </div>
+                <div className="px-4">
+                  <Link to="/auth">
+                    <Button className="w-full">Join DogLife</Button>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/dashboard"
+                  className="block px-4 py-2 text-gray-600"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Dashboard
+                </Link>
+
+                <button
+                  onClick={handleLogout}
+                  className="block px-4 py-2 text-red-600"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+
           </div>
         )}
 
