@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 
@@ -19,6 +19,8 @@ function formatService(service: string) {
 }
 
 export default function SupplierDashboard() {
+  const queryClient = useQueryClient();
+
   /* ================================
      DATA FETCHING
   ================================ */
@@ -38,6 +40,39 @@ export default function SupplierDashboard() {
       return res.data;
     },
   });
+
+  /* ================================
+     ACTIONS (API CALLS)
+  ================================ */
+
+  const refreshBookings = () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
+  };
+
+  const acceptBooking = async (id: string) => {
+    await api.patch(`/api/supplier/bookings/${id}/accept`);
+    refreshBookings();
+  };
+
+  const declineBooking = async (id: string) => {
+    await api.patch(`/api/supplier/bookings/${id}/decline`);
+    refreshBookings();
+  };
+
+  const startBooking = async (id: string) => {
+    await api.patch(`/api/supplier/bookings/${id}/start`);
+    refreshBookings();
+  };
+
+  const completeBooking = async (id: string) => {
+    await api.patch(`/api/bookings/${id}/complete`);
+    refreshBookings();
+  };
+
+  const markPaid = async (id: string) => {
+    await api.patch(`/api/bookings/${id}/mark-paid`);
+    refreshBookings();
+  };
 
   /* ================================
      SAFETY GUARDS
@@ -76,9 +111,76 @@ export default function SupplierDashboard() {
     ? bookingsData.bookings
     : [];
 
-  const upcomingBookings = bookings
-    .filter((b: any) => b?.status !== "CANCELLED")
-    .slice(0, 5);
+  /* ================================
+     BOOKING GROUPS
+  ================================ */
+
+  const pending = bookings.filter((b: any) => b.status === "PENDING");
+  const confirmed = bookings.filter((b: any) => b.status === "CONFIRMED");
+  const inProgress = bookings.filter((b: any) => b.status === "IN_PROGRESS");
+  const unpaid = bookings.filter(
+    (b: any) => b.status === "COMPLETED_UNBILLED"
+  );
+  const completed = bookings.filter((b: any) => b.status === "COMPLETED");
+
+  /* ================================
+     UI HELPERS
+  ================================ */
+
+  const BookingCard = ({ b }: { b: any }) => (
+    <div className="border rounded-lg p-4 bg-white shadow-sm">
+      <p className="font-medium">{b.serviceType}</p>
+      <p className="text-sm text-muted-foreground">
+        {new Date(b.startAt).toLocaleString()}
+      </p>
+
+      <div className="flex gap-2 mt-3 flex-wrap">
+        {b.status === "PENDING" && (
+          <>
+            <button
+              onClick={() => acceptBooking(b.id)}
+              className="px-3 py-1 bg-green-600 text-white rounded"
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => declineBooking(b.id)}
+              className="px-3 py-1 bg-red-600 text-white rounded"
+            >
+              Decline
+            </button>
+          </>
+        )}
+
+        {b.status === "CONFIRMED" && (
+          <button
+            onClick={() => startBooking(b.id)}
+            className="px-3 py-1 bg-blue-600 text-white rounded"
+          >
+            Start
+          </button>
+        )}
+
+        {b.status === "IN_PROGRESS" && (
+          <button
+            onClick={() => completeBooking(b.id)}
+            className="px-3 py-1 bg-purple-600 text-white rounded"
+          >
+            Complete
+          </button>
+        )}
+
+        {b.status === "COMPLETED_UNBILLED" && (
+          <button
+            onClick={() => markPaid(b.id)}
+            className="px-3 py-1 bg-yellow-600 text-white rounded"
+          >
+            Mark Paid
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   /* ================================
      UI
@@ -98,7 +200,6 @@ export default function SupplierDashboard() {
             Dashboard
           </Link>
 
-          {/* ✅ FIXED PUBLIC PROFILE LINK */}
           {supplier && typeof supplier.id === "string" && (
             <Link
               to={`/supplier/${supplier.id}`}
@@ -132,80 +233,51 @@ export default function SupplierDashboard() {
             Welcome {safeBusinessName ? `, ${safeBusinessName}` : ""}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your services, bookings and profile
+            Manage your bookings and services
           </p>
         </div>
 
-        {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="border rounded-xl p-6 bg-white shadow-sm">
-            <p className="text-sm text-muted-foreground">
-              Upcoming Bookings
-            </p>
-            <p className="text-2xl font-semibold">
-              {upcomingBookings.length}
-            </p>
-          </div>
+        {/* Booking Sections */}
 
-          <div className="border rounded-xl p-6 bg-white shadow-sm">
-            <p className="text-sm text-muted-foreground">Reviews</p>
-            <p className="text-2xl font-semibold">⭐ 0</p>
-          </div>
+        {/* Pending */}
+        <Section title="🟡 Pending Requests" items={pending} />
 
-          <div className="border rounded-xl p-6 bg-white shadow-sm">
-            <p className="text-sm text-muted-foreground">
-              Profile Views
-            </p>
-            <p className="text-2xl font-semibold">0</p>
-          </div>
-        </div>
+        {/* Confirmed */}
+        <Section title="🔵 Confirmed Bookings" items={confirmed} />
 
-        {/* Business Profile */}
-        <div className="border rounded-xl p-6 bg-white shadow-sm">
-          <h2 className="text-xl font-semibold mb-3">
-            Business Profile
-          </h2>
+        {/* In Progress */}
+        <Section title="🟣 In Progress" items={inProgress} />
 
-          <p className="text-lg font-medium">
-            {safeBusinessName || "Business name not set"}
-          </p>
+        {/* Awaiting Payment */}
+        <Section title="🟠 Awaiting Payment" items={unpaid} />
 
-          <p className="text-sm text-muted-foreground">
-            📍 {safeSuburb || "Location not set"}
-          </p>
-
-          <Link
-            to="/supplier-onboarding"
-            className="inline-block mt-4 text-sm text-blue-600 hover:underline"
-          >
-            Edit profile →
-          </Link>
-        </div>
-
-        {/* Services */}
-        <div className="border rounded-xl p-6 bg-white shadow-sm">
-          <h2 className="text-xl font-semibold mb-3">
-            Your Services
-          </h2>
-
-          {safeServices.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {safeServices.map((service: string) => (
-                <span
-                  key={service}
-                  className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm"
-                >
-                  {formatService(service)}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No services added yet.
-            </p>
-          )}
-        </div>
+        {/* Completed */}
+        <Section title="🟢 Completed" items={completed} />
       </main>
     </div>
   );
+
+  /* ================================
+     SECTION COMPONENT
+  ================================ */
+
+  function Section({ title, items }: any) {
+    return (
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold">{title}</h2>
+
+        {items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No bookings
+          </p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {items.map((b: any) => (
+              <BookingCard key={b.id} b={b} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 }
