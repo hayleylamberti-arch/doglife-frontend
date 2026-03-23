@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { SupplierPage } from "@/types";
 
 const SERVICES = [
   "BOARDING",
@@ -15,11 +14,8 @@ const SERVICES = [
   "MOBILE_VET"
 ];
 
-/* Service label formatter with icons */
-
 function formatService(service: string) {
-
-  const map: Record<string,string> = {
+  const map: Record<string, string> = {
     WALKING: "🚶 Dog Walking",
     GROOMING: "✂️ Grooming",
     BOARDING: "🏠 Boarding",
@@ -34,50 +30,93 @@ function formatService(service: string) {
 }
 
 export default function SuppliersPage() {
-
   const [sp, setSp] = useSearchParams();
 
   const [suburb, setSuburb] = useState(sp.get("suburb") ?? "");
   const [service, setService] = useState(sp.get("service") ?? "");
-  const [q, setQ] = useState(sp.get("q") ?? "");
+  const [search, setSearch] = useState(sp.get("search") ?? "");
 
-  const [limit] = useState(Number(sp.get("limit") ?? 20));
-  const [offset, setOffset] = useState(Number(sp.get("offset") ?? 0));
+  const [limit] = useState(Number(sp.get("limit") ?? 10));
+  const [page, setPage] = useState(Number(sp.get("page") ?? 1));
+
+  /* ================================
+     FETCH SUPPLIERS
+  ================================ */
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["public-suppliers", { suburb, service, search, page, limit }],
+    queryFn: async () => {
+      const res = await api.get("/api/public/suppliers", {
+        params: { suburb, service, search, page, limit }
+      });
+      return res.data;
+    }
+  });
+
+  const suppliers = data?.suppliers ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
+  /* ================================
+     FETCH OWNER DOGS (for booking)
+  ================================ */
+
+  const { data: dogsData } = useQuery({
+    queryKey: ["owner-dogs"],
+    queryFn: async () => {
+      const res = await api.get("/api/owner/dogs");
+      return res.data;
+    }
+  });
+
+  const dogs = dogsData?.dogs ?? [];
+
+  /* ================================
+     URL SYNC
+  ================================ */
 
   useEffect(() => {
-
     const params: Record<string, string> = {};
 
     if (suburb) params.suburb = suburb;
     if (service) params.service = service;
-    if (q) params.q = q;
+    if (search) params.search = search;
 
-    if (limit !== 20) params.limit = String(limit);
-    if (offset) params.offset = String(offset);
+    params.page = String(page);
+    params.limit = String(limit);
 
     setSp(params, { replace: true });
+  }, [suburb, service, search, page, limit, setSp]);
 
-  }, [suburb, service, q, limit, offset, setSp]);
+  /* ================================
+     BOOKING HANDLER (MVP)
+  ================================ */
 
-  const debouncedQ = useDebounced(q, 300);
+  const handleBooking = async (supplier: any) => {
+    try {
+      if (!dogs.length) {
+        alert("Please add a dog first");
+        return;
+      }
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["suppliers", { suburb, service, q: debouncedQ, limit, offset }],
-    queryFn: async () => {
+      // ⚠️ TEMP: using supplier.id (we will improve this later)
+      await api.post("/api/bookings", {
+        supplierServiceId: supplier.id,
+        dogIds: [dogs[0].id],
+        startAt: new Date().toISOString(),
+        notes: "Quick booking test"
+      });
 
-      const { data } = await api.get<SupplierPage>(
-        "/api/suppliers",
-        {
-          params: { suburb, service, q: debouncedQ, limit, offset }
-        }
-      );
+      alert("Booking requested ✅");
 
-      return data;
-
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.response?.data?.error || "Booking failed");
     }
-  });
+  };
 
-  const total = data?.total ?? 0;
+  /* ================================
+     UI
+  ================================ */
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-6">
@@ -86,17 +125,17 @@ export default function SuppliersPage() {
         Find Dog Service Providers
       </h1>
 
-      {/* Sticky Search Filters */}
+      {/* Filters */}
 
-      <div className="sticky top-16 bg-white z-10 grid gap-3 md:grid-cols-4 p-4 border rounded-lg">
+      <div className="grid gap-3 md:grid-cols-4 p-4 border rounded-lg">
 
         <input
           className="border rounded px-3 py-2"
           placeholder="Search provider..."
-          value={q}
+          value={search}
           onChange={(e) => {
-            setOffset(0);
-            setQ(e.target.value);
+            setPage(1);
+            setSearch(e.target.value);
           }}
         />
 
@@ -105,7 +144,7 @@ export default function SuppliersPage() {
           placeholder="Suburb"
           value={suburb}
           onChange={(e) => {
-            setOffset(0);
+            setPage(1);
             setSuburb(e.target.value);
           }}
         />
@@ -114,18 +153,16 @@ export default function SuppliersPage() {
           className="border rounded px-3 py-2"
           value={service}
           onChange={(e) => {
-            setOffset(0);
+            setPage(1);
             setService(e.target.value);
           }}
         >
           <option value="">All services</option>
-
           {SERVICES.map((s) => (
             <option key={s} value={s}>
               {formatService(s)}
             </option>
           ))}
-
         </select>
 
       </div>
@@ -142,46 +179,20 @@ export default function SuppliersPage() {
         </p>
       )}
 
-      {/* Empty State */}
-
-      {!isLoading && data?.items.length === 0 && (
-
-        <div className="text-center py-20">
-
-          <div className="text-5xl mb-4">
-            🐶
-          </div>
-
-          <h3 className="text-lg font-semibold">
-            No providers found
-          </h3>
-
-          <p className="text-muted-foreground mt-2">
-            Try adjusting your filters or searching another suburb.
-          </p>
-
-        </div>
-
-      )}
-
       {/* Supplier Cards */}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        {data?.items.map((s) => (
+        {suppliers.map((s: any) => (
 
           <div
-            key={s.userId}
-            className="border rounded-xl overflow-hidden bg-white shadow-sm hover:shadow-lg transition hover:-translate-y-1 duration-200"
+            key={s.id}
+            className="border rounded-xl overflow-hidden bg-white shadow-sm"
           >
-
-            {/* Provider Image */}
 
             <div className="h-44 bg-gray-200 flex items-center justify-center text-4xl">
               🐶
             </div>
-
-            {/* Card Content */}
 
             <div className="p-4 space-y-2">
 
@@ -189,53 +200,22 @@ export default function SuppliersPage() {
                 {s.businessName}
               </h2>
 
-              <div className="text-sm text-yellow-500">
-                ⭐ 4.9 <span className="text-gray-500">(120 reviews)</span>
-              </div>
-
               <p className="text-sm text-gray-500">
-                📍 {s.suburb ?? "Unknown location"}
+                📍 {s.businessAddress ?? "Location not set"}
               </p>
-
-              {/* Services */}
-
-              <div className="flex flex-wrap gap-2 pt-1">
-                {(s.serviceTypes ?? []).slice(0,3).map((service: string) => (
-                  <span
-                    key={service}
-                    className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full"
-                  >
-                    {formatService(service)}
-                  </span>
-                ))}
-              </div>
-
-              {/* Trust signals */}
-
-              <div className="text-xs text-gray-500 pt-2 space-y-1">
-                <div>✔ Responds quickly</div>
-                <div>✔ Trusted provider</div>
-              </div>
-
-              {/* Price */}
-
-              <p className="text-sm font-medium pt-2">
-                From R150
-              </p>
-
-              {/* Actions */}
 
               <div className="flex gap-2 pt-3">
 
                 <Link
-                  to={`/supplier/${s.userId}`}
-                  className="flex-1 text-center border border-gray-300 py-2 rounded-md hover:bg-gray-50"
+                  to={`/supplier/${s.id}`}
+                  className="flex-1 text-center border py-2 rounded-md"
                 >
                   View Profile
                 </Link>
 
                 <button
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700"
+                  onClick={() => handleBooking(s)}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-md"
                 >
                   Request Booking
                 </button>
@@ -252,47 +232,28 @@ export default function SuppliersPage() {
 
       {/* Pagination */}
 
-      {total > limit && (
-
+      {totalPages > 1 && (
         <div className="flex justify-between pt-6">
 
           <button
-            className="border rounded px-4 py-2 disabled:opacity-50"
-            onClick={() => setOffset(Math.max(0, offset - limit))}
-            disabled={offset === 0}
+            onClick={() => setPage(Math.max(1, page - 1))}
+            disabled={page === 1}
           >
             ← Previous
           </button>
 
+          <span>Page {page} of {totalPages}</span>
+
           <button
-            className="border rounded px-4 py-2 disabled:opacity-50"
-            onClick={() => setOffset(offset + limit)}
-            disabled={offset + limit >= total}
+            onClick={() => setPage(page + 1)}
+            disabled={page >= totalPages}
           >
             Next →
           </button>
 
         </div>
-
       )}
 
     </div>
   );
-}
-
-/* Debounce search */
-
-function useDebounced<T>(value: T, ms = 300) {
-
-  const [v, setV] = useState(value);
-
-  useEffect(() => {
-
-    const id = setTimeout(() => setV(value), ms);
-
-    return () => clearTimeout(id);
-
-  }, [value, ms]);
-
-  return v;
 }
