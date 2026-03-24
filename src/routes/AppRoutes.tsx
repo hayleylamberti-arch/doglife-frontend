@@ -34,13 +34,45 @@ import SupplierServicesPage from "@pages/supplier-services";
 import BookService from "@pages/book-service";
 
 /* ================================
-   🔥 NEW: PROTECTED ROUTE
+   PROTECTED ROUTE
 ================================ */
 import ProtectedRoute from "@components/ProtectedRoute";
 
 export default function AppRoutes() {
   return (
     <Routes>
+
+      {/* ================================
+          PUBLIC ROUTES ✅
+      ================================ */}
+      <Route path="/" element={<Landing />} />
+      <Route path="/auth" element={<AuthPage />} />
+      <Route path="/owner-signup" element={<OwnerSignup />} />
+      <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
+      <Route path="/search" element={<Search />} />
+
+      {/* ================================
+          BOOKING (optional public)
+      ================================ */}
+      <Route path="/book/:supplierId" element={<BookService />} />
+
+      {/* ================================
+          OWNER ROUTES (PROTECTED)
+      ================================ */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <OwnerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/add-dog" element={<AddDog />} />
+        <Route path="/my-dogs" element={<MyDogs />} />
+        <Route path="/dog/:id" element={<DogProfile />} />
+        <Route path="/nearby" element={<Nearby />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
 
       {/* ================================
           SUPPLIER ROUTES (PROTECTED)
@@ -51,37 +83,6 @@ export default function AppRoutes() {
           <Route path="/supplier/:id" element={<SupplierProfile />} />
           <Route path="/supplier-services" element={<SupplierServicesPage />} />
         </Route>
-      </Route>
-
-      {/* Public supplier onboarding */}
-      <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
-
-      {/* ================================
-          BOOKING (can stay public for now)
-      ================================ */}
-      <Route path="/book/:supplierId" element={<BookService />} />
-
-      {/* ================================
-          OWNER ROUTES (NOW PROTECTED)
-      ================================ */}
-      <Route
-        element={
-          <ProtectedRoute>
-            <OwnerLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="/" element={<Landing />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/auth" element={<AuthPage />} />
-        <Route path="/owner-signup" element={<OwnerSignup />} />
-
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/add-dog" element={<AddDog />} />
-        <Route path="/my-dogs" element={<MyDogs />} />
-        <Route path="/dog/:id" element={<DogProfile />} />
-        <Route path="/nearby" element={<Nearby />} />
-        <Route path="/profile" element={<Profile />} />
       </Route>
 
     </Routes>
