@@ -1,8 +1,8 @@
 import { Routes, Route } from "react-router-dom";
 
-/* ===============================
+/* ================================
    OWNER LAYOUT + PAGES
-=============================== */
+================================ */
 import OwnerLayout from "@layouts/OwnerLayout";
 
 import Landing from "@pages/landing";
@@ -17,9 +17,9 @@ import DogProfile from "@pages/dog-profile";
 import Nearby from "@pages/nearby";
 import Profile from "@pages/profile";
 
-/* ===============================
+/* ================================
    SUPPLIER
-=============================== */
+================================ */
 import SupplierLayout from "@layouts/SupplierLayout";
 import SupplierProtectedRoute from "@components/SupplierProtectedRoute";
 
@@ -28,53 +28,59 @@ import SupplierProfile from "@pages/supplier-profile";
 import SupplierOnboarding from "@pages/supplier-onboarding";
 import SupplierServicesPage from "@pages/supplier-services";
 
-/* ===============================
-   BOOKING (NEW)
-=============================== */
+/* ================================
+   BOOKING
+================================ */
 import BookService from "@pages/book-service";
+
+/* ================================
+   🔥 NEW: PROTECTED ROUTE
+================================ */
+import ProtectedRoute from "@components/ProtectedRoute";
 
 export default function AppRoutes() {
   return (
     <Routes>
 
-      {/* ===============================
+      {/* ================================
           SUPPLIER ROUTES (PROTECTED)
-      =============================== */}
+      ================================ */}
       <Route element={<SupplierProtectedRoute />}>
-  <Route element={<SupplierLayout />}>
-    <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
-    <Route path="/supplier/:id" element={<SupplierProfile />} />
-
-    {/* ✅ FIX: MOVE THIS INSIDE */}
-    <Route path="/supplier-services" element={<SupplierServicesPage />} />
-  </Route>
-</Route>
+        <Route element={<SupplierLayout />}>
+          <Route path="/supplier-dashboard" element={<SupplierDashboard />} />
+          <Route path="/supplier/:id" element={<SupplierProfile />} />
+          <Route path="/supplier-services" element={<SupplierServicesPage />} />
+        </Route>
+      </Route>
 
       {/* Public supplier onboarding */}
       <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
 
-      {/* ===============================
-          BOOKING ROUTE (GLOBAL)
-      =============================== */}
+      {/* ================================
+          BOOKING (can stay public for now)
+      ================================ */}
       <Route path="/book/:supplierId" element={<BookService />} />
 
-      {/* ===============================
-          OWNER ROUTES
-      =============================== */}
-      <Route element={<OwnerLayout />}>
+      {/* ================================
+          OWNER ROUTES (NOW PROTECTED)
+      ================================ */}
+      <Route
+        element={
+          <ProtectedRoute>
+            <OwnerLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Landing />} />
         <Route path="/search" element={<Search />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/owner-signup" element={<OwnerSignup />} />
 
         <Route path="/dashboard" element={<Dashboard />} />
-
         <Route path="/add-dog" element={<AddDog />} />
         <Route path="/my-dogs" element={<MyDogs />} />
         <Route path="/dog/:id" element={<DogProfile />} />
-
         <Route path="/nearby" element={<Nearby />} />
-
         <Route path="/profile" element={<Profile />} />
       </Route>
 

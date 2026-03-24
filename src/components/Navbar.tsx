@@ -3,20 +3,16 @@ import { Button } from "@/components/ui/button";
 import Brand from "@/components/Brand";
 import { Home, Search, Menu } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /* ================================
-     AUTH STATE
+     AUTH (FIXED)
   ================================ */
-  const token = localStorage.getItem("token");
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/";
-  };
+  const { token, logout } = useAuth();
 
   const navItems = [
     { label: "Home", href: "/", icon: <Home className="h-4 w-4" /> },
@@ -53,10 +49,9 @@ export default function Navbar() {
           </div>
 
           {/* ================================
-             AUTH / USER ACTIONS (DESKTOP)
+              AUTH BUTTONS (FIXED)
           ================================ */}
           <div className="hidden md:flex items-center space-x-3">
-
             {!token ? (
               <>
                 <Link to="/auth" className="text-gray-600 hover:text-gray-900">
@@ -69,22 +64,18 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <Link
-                  to="/dashboard"
-                  className="text-gray-600 hover:text-gray-900"
-                >
+                <Link to="/dashboard" className="text-gray-600 hover:text-gray-900">
                   Dashboard
                 </Link>
 
                 <button
-                  onClick={handleLogout}
+                  onClick={logout}
                   className="text-sm text-red-600 hover:underline"
                 >
                   Logout
                 </button>
               </>
             )}
-
           </div>
 
           {/* Mobile menu button */}
@@ -97,7 +88,7 @@ export default function Navbar() {
         </div>
 
         {/* ================================
-           MOBILE MENU
+            MOBILE MENU (FIXED)
         ================================ */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 space-y-2 border-t">
@@ -140,8 +131,8 @@ export default function Navbar() {
                 </Link>
 
                 <button
-                  onClick={handleLogout}
-                  className="block px-4 py-2 text-red-600"
+                  onClick={logout}
+                  className="block w-full text-left px-4 py-2 text-red-600"
                 >
                   Logout
                 </button>

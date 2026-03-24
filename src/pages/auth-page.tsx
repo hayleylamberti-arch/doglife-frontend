@@ -18,7 +18,6 @@ export default function AuthPage() {
   /* ================================
      LOGIN MUTATION
   ================================ */
-
   const loginMutation = useMutation({
     mutationFn: async () => {
       const res = await api.post("/api/auth/login", {
@@ -28,8 +27,8 @@ export default function AuthPage() {
       return res.data;
     },
     onSuccess: (data) => {
-      setToken(data.token); // 🔥 CRITICAL
-      navigate("/dashboard"); // default for now
+      setToken(data.token);
+      navigate("/dashboard");
     },
     onError: (err: any) => {
       alert(err?.response?.data?.error || "Login failed");
@@ -39,7 +38,6 @@ export default function AuthPage() {
   /* ================================
      SUBMIT
   ================================ */
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     loginMutation.mutate();
@@ -48,7 +46,6 @@ export default function AuthPage() {
   /* ================================
      UI
   ================================ */
-
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <Card className="w-full max-w-md">
