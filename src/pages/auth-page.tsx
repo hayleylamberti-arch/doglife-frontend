@@ -19,21 +19,29 @@ export default function AuthPage() {
      LOGIN MUTATION
   ================================ */
   const loginMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.post("/api/auth/login", {
-        email,
-        password,
-      });
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setToken(data.token);
+  mutationFn: async () => {
+    const res = await api.post("/api/auth/login", {
+      email,
+      password,
+    });
+    return res.data;
+  },
+
+  onSuccess: (data) => {
+    setToken(data.token);
+
+    // ✅ ROLE-BASED REDIRECT
+    if (data.user.role === "SUPPLIER") {
+      navigate("/supplier-dashboard");
+    } else {
       navigate("/dashboard");
-    },
-    onError: (err: any) => {
-      alert(err?.response?.data?.error || "Login failed");
-    },
-  });
+    }
+  },
+
+  onError: (err: any) => {
+    alert(err?.response?.data?.error || "Login failed");
+  },
+});
 
   /* ================================
      SUBMIT
