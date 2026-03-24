@@ -1,14 +1,11 @@
 import { Outlet } from "react-router-dom";
-import Navbar from "@/components/Navbar";
+import OwnerNavbar from "@/components/OwnerNavbar";
 
 export default function OwnerLayout() {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-
-      <main className="flex-1">
-        <Outlet />
-      </main>
+    <div>
+      <OwnerNavbar />
+      <Outlet /> {/* 🔥 THIS IS CRITICAL */}
     </div>
   );
 }

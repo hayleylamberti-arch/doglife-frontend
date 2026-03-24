@@ -31,7 +31,7 @@ export default function AuthPage() {
     setToken(data.token);
 
     // ✅ ROLE-BASED REDIRECT
-    if (data.user.role === "SUPPLIER") {
+    if (data.role === "SUPPLIER") {
       navigate("/supplier-dashboard");
     } else {
       navigate("/dashboard");
