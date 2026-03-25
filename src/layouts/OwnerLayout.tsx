@@ -1,10 +1,10 @@
 import { Outlet } from "react-router-dom";
-import OwnerNavbar from "@/components/OwnerNavbar";
+import RoleNavbar from "@/components/RoleNavbar";
 
 export default function OwnerLayout() {
   return (
     <div>
-      <OwnerNavbar />
+      <RoleNavbar />
       <Outlet /> {/* 🔥 THIS IS CRITICAL */}
     </div>
   );
