@@ -36,7 +36,7 @@ export default function SupplierNavbar() {
         {/* Right side */}
         <button
           onClick={handleLogout}
-          className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
+          className="text-sm text-red-600 hover:text-red-800 hover:underline"
         >
           Logout
         </button>
