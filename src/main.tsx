@@ -5,7 +5,7 @@ import App from "./App";
 
 import "./index.css"; // 👈 MUST EXIST
 
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider } from "@/hooks/useAuth";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
