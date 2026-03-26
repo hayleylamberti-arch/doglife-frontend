@@ -13,6 +13,7 @@ import Landing from "@pages/landing";
 import Search from "@pages/search";
 import AuthPage from "@pages/auth-page";
 import OwnerSignup from "@pages/owner-signup";
+import JoinDogLife from "@pages/join-doglife";
 
 /* ================================
    OWNER PAGES
@@ -53,6 +54,7 @@ export default function AppRoutes() {
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/owner-signup" element={<OwnerSignup />} />
       <Route path="/supplier-onboarding" element={<SupplierOnboarding />} />
+      <Route path="/join-doglife" element={<JoinDogLife />} />
 
       {/* ================================
           PUBLIC + OWNER (WITH NAVBAR)

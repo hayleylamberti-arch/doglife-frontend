@@ -30,12 +30,12 @@ export default function GuestNavbar() {
           <Link to="/auth" className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline">
             Log in
           </Link>
-          <Link to="/owner-signup" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-700">
-            Get Started (Owner)
-          </Link>
-          <Link to="/supplier-onboarding" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 dark:bg-green-500 dark:hover:bg-green-600 dark:focus:ring-green-700">
-            Get Started (Supplier)
-          </Link>
+<Link
+  to="/join-doglife"
+  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-700"
+>
+  Join DogLife
+</Link>
         </div>
       </div>
     </nav>
