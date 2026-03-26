@@ -3,13 +3,12 @@ import Brand from "./Brand";
 export default function RoleNavbar() {
   console.log("RoleNavbar is rendering!");
   return (
-    <nav className="border-b bg-red-100">
+    <nav className="border-b bg-white">
       <div className="max-w-7xl mx-auto px-6 h-24 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <a href="/" className="flex items-center">
             <Brand />
           </a>
-          <span className="text-red-600 font-bold">FIXED NAVBAR</span>
           <a href="/" className="hover:underline text-gray-700">
             Home
           </a>

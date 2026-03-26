@@ -1,38 +1,76 @@
+import React from "react";
 import { Link } from "react-router-dom";
 
+/**
+ * Navigation bar for dog owners.  Once a user is authenticated as an
+ * owner they will see this navbar on their dashboard pages.  It exposes
+ * routes relevant to pet owners: their dashboard, search, a list of
+ * registered dogs and their personal profile.  A logout button is
+ * included on the right which clears the auth token and returns the
+ * user back to the landing page.
+ */
 export default function OwnerNavbar() {
-
+  /**
+   * Clears the JWT/token from localStorage and forces a full page
+   * navigation back to the landing page.  We avoid using the
+   * history API here to guarantee a clean reload state after logout.
+   */
   const handleLogout = () => {
-    localStorage.removeItem("token"); // 🔑 clear auth
-    window.location.href = "/";       // 🔄 force reset app state
+    try {
+      localStorage.removeItem("token");
+    } catch (err) {
+      // ignore errors – localStorage may not be available in some contexts
+    }
+    window.location.href = "/";
   };
 
   return (
-    <nav className="border-b bg-white">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-
-        {/* LEFT SIDE */}
-        <div className="flex items-center gap-6">
-          <Link to="/" className="font-semibold">
+    <nav
+      className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 fixed top-0 left-0 right-0 z-50"
+    >
+      <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+        {/* Left side: brand and primary navigation */}
+        <div className="flex items-center space-x-6">
+          <Link
+            to="/"
+            className="text-xl font-semibold text-gray-900 dark:text-white whitespace-nowrap"
+          >
             DogLife
           </Link>
-
-          <Link to="/dashboard">Home</Link>
-          <Link to="/search">Search</Link>
-          <Link to="/my-dogs">My Dogs</Link>
-          <Link to="/profile">Profile</Link>
+          <div className="flex items-center space-x-4">
+            <Link
+              to="/dashboard"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Home
+            </Link>
+            <Link
+              to="/search"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Search
+            </Link>
+            <Link
+              to="/my-dogs"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              My Dogs
+            </Link>
+            <Link
+              to="/profile"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:underline"
+            >
+              Profile
+            </Link>
+          </div>
         </div>
-
-        {/* RIGHT SIDE */}
-        <div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-red-600 hover:text-red-800 hover:underline"
-          >
-            Logout
-          </button>
-        </div>
-
+        {/* Right side: logout */}
+        <button
+          onClick={handleLogout}
+          className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+        >
+          Logout
+        </button>
       </div>
     </nav>
   );
