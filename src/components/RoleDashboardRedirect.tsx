@@ -2,15 +2,15 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function RoleDashboardRedirect() {
-  const { user } = useAuth();
+  const { role, isAuthenticated } = useAuth();
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
+  if (!isAuthenticated) {
+    return <Navigate replace to="/auth/login" />;
   }
 
-  if (user.role === "SUPPLIER") {
-    return <Navigate to="/supplier-dashboard" replace />;
+  if (role === "SUPPLIER") {
+    return <Navigate replace to="/supplier/dashboard" />;
   }
 
-  return <Navigate to="/owner-dashboard" replace />;
+  return <Navigate replace to="/owner/dashboard" />;
 }
