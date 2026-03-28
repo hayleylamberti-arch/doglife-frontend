@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
 /* ================================
@@ -15,12 +15,30 @@ type BookingStatus =
   | "PAID"
   | "CANCELLED";
 
+type BusinessProfile = {
+  businessName?: string;
+  description?: string;
+  website?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  operatingSuburbs?: string[];
+};
+
+type SupplierService = {
+  id: string;
+  serviceType: string;
+  durationMinutes: number;
+  basePrice: number;
+};
+
 type Booking = {
   id: string;
   status: BookingStatus;
   serviceType?: string;
   startAt?: string;
   suburb?: string;
+  owner?: { name?: string };
+  dog?: { name?: string; breed?: string };
 };
 
 /* ================================
@@ -29,16 +47,12 @@ type Booking = {
 
 function formatService(service?: string) {
   if (!service) return "Service";
+  return service.replace(/_/g, " ");
+}
 
-  const map: Record<string, string> = {
-    WALKING: "🐕 Dog Walking",
-    GROOMING: "✂️ Grooming",
-    BOARDING: "🏠 Boarding",
-    TRAINING: "🎓 Training",
-    DAYCARE: "🐾 Daycare",
-  };
-
-  return map[service] ?? service;
+function formatDate(date?: string) {
+  if (!date) return "—";
+  return new Date(date).toLocaleString();
 }
 
 /* ================================
@@ -48,51 +62,82 @@ function formatService(service?: string) {
 export default function SupplierDashboard() {
   const queryClient = useQueryClient();
 
+  const [profileForm, setProfileForm] = useState<BusinessProfile>({});
+  const [serviceForm, setServiceForm] = useState({
+    serviceType: "WALKING",
+    durationMinutes: "60",
+    basePrice: "",
+  });
+
   /* ================================
      FETCH DATA
   ================================ */
 
-  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+  const { data: profileData, isLoading: loadingProfile } = useQuery({
     queryKey: ["supplier-profile"],
-    queryFn: async () => {
-      const res = await api.get("/supplier/profile");
-      return res.data;
-    },
+    queryFn: async () => (await api.get("/supplier/profile")).data,
   });
 
-  const { data: bookingsData, isLoading: isBookingsLoading } = useQuery({
-    queryKey: ["supplier-bookings"],
-    queryFn: async () => {
-      const res = await api.get("/supplier/bookings");
-      return res.data;
-    },
+  const { data: servicesData } = useQuery({
+    queryKey: ["supplier-services"],
+    queryFn: async () => (await api.get("/supplier/services")).data,
   });
+
+  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
+    queryKey: ["supplier-bookings"],
+    queryFn: async () => (await api.get("/supplier/bookings")).data,
+  });
+
+  const profile: BusinessProfile = profileData?.profile ?? {};
+  const services: SupplierService[] = servicesData?.services ?? [];
+  const bookings: Booking[] = bookingsData?.bookings ?? [];
+
+  useEffect(() => {
+    setProfileForm(profile);
+  }, [profile]);
 
   /* ================================
      MUTATIONS
   ================================ */
 
-  const bookingAction = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: string }) => {
-      return api.patch(`/supplier/bookings/${id}/${action}`);
-    },
+  const saveProfile = useMutation({
+    mutationFn: async () => api.patch("/supplier/profile", profileForm),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-profile"] }),
+  });
+
+  const addService = useMutation({
+    mutationFn: async () =>
+      api.post("/supplier/services", {
+        serviceType: serviceForm.serviceType,
+        durationMinutes: Number(serviceForm.durationMinutes),
+        basePrice: Number(serviceForm.basePrice),
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+      setServiceForm({ serviceType: "WALKING", durationMinutes: "60", basePrice: "" });
     },
   });
 
+  const bookingAction = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: string }) =>
+      api.patch(`/supplier/bookings/${id}/${action}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] }),
+  });
+
   /* ================================
-     DATA
+     GROUP BOOKINGS
   ================================ */
 
-  const profile = profileData?.profile ?? {};
-  const bookings: Booking[] = bookingsData?.bookings ?? [];
+  const grouped = useMemo(() => {
+    return {
+      pending: bookings.filter((b) => b.status === "PENDING"),
+      confirmed: bookings.filter((b) => b.status === "CONFIRMED"),
+      inProgress: bookings.filter((b) => b.status === "IN_PROGRESS"),
+    };
+  }, [bookings]);
 
-  const pending = bookings.filter((b) => b.status === "PENDING");
-  const confirmed = bookings.filter((b) => b.status === "CONFIRMED");
-
-  if (isProfileLoading || isBookingsLoading) {
-    return <div className="p-6">Loading dashboard...</div>;
+  if (loadingProfile || loadingBookings) {
+    return <div className="p-6">Loading supplier dashboard...</div>;
   }
 
   /* ================================
@@ -106,73 +151,88 @@ export default function SupplierDashboard() {
         Welcome {profile.businessName || "Supplier"}
       </h1>
 
-      {/* ================= PROFILE ================= */}
-      <div className="border p-4 rounded">
-        <h2 className="text-xl font-semibold mb-2">Business Profile</h2>
-        <p><strong>Name:</strong> {profile.businessName || "—"}</p>
-        <p><strong>Email:</strong> {profile.contactEmail || "—"}</p>
-        <p><strong>Phone:</strong> {profile.contactPhone || "—"}</p>
+      {/* PROFILE */}
+      <div className="border p-4 rounded space-y-3">
+        <h2 className="text-xl font-semibold">Business Profile</h2>
+
+        <input
+          className="border p-2 w-full"
+          placeholder="Business Name"
+          value={profileForm.businessName || ""}
+          onChange={(e) =>
+            setProfileForm({ ...profileForm, businessName: e.target.value })
+          }
+        />
+
+        <textarea
+          className="border p-2 w-full"
+          placeholder="Description"
+          value={profileForm.description || ""}
+          onChange={(e) =>
+            setProfileForm({ ...profileForm, description: e.target.value })
+          }
+        />
+
+        <button
+          className="bg-black text-white px-4 py-2 rounded"
+          onClick={() => saveProfile.mutate()}
+        >
+          Save Profile
+        </button>
       </div>
 
-      {/* ================= BOOKINGS ================= */}
+      {/* SERVICES */}
+      <div className="border p-4 rounded space-y-3">
+        <h2 className="text-xl font-semibold">Services</h2>
+
+        <input
+          className="border p-2"
+          placeholder="Price"
+          value={serviceForm.basePrice}
+          onChange={(e) =>
+            setServiceForm({ ...serviceForm, basePrice: e.target.value })
+          }
+        />
+
+        <button
+          className="bg-black text-white px-4 py-2 rounded"
+          onClick={() => addService.mutate()}
+        >
+          Add Service
+        </button>
+
+        {services.map((s) => (
+          <div key={s.id} className="border p-2">
+            {formatService(s.serviceType)} – R{s.basePrice}
+          </div>
+        ))}
+      </div>
+
+      {/* BOOKINGS */}
       <div className="space-y-6">
 
-        {/* PENDING */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Pending Bookings</h2>
+        <h2 className="text-xl font-semibold">Bookings</h2>
 
-          {pending.length === 0 && <p>No pending bookings</p>}
+        {grouped.pending.map((b) => (
+          <div key={b.id} className="border p-3 rounded">
+            <p>{formatService(b.serviceType)}</p>
+            <p>{b.suburb}</p>
 
-          {pending.map((b) => (
-            <div key={b.id} className="border p-3 rounded mb-2">
-              <p>{formatService(b.serviceType)}</p>
-              <p>{b.suburb}</p>
+            <button
+              onClick={() => bookingAction.mutate({ id: b.id, action: "accept" })}
+              className="bg-green-600 text-white px-2 py-1 mr-2"
+            >
+              Accept
+            </button>
 
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() =>
-                    bookingAction.mutate({ id: b.id, action: "accept" })
-                  }
-                  className="bg-green-600 text-white px-3 py-1 rounded"
-                >
-                  Accept
-                </button>
-
-                <button
-                  onClick={() =>
-                    bookingAction.mutate({ id: b.id, action: "decline" })
-                  }
-                  className="bg-red-600 text-white px-3 py-1 rounded"
-                >
-                  Decline
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* CONFIRMED */}
-        <div>
-          <h2 className="text-xl font-semibold mb-2">Confirmed Bookings</h2>
-
-          {confirmed.length === 0 && <p>No confirmed bookings</p>}
-
-          {confirmed.map((b) => (
-            <div key={b.id} className="border p-3 rounded mb-2">
-              <p>{formatService(b.serviceType)}</p>
-              <p>{b.suburb}</p>
-
-              <button
-                onClick={() =>
-                  bookingAction.mutate({ id: b.id, action: "start" })
-                }
-                className="bg-blue-600 text-white px-3 py-1 rounded mt-2"
-              >
-                Start Job
-              </button>
-            </div>
-          ))}
-        </div>
+            <button
+              onClick={() => bookingAction.mutate({ id: b.id, action: "decline" })}
+              className="bg-red-600 text-white px-2 py-1"
+            >
+              Decline
+            </button>
+          </div>
+        ))}
 
       </div>
     </div>
