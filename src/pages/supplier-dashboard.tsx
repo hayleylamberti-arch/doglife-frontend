@@ -1,283 +1,180 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { api } from "@/lib/api";
 
-/* Format service names */
-function formatService(service: string) {
+/* ================================
+   TYPES
+================================ */
+
+type BookingStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "COMPLETED_UNBILLED"
+  | "PAID"
+  | "CANCELLED";
+
+type Booking = {
+  id: string;
+  status: BookingStatus;
+  serviceType?: string;
+  startAt?: string;
+  suburb?: string;
+};
+
+/* ================================
+   HELPERS
+================================ */
+
+function formatService(service?: string) {
+  if (!service) return "Service";
+
   const map: Record<string, string> = {
     WALKING: "🐕 Dog Walking",
     GROOMING: "✂️ Grooming",
     BOARDING: "🏠 Boarding",
     TRAINING: "🎓 Training",
     DAYCARE: "🐾 Daycare",
-    PET_SITTING: "🛋️ Pet Sitting",
-    PET_TRANSPORT: "🚗 Transport",
-    MOBILE_VET: "🩺 Mobile Vet",
   };
 
   return map[service] ?? service;
 }
 
+/* ================================
+   COMPONENT
+================================ */
+
 export default function SupplierDashboard() {
   const queryClient = useQueryClient();
 
   /* ================================
-     DATA FETCHING
+     FETCH DATA
   ================================ */
 
-  const { data, isLoading } = useQuery({
+  const { data: profileData, isLoading: isProfileLoading } = useQuery({
     queryKey: ["supplier-profile"],
     queryFn: async () => {
-      const res = await api.get("/api/supplier/profile");
+      const res = await api.get("/supplier/profile");
       return res.data;
     },
   });
 
-  const { data: bookingsData } = useQuery({
+  const { data: bookingsData, isLoading: isBookingsLoading } = useQuery({
     queryKey: ["supplier-bookings"],
     queryFn: async () => {
-      const res = await api.get("/api/supplier/bookings");
+      const res = await api.get("/supplier/bookings");
       return res.data;
     },
   });
 
   /* ================================
-     ACTIONS (API CALLS)
+     MUTATIONS
   ================================ */
 
-  const refreshBookings = () => {
-    queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
-  };
-
-  const acceptBooking = async (id: string) => {
-    await api.patch(`/api/supplier/bookings/${id}/accept`);
-    refreshBookings();
-  };
-
-  const declineBooking = async (id: string) => {
-    await api.patch(`/api/supplier/bookings/${id}/decline`);
-    refreshBookings();
-  };
-
-  const startBooking = async (id: string) => {
-    await api.patch(`/api/supplier/bookings/${id}/start`);
-    refreshBookings();
-  };
-
-  const completeBooking = async (id: string) => {
-    await api.patch(`/api/bookings/${id}/complete`);
-    refreshBookings();
-  };
-
-  const markPaid = async (id: string) => {
-    await api.patch(`/api/bookings/${id}/mark-paid`);
-    refreshBookings();
-  };
+  const bookingAction = useMutation({
+    mutationFn: async ({ id, action }: { id: string; action: string }) => {
+      return api.patch(`/supplier/bookings/${id}/${action}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
+    },
+  });
 
   /* ================================
-     SAFETY GUARDS
+     DATA
   ================================ */
 
-  if (isLoading) {
-    return <div className="p-10">Loading dashboard...</div>;
+  const profile = profileData?.profile ?? {};
+  const bookings: Booking[] = bookingsData?.bookings ?? [];
+
+  const pending = bookings.filter((b) => b.status === "PENDING");
+  const confirmed = bookings.filter((b) => b.status === "CONFIRMED");
+
+  if (isProfileLoading || isBookingsLoading) {
+    return <div className="p-6">Loading dashboard...</div>;
   }
-
-  if (!data || typeof data !== "object") {
-    return <div className="p-10">No data available</div>;
-  }
-
-  /* ================================
-     SAFE DATA EXTRACTION
-  ================================ */
-
-  const supplier =
-    typeof data.profile === "object" && data.profile !== null
-      ? data.profile
-      : {};
-
-  const safeBusinessName =
-    typeof supplier.businessName === "string"
-      ? supplier.businessName
-      : "";
-
-  const safeSuburb =
-    typeof supplier.suburb === "string" ? supplier.suburb : "";
-
-  const safeServices = Array.isArray(supplier.serviceTypes)
-    ? supplier.serviceTypes
-    : [];
-
-  const bookings = Array.isArray(bookingsData?.bookings)
-    ? bookingsData.bookings
-    : [];
-
-  /* ================================
-     BOOKING GROUPS
-  ================================ */
-
-  const pending = bookings.filter((b: any) => b.status === "PENDING");
-  const confirmed = bookings.filter((b: any) => b.status === "CONFIRMED");
-  const inProgress = bookings.filter((b: any) => b.status === "IN_PROGRESS");
-  const unpaid = bookings.filter(
-    (b: any) => b.status === "COMPLETED_UNBILLED"
-  );
-  const completed = bookings.filter((b: any) => b.status === "COMPLETED");
-
-  /* ================================
-     UI HELPERS
-  ================================ */
-
-  const BookingCard = ({ b }: { b: any }) => (
-    <div className="border rounded-lg p-4 bg-white shadow-sm">
-      <p className="font-medium">{b.serviceType}</p>
-      <p className="text-sm text-muted-foreground">
-        {new Date(b.startAt).toLocaleString()}
-      </p>
-
-      <div className="flex gap-2 mt-3 flex-wrap">
-        {b.status === "PENDING" && (
-          <>
-            <button
-              onClick={() => acceptBooking(b.id)}
-              className="px-3 py-1 bg-green-600 text-white rounded"
-            >
-              Accept
-            </button>
-            <button
-              onClick={() => declineBooking(b.id)}
-              className="px-3 py-1 bg-red-600 text-white rounded"
-            >
-              Decline
-            </button>
-          </>
-        )}
-
-        {b.status === "CONFIRMED" && (
-          <button
-            onClick={() => startBooking(b.id)}
-            className="px-3 py-1 bg-blue-600 text-white rounded"
-          >
-            Start
-          </button>
-        )}
-
-        {b.status === "IN_PROGRESS" && (
-          <button
-            onClick={() => completeBooking(b.id)}
-            className="px-3 py-1 bg-purple-600 text-white rounded"
-          >
-            Complete
-          </button>
-        )}
-
-        {b.status === "COMPLETED_UNBILLED" && (
-          <button
-            onClick={() => markPaid(b.id)}
-            className="px-3 py-1 bg-yellow-600 text-white rounded"
-          >
-            Mark Paid
-          </button>
-        )}
-      </div>
-    </div>
-  );
 
   /* ================================
      UI
   ================================ */
 
   return (
-    <div className="max-w-7xl mx-auto p-6 grid md:grid-cols-[240px_1fr] gap-8">
-      {/* Sidebar */}
-      <aside className="space-y-4">
-        <h2 className="text-xl font-semibold">Supplier</h2>
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
 
-        <nav className="flex flex-col gap-2 text-sm">
-          <Link
-            to="/supplier-dashboard"
-            className="px-3 py-2 rounded-md bg-blue-50 text-blue-700"
-          >
-            Dashboard
-          </Link>
+      <h1 className="text-3xl font-semibold">
+        Welcome {profile.businessName || "Supplier"}
+      </h1>
 
-          {supplier && typeof supplier.id === "string" && (
-            <Link
-              to={`/supplier/${supplier.id}`}
-              className="px-3 py-2 rounded-md hover:bg-gray-100"
-            >
-              Public Profile
-            </Link>
-          )}
+      {/* ================= PROFILE ================= */}
+      <div className="border p-4 rounded">
+        <h2 className="text-xl font-semibold mb-2">Business Profile</h2>
+        <p><strong>Name:</strong> {profile.businessName || "—"}</p>
+        <p><strong>Email:</strong> {profile.contactEmail || "—"}</p>
+        <p><strong>Phone:</strong> {profile.contactPhone || "—"}</p>
+      </div>
 
-          <Link
-            to="/supplier-onboarding"
-            className="px-3 py-2 rounded-md hover:bg-gray-100"
-          >
-            Edit Business Info
-          </Link>
+      {/* ================= BOOKINGS ================= */}
+      <div className="space-y-6">
 
-          <Link
-            to="/supplier-bookings"
-            className="px-3 py-2 rounded-md hover:bg-gray-100"
-          >
-            Booking Requests
-          </Link>
-        </nav>
-      </aside>
-
-      {/* Main */}
-      <main className="space-y-8">
-        {/* Header */}
+        {/* PENDING */}
         <div>
-          <h1 className="text-3xl font-semibold">
-            Welcome {safeBusinessName ? `, ${safeBusinessName}` : ""}
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage your bookings and services
-          </p>
+          <h2 className="text-xl font-semibold mb-2">Pending Bookings</h2>
+
+          {pending.length === 0 && <p>No pending bookings</p>}
+
+          {pending.map((b) => (
+            <div key={b.id} className="border p-3 rounded mb-2">
+              <p>{formatService(b.serviceType)}</p>
+              <p>{b.suburb}</p>
+
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() =>
+                    bookingAction.mutate({ id: b.id, action: "accept" })
+                  }
+                  className="bg-green-600 text-white px-3 py-1 rounded"
+                >
+                  Accept
+                </button>
+
+                <button
+                  onClick={() =>
+                    bookingAction.mutate({ id: b.id, action: "decline" })
+                  }
+                  className="bg-red-600 text-white px-3 py-1 rounded"
+                >
+                  Decline
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Booking Sections */}
+        {/* CONFIRMED */}
+        <div>
+          <h2 className="text-xl font-semibold mb-2">Confirmed Bookings</h2>
 
-        {/* Pending */}
-        <Section title="🟡 Pending Requests" items={pending} />
+          {confirmed.length === 0 && <p>No confirmed bookings</p>}
 
-        {/* Confirmed */}
-        <Section title="🔵 Confirmed Bookings" items={confirmed} />
+          {confirmed.map((b) => (
+            <div key={b.id} className="border p-3 rounded mb-2">
+              <p>{formatService(b.serviceType)}</p>
+              <p>{b.suburb}</p>
 
-        {/* In Progress */}
-        <Section title="🟣 In Progress" items={inProgress} />
+              <button
+                onClick={() =>
+                  bookingAction.mutate({ id: b.id, action: "start" })
+                }
+                className="bg-blue-600 text-white px-3 py-1 rounded mt-2"
+              >
+                Start Job
+              </button>
+            </div>
+          ))}
+        </div>
 
-        {/* Awaiting Payment */}
-        <Section title="🟠 Awaiting Payment" items={unpaid} />
-
-        {/* Completed */}
-        <Section title="🟢 Completed" items={completed} />
-      </main>
+      </div>
     </div>
   );
-
-  /* ================================
-     SECTION COMPONENT
-  ================================ */
-
-  function Section({ title, items }: any) {
-    return (
-      <div className="space-y-3">
-        <h2 className="text-xl font-semibold">{title}</h2>
-
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No bookings
-          </p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {items.map((b: any) => (
-              <BookingCard key={b.id} b={b} />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
 }
