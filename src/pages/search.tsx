@@ -1,26 +1,36 @@
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export default function SearchPage() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [params] = useSearchParams();
+  const location = params.get("location") || "";
+
+  const [searchTerm, setSearchTerm] = useState(location);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const fetchSuppliers = async () => {
+  /* ================================
+     FETCH SUPPLIERS
+  ================================ */
+
+  const fetchSuppliers = async (query?: string) => {
     try {
       setLoading(true);
       setError("");
 
-      const res = await api.get("/api/suppliers");
+      const searchValue = query ?? searchTerm;
 
-      console.log("FULL RESPONSE:", res);
-      console.log("DATA:", res.data);
+      const res = await api.get(
+        `/api/suppliers?location=${encodeURIComponent(searchValue)}`
+      );
 
-      const data = res.data?.suppliers || [];
+      const data = res.data?.suppliers ?? res.data ?? [];
 
       setSuppliers(data);
     } catch (err) {
@@ -31,70 +41,113 @@ export default function SearchPage() {
     }
   };
 
+  /* ================================
+     INITIAL LOAD (from URL)
+  ================================ */
+
   useEffect(() => {
-    fetchSuppliers();
-  }, []);
+    if (location) {
+      setSearchTerm(location);
+      fetchSuppliers(location);
+    } else {
+      fetchSuppliers();
+    }
+  }, [location]);
+
+  /* ================================
+     FILTER (CLIENT SIDE)
+  ================================ */
 
   const filtered = suppliers
-    .filter((s: any) => s.businessName) // only show valid suppliers
+    .filter((s: any) => s?.businessName)
     .filter((s: any) =>
       (s.businessName || "")
         .toLowerCase()
         .includes(searchTerm.toLowerCase())
     );
 
+  /* ================================
+     UI
+  ================================ */
+
   return (
     <div className="min-h-screen bg-doglife-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-10">
 
+        {/* TITLE */}
         <h1 className="text-3xl font-bold mb-6">
-          Find Dog Services Near You
+          {location
+            ? `Dog Services in ${location}`
+            : "Find Dog Services Near You"}
         </h1>
 
+        {/* SEARCH BAR */}
         <Card className="mb-8">
           <CardContent className="p-6 flex gap-4">
             <Input
-              placeholder="Search for dog walkers, groomers..."
+              placeholder="Search suburb or service (e.g. Sandton, grooming)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Button onClick={fetchSuppliers}>
+            <Button onClick={() => fetchSuppliers()}>
               Search
             </Button>
           </CardContent>
         </Card>
 
-        {loading && <p>Loading...</p>}
+        {/* STATES */}
+        {loading && <p>Loading suppliers...</p>}
         {error && <p className="text-red-500">{error}</p>}
 
+        {/* RESULTS */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filtered.map((service: any) => (
-            <Card key={service.id} className="hover:shadow-lg transition">
+          {filtered.map((supplier: any) => (
+            <Card key={supplier.id} className="hover:shadow-lg transition">
               <CardContent className="p-6 space-y-3">
 
-                {/* Header */}
+                {/* HEADER */}
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold">
-                    {service.businessName || "No business name"}
+                    {supplier.businessName || "Unnamed Business"}
                   </h3>
 
-                  <span className="text-sm bg-green-100 text-green-700 px-2 py-1 rounded">
+                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                     Verified
                   </span>
                 </div>
 
-                {/* Description */}
+                {/* DESCRIPTION */}
                 <p className="text-sm text-gray-600">
-                  {service.aboutServices || "No description provided"}
+                  {supplier.description ||
+                    supplier.aboutServices ||
+                    "No description provided"}
                 </p>
 
-                {/* Footer */}
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-yellow-500">★★★★★</span>
+                {/* SERVICES */}
+                <div className="text-sm text-gray-700">
+                  {supplier.services?.length > 0 ? (
+                    supplier.services.map((s: any) => (
+                      <p key={s.id}>
+                        {s.serviceType?.replace(/_/g, " ")} · R{s.basePrice}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-gray-400 text-xs">
+                      No services listed
+                    </p>
+                  )}
+                </div>
 
-                  <Button size="sm">
-                    View Provider
-                  </Button>
+                {/* FOOTER */}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-yellow-500 text-sm">★★★★★</span>
+
+                 <Button
+  size="sm"
+  onClick={() => navigate(`/supplier/${supplier.id}`)}
+>
+  View Provider
+</Button> 
                 </div>
 
               </CardContent>
@@ -102,9 +155,10 @@ export default function SearchPage() {
           ))}
         </div>
 
+        {/* EMPTY STATE */}
         {!loading && filtered.length === 0 && (
           <div className="text-center text-gray-500 mt-10">
-            No services found.
+            No services found in this area yet.
           </div>
         )}
 

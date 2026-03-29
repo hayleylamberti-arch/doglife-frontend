@@ -19,14 +19,22 @@ export default function LoginPage() {
 
     try {
       const result = await login({ email, password });
+
       const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
+      // ✅ If user was redirected here from another page
       if (from && from !== "/") {
         navigate(from, { replace: true });
         return;
       }
 
-      navigate("/dashboard", { replace: true });
+      // ✅ ROLE-BASED REDIRECT (FIX)
+      if (result.user.role === "SUPPLIER") {
+        navigate("/supplier/dashboard", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
+
     } catch (loginError: any) {
       setError(loginError?.response?.data?.message ?? "Unable to sign in.");
     } finally {
@@ -59,7 +67,11 @@ export default function LoginPage() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white" disabled={isSubmitting} type="submit">
+        <button
+          className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white"
+          disabled={isSubmitting}
+          type="submit"
+        >
           {isSubmitting ? "Signing in..." : "Sign in"}
         </button>
       </form>

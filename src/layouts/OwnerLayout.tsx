@@ -5,9 +5,11 @@ export default function OwnerLayout() {
   return (
     <div>
 
+      {/* NAVBAR */}
       <OwnerNavbar />
 
-      <main className="pt-20 px-6">
+      {/* PAGE CONTENT */}
+      <main className="pt-20 px-4">
         <Outlet />
       </main>
 

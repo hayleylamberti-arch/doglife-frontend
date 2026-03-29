@@ -8,10 +8,10 @@ export default function SupplierProfilePage() {
   const isPublicView = Boolean(id);
 
   /* ================================
-     FETCH SUPPLIER PROFILE + SERVICES
+     FETCH PROFILE
   ================================ */
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["supplierProfile", id],
     queryFn: async () => {
       if (isPublicView) {
@@ -25,11 +25,12 @@ export default function SupplierProfilePage() {
   });
 
   /* ================================
-     FETCH OWNER DOGS
+     FETCH DOGS (PUBLIC ONLY)
   ================================ */
 
   const { data: dogsData } = useQuery({
     queryKey: ["owner-dogs"],
+    enabled: isPublicView,
     queryFn: async () => {
       const res = await api.get("/api/owner/dogs");
       return res.data;
@@ -38,147 +39,349 @@ export default function SupplierProfilePage() {
 
   const dogs = dogsData?.dogs ?? [];
 
+  const supplier = isPublicView ? data?.supplier : data?.profile;
+  const services = supplier?.services ?? [];
+
   /* ================================
-     EXTRACT DATA
+     EDIT PROFILE STATE
   ================================ */
 
-  const supplier = isPublicView ? data?.supplier : data?.profile;
+  const [isEditing, setIsEditing] = useState(false);
 
-  const services = supplier?.services ?? []; // 🔥 IMPORTANT
+  const [form, setForm] = useState({
+    businessName: "",
+    description: "",
+    website: "",
+    address: "",
+    contactPhone: "",
+  });
+
+  useEffect(() => {
+    if (supplier) {
+      setForm({
+        businessName: supplier.businessName || "",
+        description: supplier.aboutServices || "",
+        website: supplier.websiteUrl || "",
+        address: supplier.businessAddress || "",
+        contactPhone: supplier.businessPhone || "",
+      });
+    }
+  }, [supplier]);
 
   /* ================================
-     STATE
+     SERVICES STATE
+  ================================ */
+
+  const [servicesForm, setServicesForm] = useState([
+    { service: "", unit: "PER_HOUR", baseRateCents: "", durationMinutes: "" }
+  ]);
+
+  /* ================================
+     AVAILABILITY STATE
+  ================================ */
+
+  const [availabilityForm, setAvailabilityForm] = useState([
+    { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }
+  ]);
+
+  /* ================================
+     PROFILE SAVE
+  ================================ */
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      return api.patch("/api/supplier/profile", {
+        businessName: form.businessName,
+        aboutServices: form.description,
+        websiteUrl: form.website,
+        businessAddress: form.address,
+        businessPhone: form.contactPhone,
+      });
+    },
+    onSuccess: () => {
+      alert("Profile updated ✅");
+      setIsEditing(false);
+      refetch();
+    },
+  });
+
+  /* ================================
+     SERVICES SAVE
+  ================================ */
+
+  const saveServicesMutation = useMutation({
+    mutationFn: async () => {
+      return api.post("/api/supplier/services", {
+        services: servicesForm.map((s) => ({
+          service: s.service,
+          unit: s.unit,
+          baseRateCents: Number(s.baseRateCents) * 100,
+          durationMinutes: s.durationMinutes
+            ? Number(s.durationMinutes)
+            : null
+        }))
+      });
+    },
+    onSuccess: () => {
+      alert("Services saved ✅");
+      refetch();
+    },
+  });
+
+  /* ================================
+     AVAILABILITY SAVE
+  ================================ */
+
+  const saveAvailabilityMutation = useMutation({
+    mutationFn: async () => {
+      return api.post("/api/supplier/availability", {
+        availability: availabilityForm
+      });
+    },
+    onSuccess: () => {
+      alert("Availability saved ✅ 🎉");
+      refetch();
+    },
+  });
+
+  /* ================================
+     BOOKING
   ================================ */
 
   const [selectedService, setSelectedService] = useState("");
   const [selectedDog, setSelectedDog] = useState("");
   const [selectedDateTime, setSelectedDateTime] = useState("");
 
-  /* ================================
-     BOOKING MUTATION
-  ================================ */
-
   const bookingMutation = useMutation({
     mutationFn: async () => {
-      if (!selectedService) throw new Error("Select a service");
-      if (!selectedDog) throw new Error("Select a dog");
-      if (!selectedDateTime) throw new Error("Select a time");
-
       return api.post("/api/bookings", {
-        supplierServiceId: selectedService, // ✅ FIXED
+        supplierServiceId: selectedService,
         dogIds: [selectedDog],
         startAt: new Date(selectedDateTime).toISOString(),
-        notes: "Booking from UI"
       });
     },
-    onSuccess: () => {
-      alert("Booking requested ✅");
-      setSelectedDateTime("");
-    },
-    onError: (err: any) => {
-      alert(err?.response?.data?.error || err.message);
-    }
+    onSuccess: () => alert("Booking requested ✅"),
   });
 
   /* ================================
      LOADING
   ================================ */
 
-  if (isLoading) {
-    return <div className="p-6">Loading provider...</div>;
-  }
-
-  if (!supplier) {
-    return <div className="p-6 text-red-600">Supplier not found</div>;
-  }
+  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (!supplier) return <div className="p-6">Not found</div>;
 
   /* ================================
      UI
   ================================ */
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-10">
+    <div className="max-w-5xl mx-auto p-6 space-y-8">
 
       {/* HEADER */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="flex justify-between items-start">
 
-        <div className="h-64 bg-gray-200 rounded-xl flex items-center justify-center text-5xl">
-          🐶
-        </div>
-
-        <div className="md:col-span-2 space-y-3">
-
-          <h1 className="text-3xl font-semibold">
+        <div>
+          <h1 className="text-3xl font-bold">
             {supplier.businessName}
           </h1>
-
-          <p className="text-muted-foreground">
-            📍 {supplier.businessAddress}
+          <p className="text-gray-500">
+            {supplier.businessAddress}
           </p>
-
-          <p className="text-sm">
-            {supplier.aboutServices}
-          </p>
-
         </div>
+
+        {!isPublicView && (
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className="border px-4 py-2 rounded"
+          >
+            {isEditing ? "Cancel" : "Edit Profile"}
+          </button>
+        )}
       </div>
 
-      {/* ================================
-         BOOKING SECTION
-      ================================ */}
+      {/* ONBOARDING STEP */}
+      {!isPublicView && (
+        <div className="bg-blue-50 border p-4 rounded">
+          Onboarding Step: {supplier?.user?.onboardingStep || 1} / 3
+        </div>
+      )}
 
-      {isPublicView && (
-        <div className="border rounded-xl p-6 bg-white shadow-sm space-y-4">
+      {/* EDIT PROFILE */}
+      {!isPublicView && isEditing && (
+        <div className="border p-6 rounded space-y-4">
 
-          <h2 className="text-xl font-semibold">
-            Request Booking
-          </h2>
-
-          {/* SERVICE SELECTOR */}
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
-          >
-            <option value="">Select service</option>
-
-            {services.map((s: any) => (
-              <option key={s.id} value={s.id}>
-                {s.service} — R{(s.baseRateCents / 100).toFixed(0)}
-              </option>
-            ))}
-          </select>
-
-          {/* DOG SELECTOR */}
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={selectedDog}
-            onChange={(e) => setSelectedDog(e.target.value)}
-          >
-            <option value="">Select your dog</option>
-
-            {dogs.map((dog: any) => (
-              <option key={dog.id} value={dog.id}>
-                {dog.name}
-              </option>
-            ))}
-          </select>
-
-          {/* DATE TIME */}
           <input
-            type="datetime-local"
-            className="w-full border rounded px-3 py-2"
-            value={selectedDateTime}
-            onChange={(e) => setSelectedDateTime(e.target.value)}
+            placeholder="Business Name"
+            className="border p-2 w-full"
+            value={form.businessName}
+            onChange={(e) =>
+              setForm({ ...form, businessName: e.target.value })
+            }
           />
 
-          {/* BUTTON */}
+          <textarea
+            placeholder="About services"
+            className="border p-2 w-full"
+            value={form.description}
+            onChange={(e) =>
+              setForm({ ...form, description: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Website"
+            className="border p-2 w-full"
+            value={form.website}
+            onChange={(e) =>
+              setForm({ ...form, website: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Address"
+            className="border p-2 w-full"
+            value={form.address}
+            onChange={(e) =>
+              setForm({ ...form, address: e.target.value })
+            }
+          />
+
+          <input
+            placeholder="Phone"
+            className="border p-2 w-full"
+            value={form.contactPhone}
+            onChange={(e) =>
+              setForm({ ...form, contactPhone: e.target.value })
+            }
+          />
+
           <button
-            onClick={() => bookingMutation.mutate()}
-            disabled={bookingMutation.isPending}
-            className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700"
+            onClick={() => updateMutation.mutate()}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
           >
-            {bookingMutation.isPending ? "Booking..." : "Request Booking"}
+            Save Profile
+          </button>
+        </div>
+      )}
+
+      {/* SERVICES */}
+      {!isPublicView && (
+        <div className="border p-6 rounded space-y-4">
+
+          <h2 className="text-xl font-semibold">Services</h2>
+
+          {servicesForm.map((s, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2">
+              <input
+                placeholder="Service"
+                className="border p-2"
+                value={s.service}
+                onChange={(e) => {
+                  const updated = [...servicesForm];
+                  updated[i].service = e.target.value;
+                  setServicesForm(updated);
+                }}
+              />
+              <input
+                placeholder="Price (R)"
+                className="border p-2"
+                value={s.baseRateCents}
+                onChange={(e) => {
+                  const updated = [...servicesForm];
+                  updated[i].baseRateCents = e.target.value;
+                  setServicesForm(updated);
+                }}
+              />
+            </div>
+          ))}
+
+          <button
+            onClick={() =>
+              setServicesForm([
+                ...servicesForm,
+                { service: "", unit: "PER_HOUR", baseRateCents: "", durationMinutes: "" }
+              ])
+            }
+            className="border px-3 py-1 rounded"
+          >
+            + Add Service
+          </button>
+
+          <button
+            onClick={() => saveServicesMutation.mutate()}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Save Services
+          </button>
+        </div>
+      )}
+
+      {/* AVAILABILITY */}
+      {!isPublicView && (
+        <div className="border p-6 rounded space-y-4">
+
+          <h2 className="text-xl font-semibold">Availability</h2>
+
+          {availabilityForm.map((slot, i) => (
+            <div key={i} className="grid grid-cols-3 gap-2">
+
+              <select
+                value={slot.dayOfWeek}
+                onChange={(e) => {
+                  const updated = [...availabilityForm];
+                  updated[i].dayOfWeek = Number(e.target.value);
+                  setAvailabilityForm(updated);
+                }}
+              >
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+                <option value={6}>Saturday</option>
+                <option value={0}>Sunday</option>
+              </select>
+
+              <input
+                type="time"
+                value={slot.startTime}
+                onChange={(e) => {
+                  const updated = [...availabilityForm];
+                  updated[i].startTime = e.target.value;
+                  setAvailabilityForm(updated);
+                }}
+              />
+
+              <input
+                type="time"
+                value={slot.endTime}
+                onChange={(e) => {
+                  const updated = [...availabilityForm];
+                  updated[i].endTime = e.target.value;
+                  setAvailabilityForm(updated);
+                }}
+              />
+
+            </div>
+          ))}
+
+          <button
+            onClick={() =>
+              setAvailabilityForm([
+                ...availabilityForm,
+                { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }
+              ])
+            }
+            className="border px-3 py-1 rounded"
+          >
+            + Add Slot
+          </button>
+
+          <button
+            onClick={() => saveAvailabilityMutation.mutate()}
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
+            Save Availability
           </button>
 
         </div>

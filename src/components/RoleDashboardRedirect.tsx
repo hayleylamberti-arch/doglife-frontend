@@ -13,9 +13,9 @@ export default function RoleDashboardRedirect() {
   }
 
   if (role === "OWNER") {
-    return <Navigate replace to="/owner/dashboard" />;
+    return <Navigate replace to="/dashboard" />; // ✅ FIX
   }
 
-  // 🔒 fallback safety (prevents blank screen bugs)
+  // 🔒 fallback safety
   return <Navigate replace to="/" />;
 }

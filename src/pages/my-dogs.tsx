@@ -23,8 +23,12 @@ export default function MyDogsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["/api/owner/dogs"],
+  const {
+    data,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["owner-dogs"], // ✅ cleaner key
     queryFn: async () => {
       const res = await apiRequest("/api/owner/dogs");
       return res.json();
@@ -32,15 +36,15 @@ export default function MyDogsPage() {
   });
 
   const deleteDogMutation = useMutation({
-  mutationFn: async (dogId: string) => {
-    await apiRequest(`/api/owner/dogs/${dogId}`, {
-      method: "DELETE",
-    });
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["/api/owner/dogs"] });
-  },
-});
+    mutationFn: async (dogId: string) => {
+      await apiRequest(`/api/owner/dogs/${dogId}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["owner-dogs"] }); // ✅ FIX
+    },
+  });
 
   const dogs: Dog[] = data?.dogs || [];
 
@@ -52,55 +56,69 @@ export default function MyDogsPage() {
     return <div className="p-10 text-red-500">Failed to load dogs</div>;
   }
 
- const handleEditDog = (dog: Dog) => {
-  setEditingDog(dog);
-  setShowForm(true);
-};
+  const handleEditDog = (dog: Dog) => {
+    setEditingDog(dog);
+    setShowForm(true);
+  };
 
-const handleDeleteDog = (dogId: string) => {
-  deleteDogMutation.mutate(dogId);
-}; 
+  const handleDeleteDog = (dogId: string) => {
+    deleteDogMutation.mutate(dogId);
+  };
 
   return (
     <div className="max-w-6xl mx-auto p-8">
 
       {/* Header */}
-
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">My Dogs</h1>
 
-        <Button onClick={() => setShowForm(!showForm)}>
+        <Button onClick={() => {
+          setEditingDog(null);
+          setShowForm(true);
+        }}>
           <Plus className="mr-2 h-4 w-4" />
           Add Dog
         </Button>
       </div>
 
-      {/* Dog Form */}
-
+      {/* Form */}
       {showForm && (
         <DogForm
           dog={editingDog}
           onClose={() => {
             setShowForm(false);
             setEditingDog(null);
+
+            // ✅ Force refresh after add/edit
+            queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
           }}
         />
       )}
 
+      {/* Empty State */}
+      {dogs.length === 0 && !showForm && (
+        <div className="text-center py-12 text-gray-500">
+          <p className="mb-4">No dogs added yet.</p>
+          <Button onClick={() => setShowForm(true)}>
+            Add your first dog
+          </Button>
+        </div>
+      )}
+
       {/* Dogs Grid */}
+      {dogs.length > 0 && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {dogs.map((dog) => (
+            <DogCard
+              key={dog.id}
+              dog={dog}
+              onEdit={() => handleEditDog(dog)}
+              onDelete={handleDeleteDog}
+            />
+          ))}
+        </div>
+      )}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-      {dogs.map((dog) => (
-  <DogCard
-    key={dog.id}
-    dog={dog}
-    onEdit={() => handleEditDog(dog)}
-    onDelete={handleDeleteDog}
-  />
-))}  
-
-      </div>
     </div>
   );
 }

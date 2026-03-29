@@ -10,6 +10,8 @@ import RoleDashboardRedirect from "@/components/RoleDashboardRedirect";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
+import Search from "@/pages/search";
+import MyDogs from "@/pages/my-dogs";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
@@ -23,37 +25,54 @@ export default function AppRoutes() {
   return (
     <Routes>
 
-      {/* PUBLIC */}
+      {/* ========================= */}
+      {/* PUBLIC ROUTES */}
+      {/* ========================= */}
       <Route element={<GuestLayout />}>
         <Route index element={<Landing />} />
+        <Route path="search" element={<Search />} /> {/* ✅ ONLY HERE */}
+        <Route path="supplier/:id" element={<SupplierProfile />} />
         <Route path="auth/login" element={<LoginPage />} />
         <Route path="auth/register" element={<RegisterPage />} />
         <Route path="auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="auth/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
-      {/* GENERIC REDIRECT */}
+      {/* ========================= */}
+      {/* GENERIC DASHBOARD REDIRECT */}
+      {/* ========================= */}
       <Route element={<RequireAuth />}>
         <Route path="dashboard" element={<RoleDashboardRedirect />} />
       </Route>
 
-      {/* OWNER */}
+      {/* ========================= */}
+      {/* OWNER ROUTES */}
+      {/* ========================= */}
       <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
         <Route element={<OwnerLayout />}>
+
           <Route path="owner/dashboard" element={<Dashboard />} />
           <Route path="owner/profile" element={<Profile />} />
+          <Route path="owner/my-dogs" element={<MyDogs />} />
+
         </Route>
       </Route>
 
-      {/* SUPPLIER */}
+      {/* ========================= */}
+      {/* SUPPLIER ROUTES */}
+      {/* ========================= */}
       <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
         <Route element={<SupplierLayout />}>
+
           <Route path="supplier/dashboard" element={<SupplierDashboard />} />
           <Route path="supplier/profile" element={<SupplierProfile />} />
+
         </Route>
       </Route>
 
+      {/* ========================= */}
       {/* FALLBACK */}
+      {/* ========================= */}
       <Route path="*" element={<Navigate to="/" replace />} />
 
     </Routes>
