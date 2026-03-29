@@ -3,20 +3,37 @@ import Brand from "@/components/Brand";
 
 export default function GuestLayout() {
   return (
-    <div>
+    <div className="min-h-screen bg-white">
 
       {/* NAVBAR */}
-      <nav className="flex justify-between items-center px-6 py-4 border-b bg-white">
+      <nav className="flex items-center justify-between px-6 py-4 border-b bg-white">
+
+        {/* LEFT: BRAND */}
         <Brand />
 
-        <div className="flex gap-4 text-sm">
-          <Link to="/auth/login">Log in</Link>
-          <Link to="/auth/register">Join DogLife</Link>
+        {/* RIGHT: LINKS */}
+        <div className="flex items-center gap-6 text-sm">
+          <Link
+            to="/auth/login"
+            className="text-gray-700 hover:underline"
+          >
+            Log in
+          </Link>
+
+          <Link
+            to="/auth/register"
+            className="text-black font-medium"
+          >
+            Join DogLife
+          </Link>
         </div>
+
       </nav>
 
       {/* PAGE CONTENT */}
-      <Outlet />
+      <main>
+        <Outlet />
+      </main>
 
     </div>
   );

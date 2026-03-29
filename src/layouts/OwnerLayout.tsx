@@ -1,13 +1,16 @@
 import { Outlet } from "react-router-dom";
-import AppNav from "@/components/AppNav";
+import OwnerNavbar from "@/components/OwnerNavbar";
 
 export default function OwnerLayout() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppNav />
-      <main className="mx-auto max-w-7xl p-6">
+    <div>
+
+      <OwnerNavbar />
+
+      <main className="pt-20 px-6">
         <Outlet />
       </main>
+
     </div>
   );
 }

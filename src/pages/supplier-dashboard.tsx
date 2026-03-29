@@ -167,9 +167,9 @@ export default function SupplierDashboard() {
         return api.post("/supplier/profile", payload);
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
-    },
+    onSuccess: async () => {
+  await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
+},
   });
 
   const addService = useMutation({
@@ -259,7 +259,7 @@ export default function SupplierDashboard() {
 
       {/* PROFILE */}
       <SupplierProfileSection
-        profile={profile}
+        profile={{ ...profile }}
         onSave={(updated) => saveProfile.mutate(updated)}
       />
 

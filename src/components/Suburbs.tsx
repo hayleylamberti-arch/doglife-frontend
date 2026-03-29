@@ -13,6 +13,14 @@ export default function Suburbs() {
     "Pretoria",
   ];
 
+  const handleClick = (suburb: string) => {
+    // 🚀 TEMP FIX: route to working page
+    // Later upgrade to: /search?suburb=...
+    navigate("/auth/register", {
+      state: { suburb },
+    });
+  };
+
   return (
     <section className="py-16 bg-white">
       <div className="max-w-5xl mx-auto px-6 text-center">
@@ -25,8 +33,8 @@ export default function Suburbs() {
             <button
               key={suburb}
               type="button"
-              onClick={() => navigate(`/search?location=${encodeURIComponent(suburb)}`)}
-              className="border rounded-lg py-3 hover:bg-gray-50 cursor-pointer"
+              onClick={() => handleClick(suburb)}
+              className="border rounded-lg py-3 hover:bg-gray-50 cursor-pointer transition"
             >
               {suburb}
             </button>

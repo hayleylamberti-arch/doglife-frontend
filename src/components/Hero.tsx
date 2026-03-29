@@ -5,6 +5,16 @@ export default function Hero() {
   const navigate = useNavigate();
   const [suburb, setSuburb] = useState("");
 
+  const handleSearch = () => {
+    // 🚀 TEMP: until search page exists
+    // You can later change this to /search
+    navigate("/auth/register");
+  };
+
+  const handleBecomeProvider = () => {
+    navigate("/auth/register?role=supplier");
+  };
+
   return (
     <section className="text-center py-20 px-6 bg-gray-50">
 
@@ -17,17 +27,17 @@ export default function Hero() {
       </p>
 
       {/* SEARCH */}
-      <div className="flex justify-center gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row justify-center gap-2 mb-4">
         <input
-          className="border p-3 rounded w-72"
+          className="border p-3 rounded w-full sm:w-72"
           placeholder="Enter your suburb (e.g. Sandton)"
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
         />
 
         <button
-          onClick={() => navigate("/search")}
-          className="bg-blue-600 text-white px-4 py-3 rounded"
+          onClick={handleSearch}
+          className="bg-blue-600 text-white px-4 py-3 rounded hover:bg-blue-700 transition"
         >
           Find Services
         </button>
@@ -35,8 +45,8 @@ export default function Hero() {
 
       {/* CTA */}
       <button
-        onClick={() => navigate("/auth/register?role=supplier")}
-        className="border px-6 py-3 rounded"
+        onClick={handleBecomeProvider}
+        className="border px-6 py-3 rounded hover:bg-gray-100 transition"
       >
         Become a Provider
       </button>
