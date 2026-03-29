@@ -36,33 +36,29 @@ export default function AuthPage() {
      LOGIN MUTATION
   ================================ */
   const loginMutation = useMutation({
-    // attempt to log the user in by posting credentials to the API
-    mutationFn: async () => {
-      const res = await api.post("/api/auth/login", {
-        email,
-        password,
-      });
-      return res.data;
-    },
+  mutationFn: async () => {
+    const res = await api.post("/auth/login", {
+      email,
+      password,
+    });
+    return res.data;
+  },
 
-    // save token and redirect based on role when login succeeds
-    onSuccess: (data) => {
-      setToken(data.token);
+  onSuccess: (data) => {
+    setToken(data.token);
 
-      // ✅ ROLE-BASED REDIRECT
-      if (data.role === "SUPPLIER") {
-        navigate("/supplier-dashboard");
-      } else {
-        // treat all other roles as owners
-        navigate("/dashboard");
-      }
-    },
+    // ✅ Correct routes
+    if (data.role === "SUPPLIER") {
+      navigate("/supplier/dashboard");
+    } else {
+      navigate("/owner/dashboard");
+    }
+  },
 
-    // surface an error message to the user on failure
-    onError: (err: any) => {
-      alert(err?.response?.data?.error || "Login failed");
-    },
-  });
+  onError: (err: any) => {
+    alert(err?.response?.data?.error || "Login failed");
+  },
+});
 
   /* ================================
      SUBMIT HANDLER
