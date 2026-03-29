@@ -1,19 +1,14 @@
-import Logo from "./Logo";
+import { Link } from "react-router-dom";
 
 export default function Brand() {
   return (
-    <div className="flex items-center gap-4 justify-center">
-      <Logo className="h-14 w-auto" />
-
-      <div className="text-left">
-        <div className="text-2xl font-bold text-gray-900 tracking-tight">
-          DogLife
-        </div>
-
-        <div className="text-sm text-gray-500 italic">
-          Because they're family
-        </div>
-      </div>
-    </div>
+    <Link to="/" className="flex flex-col leading-tight">
+      <span className="text-xl font-semibold text-gray-900 dark:text-white">
+        DogLife
+      </span>
+      <span className="text-xs text-gray-500 dark:text-gray-400">
+        Because they’re family
+      </span>
+    </Link>
   );
 }

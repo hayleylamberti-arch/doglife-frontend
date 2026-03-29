@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type BusinessProfile = {
   businessName?: string;
@@ -17,9 +17,23 @@ type Props = {
 export default function SupplierProfileSection({ profile, onSave }: Props) {
   const [form, setForm] = useState<BusinessProfile>(profile);
   const [suburbInput, setSuburbInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  /* ================================
+     🔥 FIX: sync form when profile loads
+  ================================ */
+  useEffect(() => {
+    setForm(profile);
+  }, [profile]);
 
   const addSuburb = () => {
     if (!suburbInput.trim()) return;
+
+    // prevent duplicates
+    if (form.operatingSuburbs?.includes(suburbInput.trim())) {
+      setSuburbInput("");
+      return;
+    }
 
     setForm((prev) => ({
       ...prev,
@@ -39,54 +53,78 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
     }));
   };
 
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(form);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="border p-4 rounded space-y-4">
       <h2 className="text-xl font-semibold">Business Profile</h2>
 
-      <input
-        className="border p-2 w-full"
-        placeholder="Business Name"
-        value={form.businessName || ""}
-        onChange={(e) =>
-          setForm({ ...form, businessName: e.target.value })
-        }
-      />
+      {/* Business Name */}
+      <div>
+        <label className="text-sm font-medium">Business Name</label>
+        <input
+          className="border p-2 w-full"
+          value={form.businessName || ""}
+          onChange={(e) =>
+            setForm({ ...form, businessName: e.target.value })
+          }
+        />
+      </div>
 
-      <textarea
-        className="border p-2 w-full"
-        placeholder="Business Description"
-        value={form.description || ""}
-        onChange={(e) =>
-          setForm({ ...form, description: e.target.value })
-        }
-      />
+      {/* Description */}
+      <div>
+        <label className="text-sm font-medium">Business Description</label>
+        <textarea
+          className="border p-2 w-full"
+          value={form.description || ""}
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
+        />
+      </div>
 
-      <input
-        className="border p-2 w-full"
-        placeholder="Website"
-        value={form.website || ""}
-        onChange={(e) =>
-          setForm({ ...form, website: e.target.value })
-        }
-      />
+      {/* Website */}
+      <div>
+        <label className="text-sm font-medium">Website</label>
+        <input
+          className="border p-2 w-full"
+          value={form.website || ""}
+          onChange={(e) =>
+            setForm({ ...form, website: e.target.value })
+          }
+        />
+      </div>
 
-      <input
-        className="border p-2 w-full"
-        placeholder="Email"
-        value={form.contactEmail || ""}
-        onChange={(e) =>
-          setForm({ ...form, contactEmail: e.target.value })
-        }
-      />
+      {/* Email */}
+      <div>
+        <label className="text-sm font-medium">Email</label>
+        <input
+          className="border p-2 w-full"
+          value={form.contactEmail || ""}
+          onChange={(e) =>
+            setForm({ ...form, contactEmail: e.target.value })
+          }
+        />
+      </div>
 
-      <input
-        className="border p-2 w-full"
-        placeholder="Phone"
-        value={form.contactPhone || ""}
-        onChange={(e) =>
-          setForm({ ...form, contactPhone: e.target.value })
-        }
-      />
+      {/* Phone */}
+      <div>
+        <label className="text-sm font-medium">Phone</label>
+        <input
+          className="border p-2 w-full"
+          value={form.contactPhone || ""}
+          onChange={(e) =>
+            setForm({ ...form, contactPhone: e.target.value })
+          }
+        />
+      </div>
 
       {/* Suburbs */}
       <div>
@@ -101,7 +139,8 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
           />
           <button
             onClick={addSuburb}
-            className="bg-gray-200 px-3"
+            className="bg-gray-200 px-3 rounded"
+            type="button"
           >
             Add
           </button>
@@ -120,11 +159,13 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         </div>
       </div>
 
+      {/* Save */}
       <button
         className="bg-black text-white px-4 py-2 rounded"
-        onClick={() => onSave(form)}
+        onClick={handleSave}
+        disabled={isSaving}
       >
-        Save Profile
+        {isSaving ? "Saving..." : "Save Profile"}
       </button>
     </div>
   );

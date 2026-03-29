@@ -1,13 +1,13 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import Brand from "@/components/Brand";
 
 export default function SupplierNavbar() {
   const handleLogout = () => {
     try {
-      localStorage.removeItem("token");
-    } catch (err) {
-      // ignore errors
-    }
+     localStorage.removeItem("token");
+localStorage.removeItem("authToken"); 
+    } catch (err) {}
     window.location.href = "/";
   };
 
@@ -15,21 +15,11 @@ export default function SupplierNavbar() {
     <nav className="bg-white border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700 fixed top-0 left-0 right-0 z-50">
       <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
 
-        {/* LEFT SIDE */}
+        {/* LEFT: BRAND + NAV */}
         <div className="flex items-center space-x-8">
 
-          {/* ✅ BRAND (FIXED) */}
-          <div className="flex flex-col leading-tight">
-            <Link
-              to="/supplier-dashboard"
-              className="text-xl font-semibold text-orange-500 whitespace-nowrap"
-            >
-              DogLife
-            </Link>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              Because they’re family
-            </span>
-          </div>
+          {/* ✅ BRAND (NEW) */}
+          <Brand />
 
           {/* NAV LINKS */}
           <div className="flex items-center space-x-4">
@@ -56,7 +46,7 @@ export default function SupplierNavbar() {
           </div>
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT: LOGOUT */}
         <button
           onClick={handleLogout}
           className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"

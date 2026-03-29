@@ -1,13 +1,16 @@
 import { Outlet } from "react-router-dom";
-import AppNav from "@/components/AppNav";
+import SupplierNavbar from "@/components/SupplierNavbar";
 
 export default function SupplierLayout() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppNav />
-      <main className="mx-auto max-w-7xl p-6 pt-24">
+    <div>
+      {/* NAVBAR */}
+      <SupplierNavbar />
+
+      {/* PAGE CONTENT */}
+      <div className="pt-20 px-4">
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }

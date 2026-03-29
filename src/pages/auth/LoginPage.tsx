@@ -26,11 +26,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (result.user.role === "SUPPLIER") {
-        navigate("/supplier/dashboard", { replace: true });
-      } else {
-        navigate("/owner/dashboard", { replace: true });
-      }
+      navigate("/dashboard", { replace: true });
     } catch (loginError: any) {
       setError(loginError?.response?.data?.message ?? "Unable to sign in.");
     } finally {
