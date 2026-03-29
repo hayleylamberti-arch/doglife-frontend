@@ -16,9 +16,17 @@ export default function AppNav() {
   return (
     <header className="border-b bg-white">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="text-xl font-semibold text-orange-500">
-          DogLife
-        </Link>
+        <div className="flex flex-col leading-tight">
+  <Link
+    to="/"
+    className="text-xl font-semibold text-orange-500 whitespace-nowrap"
+  >
+    DogLife
+  </Link>
+  <span className="text-xs text-gray-500">
+    Because they’re family
+  </span>
+</div>
 
         {!isAuthenticated ? (
           <div className="flex items-center gap-5 text-sm">

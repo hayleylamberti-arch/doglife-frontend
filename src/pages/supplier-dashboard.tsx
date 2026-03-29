@@ -130,7 +130,7 @@ export default function SupplierDashboard() {
     isError: servicesError,
   } = useQuery({
     queryKey: ["supplier-services"],
-    queryFn: async () => (await api.get("/supplier/services")).data,
+    queryFn: async () => (await api.get("/supplierServices")).data,
   });
 
   const {
@@ -142,9 +142,14 @@ export default function SupplierDashboard() {
     queryFn: async () => (await api.get("/supplier/bookings")).data,
   });
 
-  const profile: BusinessProfile = profileData?.profile ?? {};
-  const services: SupplierService[] = servicesData?.services ?? [];
-  const bookings: Booking[] = bookingsData?.bookings ?? [];
+  const profile: BusinessProfile =
+  profileData?.profile ?? profileData ?? {};
+
+const services: SupplierService[] =
+  servicesData?.services ?? servicesData ?? [];
+
+const bookings: Booking[] =
+  bookingsData?.bookings ?? bookingsData ?? [];
 
   /* ================================
      MUTATIONS
@@ -165,7 +170,7 @@ export default function SupplierDashboard() {
 
   const addService = useMutation({
     mutationFn: async () =>
-      api.post("/supplier/services", {
+      api.post("/supplierServices", {
         serviceType: serviceForm.serviceType,
         durationMinutes: Number(serviceForm.durationMinutes),
         basePrice: Number(serviceForm.basePrice),
@@ -181,12 +186,17 @@ export default function SupplierDashboard() {
   });
 
   const bookingAction = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: string }) =>
-      api.patch(`/supplier/bookings/${id}/${action}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
-    },
-  });
+  mutationFn: async ({ id, action }: { id: string; action: string }) => {
+    if (action === "complete" || action === "mark-paid") {
+      return api.patch(`/bookings/${id}/${action}`);
+    }
+
+    return api.patch(`/supplier/bookings/${id}/${action}`);
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
+  },
+});
 
   /* ================================
      GROUP BOOKINGS
@@ -215,7 +225,7 @@ export default function SupplierDashboard() {
     return <div className="p-6">Loading supplier dashboard...</div>;
   }
 
-  if (profileError || servicesError || bookingsError) {
+  if (profileError && servicesError && bookingsError) {
     return (
       <div className="p-6 text-red-600">
         Failed to load supplier dashboard.
