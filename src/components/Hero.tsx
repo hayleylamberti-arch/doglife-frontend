@@ -1,110 +1,50 @@
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 
 export default function Hero() {
   const navigate = useNavigate();
-
-  const suburbs = [
-    "Sandton",
-    "Fourways",
-    "Midrand",
-    "Pretoria",
-    "Rosebank",
-    "Centurion",
-    "Randburg",
-  ];
-
-  const [location, setLocation] = useState("");
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  const filteredSuburbs = suburbs.filter((suburb) =>
-    suburb.toLowerCase().includes(location.toLowerCase())
-  );
-
-  const handleSearch = () => {
-    if (!location) return;
-    navigate(`/search?location=${encodeURIComponent(location)}`);
-  };
-
-  const selectSuburb = (suburb: string) => {
-    setLocation(suburb);
-    setShowDropdown(false);
-  };
+  const [suburb, setSuburb] = useState("");
 
   return (
-    <section className="py-20 text-center bg-white">
-      <div className="max-w-3xl mx-auto px-6">
+    <section className="text-center py-20 px-6 bg-gray-50">
 
-        <div className="mb-4 text-sm text-blue-600 font-medium">
-          🐾 Now Launching in Gauteng
-        </div>
+      <h1 className="text-4xl font-bold mb-4">
+        Find trusted dog services in your neighbourhood
+      </h1>
 
-        <h1 className="text-4xl lg:text-5xl font-bold mb-4">
-          Find trusted dog services in your neighbourhood
-        </h1>
+      <p className="text-gray-600 mb-6">
+        Compare top-rated dog walkers, groomers, and trainers recommended by local pet owners.
+      </p>
 
-        <p className="text-gray-600 mb-8">
-          Compare top-rated dog walkers, groomers, and trainers recommended by
-          local pet owners.
-        </p>
+      {/* SEARCH */}
+      <div className="flex justify-center gap-2 mb-4">
+        <input
+          className="border p-3 rounded w-72"
+          placeholder="Enter your suburb (e.g. Sandton)"
+          value={suburb}
+          onChange={(e) => setSuburb(e.target.value)}
+        />
 
-        {/* Search Bar */}
-        <div className="relative flex flex-col sm:flex-row gap-3 justify-center">
-          <div className="relative w-full sm:w-80">
-            <input
-              type="text"
-              placeholder="Enter your suburb (e.g. Sandton)"
-              value={location}
-              onChange={(e) => {
-                setLocation(e.target.value);
-                setShowDropdown(true);
-              }}
-              className="border rounded-lg px-4 py-3 w-full"
-            />
-
-            {showDropdown && location && (
-              <div className="absolute left-0 right-0 bg-white border rounded-lg mt-1 shadow">
-                {filteredSuburbs.map((suburb) => (
-                  <div
-                    key={suburb}
-                    onClick={() => selectSuburb(suburb)}
-                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                  >
-                    {suburb}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Button size="lg" onClick={handleSearch}>
-            Find Services
-          </Button>
-        </div>
-
-        {/* Provider CTA */}
-        <div className="mt-4">
-          <Link to="/auth">
-            <Button variant="outline" size="lg">
-              Become a Provider
-            </Button>
-          </Link>
-        </div>
-
-        {/* Popular suburbs */}
-        <div className="mt-6 text-sm text-gray-500">
-          Popular: Sandton • Fourways • Midrand • Pretoria
-        </div>
-
-        {/* Trust indicators */}
-        <div className="flex flex-col sm:flex-row justify-center gap-6 mt-6 text-sm text-gray-600">
-          <div>✔ Verified Providers</div>
-          <div>⭐ Rated by Local Dog Owners</div>
-          <div>📍 Local Neighbourhood Services</div>
-        </div>
-
+        <button
+          onClick={() => navigate("/search")}
+          className="bg-blue-600 text-white px-4 py-3 rounded"
+        >
+          Find Services
+        </button>
       </div>
+
+      {/* CTA */}
+      <button
+        onClick={() => navigate("/auth/register?role=supplier")}
+        className="border px-6 py-3 rounded"
+      >
+        Become a Provider
+      </button>
+
+      <p className="text-sm text-gray-500 mt-6">
+        Popular: Sandton • Fourways • Midrand • Pretoria
+      </p>
+
     </section>
   );
 }
