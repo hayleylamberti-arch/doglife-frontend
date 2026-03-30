@@ -203,10 +203,10 @@ export default function SupplierDashboard() {
       </h1>
 
       {/* PROFILE */}
-      <SupplierProfileSection
-        profile={profile}
-        onSave={(updated) => saveProfile.mutate(updated)}
-      />
+      {/* <SupplierProfileSection
+  profile={profile}
+  onSave={(updated) => saveProfile.mutate(updated)}
+/> */}
 
       {/* SERVICES */}
       <div className="border p-4 rounded space-y-4">
