@@ -56,20 +56,62 @@ export default function SupplierProfilePage() {
     contactPhone: "",
   });
 
+  /* ================================
+     SAFE FORM SYNC (FIXED)
+  ================================ */
+
   useEffect(() => {
-    if (supplier) {
-      setForm({
-        businessName: supplier.businessName || "",
-        description: supplier.aboutServices || "",
-        website: supplier.websiteUrl || "",
-        address: supplier.businessAddress || "",
-        contactPhone: supplier.businessPhone || "",
-      });
-    }
-  }, [supplier]);
+    if (!supplier) return;
+
+    setForm({
+      businessName: supplier.businessName || "",
+      description: supplier.aboutServices || "",
+      website: supplier.websiteUrl || "",
+      address: supplier.businessAddress || "",
+      contactPhone: supplier.businessPhone || "",
+    });
+
+  }, [supplier?.id]); // ✅ prevents reset bug
 
   /* ================================
-     SERVICES STATE
+     PROFILE SAVE (FIXED)
+  ================================ */
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+
+      const payload = {
+        businessName: form.businessName,
+        aboutServices: form.description,
+        websiteUrl: form.website,
+        businessAddress: form.address,
+        businessPhone: form.contactPhone,
+        suburbId: null,
+      };
+
+      console.log("🚀 SENDING PROFILE UPDATE:", payload);
+
+      const res = await api.patch("/api/supplier/profile", payload);
+
+      console.log("✅ RESPONSE:", res.data);
+
+      return res.data;
+    },
+
+    onSuccess: () => {
+      alert("Profile updated ✅");
+      setIsEditing(false);
+      refetch();
+    },
+
+    onError: (err: any) => {
+      console.error("❌ UPDATE FAILED:", err?.response?.data || err);
+      alert(err?.response?.data?.error || "Update failed");
+    }
+  });
+
+  /* ================================
+     SERVICES STATE (UI ONLY FOR NOW)
   ================================ */
 
   const [servicesForm, setServicesForm] = useState([
@@ -84,54 +126,6 @@ export default function SupplierProfilePage() {
     { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }
   ]);
 
-  /* ================================
-     PROFILE SAVE
-  ================================ */
-
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      return api.patch("/api/supplier/profile", {
-        businessName: form.businessName,
-        aboutServices: form.description,
-        websiteUrl: form.website,
-        businessAddress: form.address,
-        businessPhone: form.contactPhone,
-      });
-    },
-    onSuccess: () => {
-      alert("Profile updated ✅");
-      setIsEditing(false);
-      refetch();
-    },
-  });
-
-  /* ================================
-     SERVICES SAVE
-  ================================ */
-
-  const saveServicesMutation = useMutation({
-    mutationFn: async () => {
-      return api.post("/api/supplier/services", {
-        services: servicesForm.map((s) => ({
-          service: s.service,
-          unit: s.unit,
-          baseRateCents: Number(s.baseRateCents) * 100,
-          durationMinutes: s.durationMinutes
-            ? Number(s.durationMinutes)
-            : null
-        }))
-      });
-    },
-    onSuccess: () => {
-      alert("Services saved ✅");
-      refetch();
-    },
-  });
-
-  /* ================================
-     AVAILABILITY SAVE
-  ================================ */
-
   const saveAvailabilityMutation = useMutation({
     mutationFn: async () => {
       return api.post("/api/supplier/availability", {
@@ -145,7 +139,7 @@ export default function SupplierProfilePage() {
   });
 
   /* ================================
-     BOOKING
+     BOOKING (PUBLIC)
   ================================ */
 
   const [selectedService, setSelectedService] = useState("");
@@ -199,7 +193,7 @@ export default function SupplierProfilePage() {
         )}
       </div>
 
-      {/* ONBOARDING STEP */}
+      {/* ONBOARDING */}
       {!isPublicView && (
         <div className="bg-blue-50 border p-4 rounded">
           Onboarding Step: {supplier?.user?.onboardingStep || 1} / 3
@@ -259,7 +253,7 @@ export default function SupplierProfilePage() {
             onClick={() => updateMutation.mutate()}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
-            Save Profile
+            {updateMutation.isPending ? "Saving..." : "Save Profile"}
           </button>
         </div>
       )}
@@ -307,11 +301,8 @@ export default function SupplierProfilePage() {
             + Add Service
           </button>
 
-          <button
-            onClick={() => saveServicesMutation.mutate()}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Save Services
+          <button className="bg-gray-400 text-white px-4 py-2 rounded">
+            Save Services (Next Step)
           </button>
         </div>
       )}
