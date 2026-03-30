@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 
 type BusinessProfile = {
   businessName?: string;
-  description?: string;
-  website?: string;
+  aboutServices?: string;
+  websiteUrl?: string;
   contactEmail?: string;
-  contactPhone?: string;
-  operatingSuburbs?: string[];
+  businessPhone?: string;
+  businessAddress?: string;
 };
 
 type Props = {
@@ -16,42 +16,14 @@ type Props = {
 
 export default function SupplierProfileSection({ profile, onSave }: Props) {
   const [form, setForm] = useState<BusinessProfile>(profile);
-  const [suburbInput, setSuburbInput] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   /* ================================
-     🔥 FIX: sync form when profile loads
+     Sync form when profile loads
   ================================ */
   useEffect(() => {
     setForm(profile);
   }, [profile]);
-
-  const addSuburb = () => {
-    if (!suburbInput.trim()) return;
-
-    // prevent duplicates
-    if (form.operatingSuburbs?.includes(suburbInput.trim())) {
-      setSuburbInput("");
-      return;
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      operatingSuburbs: [
-        ...(prev.operatingSuburbs || []),
-        suburbInput.trim(),
-      ],
-    }));
-
-    setSuburbInput("");
-  };
-
-  const removeSuburb = (suburb: string) => {
-    setForm((prev) => ({
-      ...prev,
-      operatingSuburbs: prev.operatingSuburbs?.filter((s) => s !== suburb),
-    }));
-  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -83,9 +55,9 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         <label className="text-sm font-medium">Business Description</label>
         <textarea
           className="border p-2 w-full"
-          value={form.description || ""}
+          value={form.aboutServices || ""}
           onChange={(e) =>
-            setForm({ ...form, description: e.target.value })
+            setForm({ ...form, aboutServices: e.target.value })
           }
         />
       </div>
@@ -95,9 +67,9 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         <label className="text-sm font-medium">Website</label>
         <input
           className="border p-2 w-full"
-          value={form.website || ""}
+          value={form.websiteUrl || ""}
           onChange={(e) =>
-            setForm({ ...form, website: e.target.value })
+            setForm({ ...form, websiteUrl: e.target.value })
           }
         />
       </div>
@@ -119,44 +91,23 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         <label className="text-sm font-medium">Phone</label>
         <input
           className="border p-2 w-full"
-          value={form.contactPhone || ""}
+          value={form.businessPhone || ""}
           onChange={(e) =>
-            setForm({ ...form, contactPhone: e.target.value })
+            setForm({ ...form, businessPhone: e.target.value })
           }
         />
       </div>
 
-      {/* Suburbs */}
+      {/* Address */}
       <div>
-        <p className="font-medium">Operating Suburbs</p>
-
-        <div className="flex gap-2">
-          <input
-            className="border p-2 flex-1"
-            value={suburbInput}
-            onChange={(e) => setSuburbInput(e.target.value)}
-            placeholder="Add suburb"
-          />
-          <button
-            onClick={addSuburb}
-            className="bg-gray-200 px-3 rounded"
-            type="button"
-          >
-            Add
-          </button>
-        </div>
-
-        <div className="flex gap-2 flex-wrap mt-2">
-          {form.operatingSuburbs?.map((s) => (
-            <span
-              key={s}
-              className="bg-gray-100 px-2 py-1 rounded cursor-pointer"
-              onClick={() => removeSuburb(s)}
-            >
-              {s} ✕
-            </span>
-          ))}
-        </div>
+        <label className="text-sm font-medium">Business Address</label>
+        <input
+          className="border p-2 w-full"
+          value={form.businessAddress || ""}
+          onChange={(e) =>
+            setForm({ ...form, businessAddress: e.target.value })
+          }
+        />
       </div>
 
       {/* Save */}
