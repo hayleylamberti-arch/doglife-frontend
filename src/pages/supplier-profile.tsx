@@ -39,6 +39,8 @@ export default function SupplierProfilePage() {
 
   const dogs = dogsData?.dogs ?? [];
 
+  console.log("PROFILE RESPONSE:", data);
+
   const supplier = isPublicView ? data?.supplier : data?.profile;
   const services = supplier?.services ?? [];
 
