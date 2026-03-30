@@ -18,11 +18,11 @@ type BookingStatus =
 
 type BusinessProfile = {
   businessName?: string;
-  description?: string;
-  website?: string;
+  aboutServices?: string;
+  websiteUrl?: string;
   contactEmail?: string;
-  contactPhone?: string;
-  operatingSuburbs?: string[];
+  businessPhone?: string;
+  businessAddress?: string;
 };
 
 type SupplierService = {
@@ -43,10 +43,6 @@ type Booking = {
     name?: string;
     firstName?: string;
     lastName?: string;
-  };
-  dog?: {
-    name?: string;
-    breed?: string;
   };
   dogs?: Array<{
     name?: string;
@@ -76,20 +72,12 @@ function formatDate(date?: string) {
 function getOwnerName(owner?: Booking["owner"]) {
   if (!owner) return "Unknown owner";
   if (owner.name) return owner.name;
-  const fullName = [owner.firstName, owner.lastName].filter(Boolean).join(" ");
-  return fullName || "Unknown owner";
+  return [owner.firstName, owner.lastName].filter(Boolean).join(" ");
 }
 
 function getDogText(booking: Booking) {
   if (booking.dogs?.length) {
-    return booking.dogs
-      .map((d) => (d.breed ? `${d.name} (${d.breed})` : d.name))
-      .join(", ");
-  }
-  if (booking.dog) {
-    return booking.dog.breed
-      ? `${booking.dog.name} (${booking.dog.breed})`
-      : booking.dog.name;
+    return booking.dogs.map((d) => d.name).join(", ");
   }
   return "—";
 }
@@ -102,7 +90,7 @@ export default function SupplierDashboard() {
   const queryClient = useQueryClient();
 
   /* ================================
-     SERVICE FORM (NEW)
+     SERVICE FORM
   ================================ */
 
   const [serviceForm, setServiceForm] = useState({
@@ -110,40 +98,25 @@ export default function SupplierDashboard() {
     unit: "PER_HOUR",
     durationMinutes: "60",
     basePrice: "",
-    notes: "",
-    pricingTiers: [
-      { dogSize: "SMALL", price: "" },
-      { dogSize: "MEDIUM", price: "" },
-      { dogSize: "LARGE", price: "" },
-    ],
   });
 
   /* ================================
-     FETCH DATA
+     FETCH DATA (FIXED ROUTES ✅)
   ================================ */
 
-  const { data: profileData, isLoading: loadingProfile, isError: profileError } =
-    useQuery({
-      queryKey: ["supplier-profile"],
-      queryFn: async () => (await api.get("/supplier/profile")).data,
-    });
-
-  const {
-    data: servicesData,
-    isLoading: loadingServices,
-    isError: servicesError,
-  } = useQuery({
-    queryKey: ["supplier-services"],
-    queryFn: async () => (await api.get("/supplierServices")).data,
+  const { data: profileData, isLoading: loadingProfile } = useQuery({
+    queryKey: ["supplier-profile"],
+    queryFn: async () => (await api.get("/api/supplier/profile")).data,
   });
 
-  const {
-    data: bookingsData,
-    isLoading: loadingBookings,
-    isError: bookingsError,
-  } = useQuery({
+  const { data: servicesData, isLoading: loadingServices } = useQuery({
+    queryKey: ["supplier-services"],
+    queryFn: async () => (await api.get("/api/supplier/services")).data,
+  });
+
+  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
     queryKey: ["supplier-bookings"],
-    queryFn: async () => (await api.get("/supplier/bookings")).data,
+    queryFn: async () => (await api.get("/api/supplier/bookings")).data,
   });
 
   const profile: BusinessProfile =
@@ -156,34 +129,26 @@ export default function SupplierDashboard() {
     bookingsData?.bookings ?? bookingsData ?? [];
 
   /* ================================
-     MUTATIONS
+     MUTATIONS (FIXED ROUTES ✅)
   ================================ */
 
   const saveProfile = useMutation({
     mutationFn: async (payload: BusinessProfile) => {
-      try {
-        return await api.patch("/supplier/profile", payload);
-      } catch {
-        return api.post("/supplier/profile", payload);
-      }
+      return api.patch("/api/supplier/profile", payload);
     },
     onSuccess: async () => {
-  await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
-},
+      await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
+      alert("Profile saved ✅");
+    },
   });
 
   const addService = useMutation({
     mutationFn: async () =>
-      api.post("/supplierServices", {
+      api.post("/api/supplier/services", {
         serviceType: serviceForm.serviceType,
         unit: serviceForm.unit,
         durationMinutes: Number(serviceForm.durationMinutes),
         basePrice: Number(serviceForm.basePrice),
-        notes: serviceForm.notes,
-        pricingTiers: serviceForm.pricingTiers.map((t) => ({
-          dogSize: t.dogSize,
-          price: Number(t.price),
-        })),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
@@ -193,28 +158,18 @@ export default function SupplierDashboard() {
         unit: "PER_HOUR",
         durationMinutes: "60",
         basePrice: "",
-        notes: "",
-        pricingTiers: [
-          { dogSize: "SMALL", price: "" },
-          { dogSize: "MEDIUM", price: "" },
-          { dogSize: "LARGE", price: "" },
-        ],
       });
     },
   });
 
   const bookingAction = useMutation({
-  mutationFn: async ({ id, action }: { id: string; action: string }) => {
-    if (action === "complete" || action === "mark-paid") {
-      return api.patch(`/api/bookings/${id}/${action}`);
-    }
-
-    return api.patch(`/api/supplier/bookings/${id}/${action}`);
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
-  },
-});
+    mutationFn: async ({ id, action }: { id: string; action: string }) => {
+      return api.patch(`/api/supplier/bookings/${id}/${action}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
+    },
+  });
 
   /* ================================
      GROUP BOOKINGS
@@ -224,27 +179,16 @@ export default function SupplierDashboard() {
     return {
       pending: bookings.filter((b) => b.status === "PENDING"),
       confirmed: bookings.filter((b) => b.status === "CONFIRMED"),
-      inProgress: bookings.filter((b) => b.status === "IN_PROGRESS"),
-      completedUnbilled: bookings.filter(
-        (b) => b.status === "COMPLETED_UNBILLED"
-      ),
-      completed: bookings.filter(
-        (b) => b.status === "COMPLETED" || b.status === "PAID"
-      ),
-      cancelled: bookings.filter((b) => b.status === "CANCELLED"),
+      completed: bookings.filter((b) => b.status === "COMPLETED"),
     };
   }, [bookings]);
 
   /* ================================
-     LOADING / ERROR
+     LOADING
   ================================ */
 
   if (loadingProfile || loadingServices || loadingBookings) {
-    return <div className="p-6">Loading supplier dashboard...</div>;
-  }
-
-  if (profileError && servicesError && bookingsError) {
-    return <div className="p-6 text-red-600">Failed to load dashboard.</div>;
+    return <div className="p-6">Loading dashboard...</div>;
   }
 
   /* ================================
@@ -253,13 +197,14 @@ export default function SupplierDashboard() {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
+
       <h1 className="text-3xl font-semibold">
         Welcome {profile.businessName || "Supplier"}
       </h1>
 
       {/* PROFILE */}
       <SupplierProfileSection
-        profile={{ ...profile }}
+        profile={profile}
         onSave={(updated) => saveProfile.mutate(updated)}
       />
 
@@ -279,62 +224,12 @@ export default function SupplierDashboard() {
           <option value="GROOMING">Grooming</option>
         </select>
 
-        <select
-          className="border p-2 w-full"
-          value={serviceForm.unit}
-          onChange={(e) =>
-            setServiceForm({ ...serviceForm, unit: e.target.value })
-          }
-        >
-          <option value="PER_HOUR">Per Hour</option>
-          <option value="PER_NIGHT">Per Night</option>
-          <option value="PER_DAY">Per Day</option>
-        </select>
-
-        <input
-          className="border p-2 w-full"
-          placeholder="Duration (minutes)"
-          value={serviceForm.durationMinutes}
-          onChange={(e) =>
-            setServiceForm({ ...serviceForm, durationMinutes: e.target.value })
-          }
-        />
-
         <input
           className="border p-2 w-full"
           placeholder="Base Price (ZAR)"
           value={serviceForm.basePrice}
           onChange={(e) =>
             setServiceForm({ ...serviceForm, basePrice: e.target.value })
-          }
-        />
-
-        {/* Pricing tiers */}
-        <div>
-          <p className="font-medium">Pricing by Dog Size</p>
-          {serviceForm.pricingTiers.map((tier, i) => (
-            <div key={tier.dogSize} className="flex gap-2 mt-1">
-              <span className="w-20">{tier.dogSize}</span>
-              <input
-                className="border p-2 flex-1"
-                placeholder="Price"
-                value={tier.price}
-                onChange={(e) => {
-                  const updated = [...serviceForm.pricingTiers];
-                  updated[i].price = e.target.value;
-                  setServiceForm({ ...serviceForm, pricingTiers: updated });
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        <textarea
-          className="border p-2 w-full"
-          placeholder="Notes (e.g. per dog, discounts for multiple dogs)"
-          value={serviceForm.notes}
-          onChange={(e) =>
-            setServiceForm({ ...serviceForm, notes: e.target.value })
           }
         />
 
@@ -345,16 +240,32 @@ export default function SupplierDashboard() {
           Add Service
         </button>
 
-        <div>
-          {services.map((s) => (
-            <div key={s.id} className="border p-2 mt-2">
-              {formatService(s.serviceType)} · R{s.basePrice}
-            </div>
-          ))}
-        </div>
+        {services.map((s) => (
+          <div key={s.id} className="border p-2">
+            {formatService(s.serviceType)} · R{s.basePrice}
+          </div>
+        ))}
       </div>
 
-      {/* BOOKINGS (unchanged) */}
+      {/* BOOKINGS */}
+      <div className="border p-4 rounded space-y-4">
+        <h2 className="text-xl font-semibold">Bookings</h2>
+
+        {grouped.pending.map((b) => (
+          <div key={b.id} className="border p-2">
+            {formatService(b.serviceType)} · {formatDate(b.startAt)}
+            <button
+              onClick={() =>
+                bookingAction.mutate({ id: b.id, action: "confirm" })
+              }
+              className="ml-4 bg-green-600 text-white px-2 py-1 rounded"
+            >
+              Accept
+            </button>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 }
