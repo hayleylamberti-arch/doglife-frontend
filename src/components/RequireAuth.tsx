@@ -1,25 +1,29 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
-import { useAuth, type UserRole } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
-interface RequireAuthProps {
-  allowRoles?: UserRole[];
-}
-
-export default function RequireAuth({ allowRoles }: RequireAuthProps) {
+export default function RequireAuth({
+  allowRoles,
+}: {
+  allowRoles?: string[];
+}) {
+  const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
-  const { isAuthenticated, role, isLoading } = useAuth();
 
+  // 🔄 Wait for auth to load
   if (isLoading) {
-    return <div className="p-8 text-center">Loading session...</div>;
+    return <div className="p-6">Loading...</div>;
   }
 
+  // 🔒 Not logged in
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  if (allowRoles && role && !allowRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+  // 🚫 Wrong role
+  if (allowRoles && user && !allowRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
   }
 
+  // ✅ THIS IS THE MOST IMPORTANT LINE
   return <Outlet />;
 }
