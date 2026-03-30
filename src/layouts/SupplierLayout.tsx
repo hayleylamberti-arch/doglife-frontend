@@ -8,9 +8,9 @@ export default function SupplierLayout() {
         TEST NAVBAR
       </div>
 
-      <div className="p-6">
-        <Outlet />
-      </div>
+      <div className="pt-20 p-6">
+  <Outlet />
+</div>
 
     </div>
   );
