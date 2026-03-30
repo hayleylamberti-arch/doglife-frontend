@@ -18,9 +18,6 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
   const [form, setForm] = useState<BusinessProfile>(profile);
   const [isSaving, setIsSaving] = useState(false);
 
-  /* ================================
-     Sync form when profile loads
-  ================================ */
   useEffect(() => {
     setForm(profile);
   }, [profile]);
@@ -50,7 +47,7 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         />
       </div>
 
-      {/* Description */}
+      {/* Description (FIXED → aboutServices) */}
       <div>
         <label className="text-sm font-medium">Business Description</label>
         <textarea
@@ -62,7 +59,7 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         />
       </div>
 
-      {/* Website */}
+      {/* Website (FIXED → websiteUrl) */}
       <div>
         <label className="text-sm font-medium">Website</label>
         <input
@@ -74,7 +71,7 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         />
       </div>
 
-      {/* Email */}
+      {/* Email (correct) */}
       <div>
         <label className="text-sm font-medium">Email</label>
         <input
@@ -86,7 +83,7 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         />
       </div>
 
-      {/* Phone */}
+      {/* Phone (FIXED → businessPhone) */}
       <div>
         <label className="text-sm font-medium">Phone</label>
         <input
@@ -98,7 +95,7 @@ export default function SupplierProfileSection({ profile, onSave }: Props) {
         />
       </div>
 
-      {/* Address */}
+      {/* Address (FIXED → businessAddress) */}
       <div>
         <label className="text-sm font-medium">Business Address</label>
         <input
