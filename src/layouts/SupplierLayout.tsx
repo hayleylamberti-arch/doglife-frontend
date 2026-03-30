@@ -8,10 +8,10 @@ export default function SupplierLayout() {
       {/* NAVBAR */}
       <SupplierNavbar />
 
-      {/* 🔥 THIS IS THE FIX */}
-      <main className="p-4">
+      {/* 🔥 THIS LINE IS EVERYTHING */}
+      <div className="p-6">
         <Outlet />
-      </main>
+      </div>
 
     </div>
   );
