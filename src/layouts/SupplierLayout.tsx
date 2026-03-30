@@ -8,9 +8,9 @@ export default function SupplierLayout() {
       {/* NAVBAR */}
       <SupplierNavbar />
 
-      {/* PAGE CONTENT */}
-      <main className="p-6">
-        <Outlet /> {/* 🔥 THIS IS THE FIX */}
+      {/* 🔥 THIS IS THE FIX */}
+      <main className="p-4">
+        <Outlet />
       </main>
 
     </div>
