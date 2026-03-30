@@ -45,30 +45,22 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<RoleDashboardRedirect />} />
       </Route>
 
-      {/* ========================= */}
-      {/* OWNER ROUTES */}
-      {/* ========================= */}
-      <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
-        <Route element={<OwnerLayout />}>
+{/* OWNER ROUTES */}
+<Route element={<RequireAuth />}>
+  <Route element={<OwnerLayout />}>
+    <Route path="owner/dashboard" element={<Dashboard />} />
+    <Route path="owner/profile" element={<Profile />} />
+    <Route path="owner/my-dogs" element={<MyDogs />} />
+  </Route>
+</Route>
 
-          <Route path="owner/dashboard" element={<Dashboard />} />
-          <Route path="owner/profile" element={<Profile />} />
-          <Route path="owner/my-dogs" element={<MyDogs />} />
-
-        </Route>
-      </Route>
-
-      {/* ========================= */}
-      {/* SUPPLIER ROUTES */}
-      {/* ========================= */}
-      <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
-        <Route element={<SupplierLayout />}>
-
-          <Route path="supplier/dashboard" element={<SupplierProfile />} />
-          <Route path="supplier/profile" element={<SupplierProfile />} />
-
-        </Route>
-      </Route>
+{/* SUPPLIER ROUTES */}
+<Route element={<RequireAuth />}>
+  <Route element={<SupplierLayout />}>
+    <Route path="supplier/dashboard" element={<SupplierDashboard />} />
+    <Route path="supplier/profile" element={<SupplierProfile />} />
+  </Route>
+</Route>
 
       {/* ========================= */}
       {/* FALLBACK */}
