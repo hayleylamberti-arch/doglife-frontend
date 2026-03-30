@@ -126,14 +126,20 @@ export default function SupplierDashboard() {
   ================================ */
 
   const saveProfile = useMutation({
-    mutationFn: async (payload: BusinessProfile) => {
-      return api.patch("/api/supplier/profile", payload);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
-      alert("Profile saved ✅");
-    },
-  });
+  mutationFn: async (payload: BusinessProfile) => {
+    return api.patch("/api/supplier/profile", {
+      profile: payload,
+    });
+  },
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
+    alert("Profile saved ✅");
+  },
+  onError: (err: any) => {
+    console.error("SAVE ERROR:", err);
+    alert("Failed to save profile ❌");
+  },
+});
 
   const addService = useMutation({
     mutationFn: async () =>
