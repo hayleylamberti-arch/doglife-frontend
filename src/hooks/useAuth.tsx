@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await api.get<AuthUser>("/me");
+      const response = await api.get<AuthUser>("/api/me");
       setUser(response.data);
       setRole(response.data.role);
       localStorage.setItem(ROLE_KEY, response.data.role);
