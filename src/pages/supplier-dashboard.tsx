@@ -75,13 +75,6 @@ function getOwnerName(owner?: Booking["owner"]) {
   return [owner.firstName, owner.lastName].filter(Boolean).join(" ");
 }
 
-function getDogText(booking: Booking) {
-  if (booking.dogs?.length) {
-    return booking.dogs.map((d) => d.name).join(", ");
-  }
-  return "—";
-}
-
 /* ================================
    COMPONENT
 ================================ */
@@ -101,7 +94,7 @@ export default function SupplierDashboard() {
   });
 
   /* ================================
-     FETCH DATA (FIXED ROUTES ✅)
+     FETCH DATA
   ================================ */
 
   const { data: profileData, isLoading: loadingProfile } = useQuery({
@@ -129,7 +122,7 @@ export default function SupplierDashboard() {
     bookingsData?.bookings ?? bookingsData ?? [];
 
   /* ================================
-     MUTATIONS (FIXED ROUTES ✅)
+     MUTATIONS
   ================================ */
 
   const saveProfile = useMutation({
@@ -202,11 +195,11 @@ export default function SupplierDashboard() {
         Welcome {profile.businessName || "Supplier"}
       </h1>
 
-      {/* PROFILE */}
-      {/* <SupplierProfileSection
-  profile={profile}
-  onSave={(updated) => saveProfile.mutate(updated)}
-/> */}
+      {/* ✅ PROFILE (FIXED) */}
+      <SupplierProfileSection
+        profile={profile}
+        onSave={(updated) => saveProfile.mutate(updated)}
+      />
 
       {/* SERVICES */}
       <div className="border p-4 rounded space-y-4">
@@ -254,6 +247,7 @@ export default function SupplierDashboard() {
         {grouped.pending.map((b) => (
           <div key={b.id} className="border p-2">
             {formatService(b.serviceType)} · {formatDate(b.startAt)}
+
             <button
               onClick={() =>
                 bookingAction.mutate({ id: b.id, action: "confirm" })
