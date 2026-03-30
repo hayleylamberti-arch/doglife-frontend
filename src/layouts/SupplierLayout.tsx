@@ -3,12 +3,16 @@ import SupplierNavbar from "@/components/SupplierNavbar";
 
 export default function SupplierLayout() {
   return (
-    <div>
+    <div className="min-h-screen bg-gray-50">
+
+      {/* NAVBAR */}
       <SupplierNavbar />
 
+      {/* PAGE CONTENT */}
       <main className="p-6">
-        <Outlet />
+        <Outlet /> {/* 🔥 THIS IS THE FIX */}
       </main>
+
     </div>
   );
 }
