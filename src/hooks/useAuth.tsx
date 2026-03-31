@@ -103,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await api.get<AuthUser>("/api/me");
+      const response = await api.get<AuthUser>("/api/me"); // ✅ already correct
       setUser(response.data);
       setRole(response.data.role);
       localStorage.setItem(ROLE_KEY, response.data.role);
@@ -124,14 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
-      const response = await api.post<AuthResponse>("/auth/login", data);
+      const response = await api.post<AuthResponse>("/api/auth/login", data); // ✅ FIXED
       return response.data;
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
-      const response = await api.post<AuthResponse>("/auth/register", data);
+      const response = await api.post<AuthResponse>("/api/auth/register", data); // ✅ FIXED
       return response.data;
     },
   });
