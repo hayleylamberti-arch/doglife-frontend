@@ -1,277 +1,260 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { api } from "@/lib/api";
-import SupplierProfileSection from "@/components/supplier/SupplierProfileSection";
 
-/* ================================
-   TYPES
-================================ */
+type ServiceType =
+  | "WALKING"
+  | "BOARDING"
+  | "GROOMING"
+  | "TRAINING"
+  | "PET_TRANSPORT";
 
-type BookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "IN_PROGRESS"
-  | "COMPLETED"
-  | "COMPLETED_UNBILLED"
-  | "PAID"
-  | "CANCELLED";
+export default function ServicesSection() {
+  const [serviceType, setServiceType] = useState<ServiceType>("WALKING");
+  const [duration, setDuration] = useState(60);
+  const [price, setPrice] = useState("");
+  const [tiers, setTiers] = useState<any[]>([]);
 
-type BusinessProfile = {
-  businessName?: string;
-  aboutServices?: string;
-  websiteUrl?: string;
-  contactEmail?: string;
-  businessPhone?: string;
-  businessAddress?: string;
-};
-
-type SupplierService = {
-  id: string;
-  serviceType: string;
-  durationMinutes: number;
-  basePrice: number;
-};
-
-type Booking = {
-  id: string;
-  status: BookingStatus;
-  serviceType?: string;
-  startAt?: string;
-  suburb?: string;
-  notes?: string;
-  owner?: {
-    name?: string;
-    firstName?: string;
-    lastName?: string;
-  };
-  dogs?: Array<{
-    name?: string;
-    breed?: string;
-  }>;
-};
-
-/* ================================
-   HELPERS
-================================ */
-
-function formatService(service?: string) {
-  if (!service) return "Service";
-  return service
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatDate(date?: string) {
-  if (!date) return "—";
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return "—";
-  return parsed.toLocaleString();
-}
-
-function getOwnerName(owner?: Booking["owner"]) {
-  if (!owner) return "Unknown owner";
-  if (owner.name) return owner.name;
-  return [owner.firstName, owner.lastName].filter(Boolean).join(" ");
-}
-
-/* ================================
-   COMPONENT
-================================ */
-
-export default function SupplierDashboard() {
-  const queryClient = useQueryClient();
-
-  /* ================================
-     SERVICE FORM
-  ================================ */
-
-  const [serviceForm, setServiceForm] = useState({
-    serviceType: "WALKING",
-    unit: "PER_HOUR",
-    durationMinutes: "60",
-    basePrice: "",
-  });
-
-  /* ================================
-     FETCH DATA
-  ================================ */
-
-  const { data: profileData, isLoading: loadingProfile } = useQuery({
-    queryKey: ["supplier-profile"],
-    queryFn: async () => (await api.get("/api/supplier/profile")).data,
-  });
-
-  const { data: servicesData, isLoading: loadingServices } = useQuery({
-    queryKey: ["supplier-services"],
-    queryFn: async () => (await api.get("/api/supplier/services")).data,
-  });
-
-  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
-    queryKey: ["supplier-bookings"],
-    queryFn: async () => (await api.get("/api/supplier/bookings")).data,
-  });
-
-  const profile: BusinessProfile =
-    profileData?.profile ?? profileData ?? {};
-
-  const services: SupplierService[] =
-    servicesData?.services ?? servicesData ?? [];
-
-  const bookings: Booking[] =
-    bookingsData?.bookings ?? bookingsData ?? [];
-
-  /* ================================
-     MUTATIONS
-  ================================ */
-
-  const saveProfile = useMutation({
-  mutationFn: async (payload: BusinessProfile) => {
-  const cleanPayload = {
-    businessName: payload.businessName,
-    aboutServices: payload.aboutServices,
-    businessAddress: payload.businessAddress,
-    businessPhone: payload.businessPhone,
-    websiteUrl: payload.websiteUrl,
+  /* ---------------- ADD TIER ---------------- */
+  const addTier = () => {
+    setTiers([
+      ...tiers,
+      { dogSize: "MEDIUM", minDogs: 1, maxDogs: 1, price: "" },
+    ]);
   };
 
-  return api.patch("/api/supplier/profile", cleanPayload);
-},
-  onSuccess: async () => {
-    await queryClient.invalidateQueries({ queryKey: ["supplier-profile"] });
-    alert("Profile saved ✅");
-  },
-  onError: (err: any) => {
-    console.error("SAVE ERROR:", err?.response?.data || err);
-    alert("Failed to save profile ❌");
-  },
-});
-
-  const addService = useMutation({
-    mutationFn: async () =>
-      api.post("/api/supplier/services", {
-        serviceType: serviceForm.serviceType,
-        unit: serviceForm.unit,
-        durationMinutes: Number(serviceForm.durationMinutes),
-        basePrice: Number(serviceForm.basePrice),
-      }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-
-      setServiceForm({
-        serviceType: "WALKING",
-        unit: "PER_HOUR",
-        durationMinutes: "60",
-        basePrice: "",
-      });
-    },
-  });
-
-  const bookingAction = useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: string }) => {
-      return api.patch(`/api/supplier/bookings/${id}/${action}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-bookings"] });
-    },
-  });
-
-  /* ================================
-     GROUP BOOKINGS
-  ================================ */
-
-  const grouped = useMemo(() => {
-    return {
-      pending: bookings.filter((b) => b.status === "PENDING"),
-      confirmed: bookings.filter((b) => b.status === "CONFIRMED"),
-      completed: bookings.filter((b) => b.status === "COMPLETED"),
+  /* ---------------- SAVE ---------------- */
+  const handleSave = async () => {
+    const payload: any = {
+      service: serviceType,
+      unit: mapUnit(serviceType),
+      baseRateCents: Number(price) * 100,
     };
-  }, [bookings]);
 
-  /* ================================
-     LOADING
-  ================================ */
+    if (serviceType === "WALKING" || serviceType === "TRAINING") {
+      payload.durationMinutes = duration;
+    }
 
-  if (loadingProfile || loadingServices || loadingBookings) {
-    return <div className="p-6">Loading dashboard...</div>;
-  }
+    if (serviceType === "BOARDING") {
+      payload.pricingTiers = tiers.map((t) => ({
+        ...t,
+        priceCents: Number(t.price) * 100,
+      }));
+    }
 
-  /* ================================
-     UI
-  ================================ */
+    if (serviceType === "GROOMING") {
+      payload.groomingOptions = tiers;
+    }
+
+    if (serviceType === "PET_TRANSPORT") {
+      payload.durationMinutes = duration;
+      payload.transportAreaNotes = "Calculated per trip";
+    }
+
+    await api.post("/api/supplier/services", {
+      services: [payload],
+    });
+
+    alert("✅ Service saved");
+  };
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-
-      <h1 className="text-3xl font-semibold">
-        Welcome {profile.businessName || "Supplier"}
-      </h1>
-
-      {/* ✅ PROFILE (FIXED) */}
-      <SupplierProfileSection
-        profile={profile}
-        onSave={(updated) => saveProfile.mutate(updated)}
-      />
-
-      {/* SERVICES */}
-      <div className="border p-4 rounded space-y-4">
-        <h2 className="text-xl font-semibold">Services</h2>
-
+    <div className="space-y-6">
+      {/* ---------------- SERVICE SELECT ---------------- */}
+      <div>
+        <label className="block mb-2 font-medium">Service</label>
         <select
-          className="border p-2 w-full"
-          value={serviceForm.serviceType}
-          onChange={(e) =>
-            setServiceForm({ ...serviceForm, serviceType: e.target.value })
-          }
+          className="border rounded px-3 py-2 w-full"
+          value={serviceType}
+          onChange={(e) => setServiceType(e.target.value as ServiceType)}
         >
           <option value="WALKING">Dog Walking</option>
           <option value="BOARDING">Boarding</option>
           <option value="GROOMING">Grooming</option>
+          <option value="TRAINING">Training</option>
+          <option value="PET_TRANSPORT">Pet Transport</option>
         </select>
-
-        <input
-          className="border p-2 w-full"
-          placeholder="Base Price (ZAR)"
-          value={serviceForm.basePrice}
-          onChange={(e) =>
-            setServiceForm({ ...serviceForm, basePrice: e.target.value })
-          }
-        />
-
-        <button
-          className="bg-black text-white px-4 py-2 rounded"
-          onClick={() => addService.mutate()}
-        >
-          Add Service
-        </button>
-
-        {services.map((s) => (
-          <div key={s.id} className="border p-2">
-            {formatService(s.serviceType)} · R{s.basePrice}
-          </div>
-        ))}
       </div>
 
-      {/* BOOKINGS */}
-      <div className="border p-4 rounded space-y-4">
-        <h2 className="text-xl font-semibold">Bookings</h2>
+      {/* ---------------- WALKING / TRAINING ---------------- */}
+      {(serviceType === "WALKING" || serviceType === "TRAINING") && (
+        <>
+          <input
+            type="number"
+            placeholder="Duration (minutes)"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            className="border rounded px-3 py-2 w-full"
+          />
 
-        {grouped.pending.map((b) => (
-          <div key={b.id} className="border p-2">
-            {formatService(b.serviceType)} · {formatDate(b.startAt)}
+          <input
+            type="number"
+            placeholder="Price (ZAR)"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="border rounded px-3 py-2 w-full"
+          />
+        </>
+      )}
 
-            <button
-              onClick={() =>
-                bookingAction.mutate({ id: b.id, action: "confirm" })
-              }
-              className="ml-4 bg-green-600 text-white px-2 py-1 rounded"
-            >
-              Accept
-            </button>
-          </div>
-        ))}
-      </div>
+      {/* ---------------- BOARDING ---------------- */}
+      {serviceType === "BOARDING" && (
+        <div>
+          <button
+            onClick={addTier}
+            className="bg-black text-white px-3 py-2 rounded"
+          >
+            Add Pricing Tier
+          </button>
 
+          {tiers.map((tier, index) => (
+            <div key={index} className="border p-3 mt-3 rounded space-y-2">
+              <select
+                value={tier.dogSize}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].dogSize = e.target.value;
+                  setTiers(updated);
+                }}
+              >
+                <option value="SMALL">Small</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LARGE">Large</option>
+                <option value="XL">XL</option>
+              </select>
+
+              <input
+                type="number"
+                placeholder="Min dogs"
+                value={tier.minDogs}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].minDogs = Number(e.target.value);
+                  setTiers(updated);
+                }}
+              />
+
+              <input
+                type="number"
+                placeholder="Max dogs"
+                value={tier.maxDogs}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].maxDogs = Number(e.target.value);
+                  setTiers(updated);
+                }}
+              />
+
+              <input
+                type="number"
+                placeholder="Price per night"
+                value={tier.price}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].price = e.target.value;
+                  setTiers(updated);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ---------------- GROOMING ---------------- */}
+      {serviceType === "GROOMING" && (
+        <div>
+          <button
+            onClick={addTier}
+            className="bg-black text-white px-3 py-2 rounded"
+          >
+            Add Grooming Option
+          </button>
+
+          {tiers.map((tier, index) => (
+            <div key={index} className="border p-3 mt-3 rounded space-y-2">
+              <select
+                value={tier.dogSize}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].dogSize = e.target.value;
+                  setTiers(updated);
+                }}
+              >
+                <option value="SMALL">Small</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LARGE">Large</option>
+              </select>
+
+              <select
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].type = e.target.value;
+                  setTiers(updated);
+                }}
+              >
+                <option value="WASH">Wash & Brush</option>
+                <option value="CUT">Wash & Cut</option>
+              </select>
+
+              <input
+                type="number"
+                placeholder="Price"
+                value={tier.price}
+                onChange={(e) => {
+                  const updated = [...tiers];
+                  updated[index].price = e.target.value;
+                  setTiers(updated);
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ---------------- TRANSPORT ---------------- */}
+      {serviceType === "PET_TRANSPORT" && (
+        <>
+          <input
+            type="number"
+            placeholder="Average trip duration (minutes)"
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            className="border rounded px-3 py-2 w-full"
+          />
+
+          <input
+            type="number"
+            placeholder="Base price (ZAR)"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="border rounded px-3 py-2 w-full"
+          />
+        </>
+      )}
+
+      {/* ---------------- SAVE BUTTON ---------------- */}
+      <button
+        onClick={handleSave}
+        className="bg-orange-500 text-white px-4 py-2 rounded w-full"
+      >
+        Save Service
+      </button>
     </div>
   );
+}
+
+/* ---------------- UNIT MAPPER ---------------- */
+function mapUnit(service: ServiceType) {
+  switch (service) {
+    case "WALKING":
+    case "TRAINING":
+      return "PER_SESSION";
+    case "BOARDING":
+      return "PER_NIGHT";
+    case "GROOMING":
+      return "PER_VISIT";
+    case "PET_TRANSPORT":
+      return "PER_TRIP";
+    default:
+      return "PER_SESSION";
+  }
 }
