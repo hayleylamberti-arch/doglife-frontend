@@ -17,16 +17,12 @@ export default function SupplierDashboard() {
 
   const [savedServices, setSavedServices] = useState<any[]>([]);
 
-  /* -------------------------------------------------- */
-  /* 🧠 FETCH SAVED SERVICES                            */
-  /* -------------------------------------------------- */
+  /* ---------------- FETCH ---------------- */
   const fetchServices = async () => {
     try {
       const res = await api.get("/api/supplier/profile");
-
       const services = res.data?.profile?.services || [];
       setSavedServices(services);
-
     } catch (err) {
       console.error("Failed to fetch services", err);
     }
@@ -36,9 +32,7 @@ export default function SupplierDashboard() {
     fetchServices();
   }, []);
 
-  /* -------------------------------------------------- */
-  /* 💾 SAVE SERVICE                                    */
-  /* -------------------------------------------------- */
+  /* ---------------- SAVE ---------------- */
   const handleSave = async () => {
     try {
       await api.post("/api/supplier/services", {
@@ -54,19 +48,24 @@ export default function SupplierDashboard() {
       setPrice("");
       setDuration("");
 
-      // 🔥 refresh list
       fetchServices();
-
     } catch (err) {
       console.error(err);
       alert("❌ Failed to save service");
     }
   };
 
+  /* ---------------- GROUP SERVICES ---------------- */
+  const groupedServices = savedServices.reduce((acc: any, s: any) => {
+    if (!acc[s.service]) acc[s.service] = [];
+    acc[s.service].push(s);
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-6 p-6">
 
-      {/* ------------------ FORM ------------------ */}
+      {/* ---------------- FORM ---------------- */}
       <div className="space-y-4 bg-white p-6 rounded-xl shadow">
 
         <select
@@ -139,23 +138,49 @@ export default function SupplierDashboard() {
         </button>
       </div>
 
-      {/* ------------------ SAVED SERVICES ------------------ */}
+      {/* ---------------- SERVICES ---------------- */}
       <div className="bg-white p-6 rounded-xl shadow">
         <h2 className="text-lg font-semibold mb-4">Your Services</h2>
 
         {savedServices.length === 0 ? (
           <p className="text-gray-500">No services added yet</p>
         ) : (
-          <div className="space-y-2">
-            {savedServices.map((s, i) => (
-              <div
-                key={i}
-                className="flex justify-between border p-3 rounded"
-              >
-                <span>{s.service}</span>
-                <span>R {s.baseRateCents / 100}</span>
+          <div className="space-y-4">
+
+            {Object.entries(groupedServices).map(([serviceName, list]: any) => (
+              <div key={serviceName} className="space-y-2">
+
+                <h3 className="font-semibold">{serviceName}</h3>
+
+                {list.map((s: any) => (
+                  <div
+                    key={s.id}
+                    className="flex justify-between border p-3 rounded"
+                  >
+                    <div>
+
+                      {s.durationMinutes && (
+                        <p className="text-sm text-gray-500">
+                          {s.durationMinutes} mins
+                        </p>
+                      )}
+
+                      {s.groomingOptions?.groomingType && (
+                        <p className="text-sm text-gray-500">
+                          {s.groomingOptions.groomingType}
+                        </p>
+                      )}
+
+                    </div>
+
+                    <span className="font-semibold">
+                      R {s.baseRateCents / 100}
+                    </span>
+                  </div>
+                ))}
               </div>
             ))}
+
           </div>
         )}
       </div>
