@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type ServiceType =
@@ -8,13 +8,37 @@ type ServiceType =
   | "BOARDING"
   | "PET_TRANSPORT";
 
-export default function ServiceBuilder() {
+export default function SupplierDashboard() {
   const [service, setService] = useState<ServiceType>("WALKING");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
   const [groomingType, setGroomingType] = useState("WASH");
   const [dogSize, setDogSize] = useState("MEDIUM");
 
+  const [savedServices, setSavedServices] = useState<any[]>([]);
+
+  /* -------------------------------------------------- */
+  /* 🧠 FETCH SAVED SERVICES                            */
+  /* -------------------------------------------------- */
+  const fetchServices = async () => {
+    try {
+      const res = await api.get("/api/supplier/profile");
+
+      const services = res.data?.profile?.services || [];
+      setSavedServices(services);
+
+    } catch (err) {
+      console.error("Failed to fetch services", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  /* -------------------------------------------------- */
+  /* 💾 SAVE SERVICE                                    */
+  /* -------------------------------------------------- */
   const handleSave = async () => {
     try {
       await api.post("/api/supplier/services", {
@@ -26,8 +50,12 @@ export default function ServiceBuilder() {
       });
 
       alert("✅ Service saved");
+
       setPrice("");
       setDuration("");
+
+      // 🔥 refresh list
+      fetchServices();
 
     } catch (err) {
       console.error(err);
@@ -36,96 +64,102 @@ export default function ServiceBuilder() {
   };
 
   return (
-    <div className="space-y-4 p-6 bg-white rounded-xl shadow">
+    <div className="space-y-6 p-6">
 
-      {/* SERVICE SELECT */}
-      <select
-        className="w-full border p-2 rounded"
-        value={service}
-        onChange={(e) => setService(e.target.value as ServiceType)}
-      >
-        <option value="WALKING">Dog Walking</option>
-        <option value="TRAINING">Training</option>
-        <option value="GROOMING">Grooming</option>
-        <option value="BOARDING">Boarding</option>
-        <option value="PET_TRANSPORT">Pet Transport</option>
-      </select>
+      {/* ------------------ FORM ------------------ */}
+      <div className="space-y-4 bg-white p-6 rounded-xl shadow">
 
-      {/* DURATION (WALKING / TRAINING / TRANSPORT) */}
-      {(service === "WALKING" ||
-        service === "TRAINING" ||
-        service === "PET_TRANSPORT") && (
         <select
           className="w-full border p-2 rounded"
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
+          value={service}
+          onChange={(e) => setService(e.target.value as ServiceType)}
         >
-          <option value="">Select duration</option>
-          <option value="30">30 mins</option>
-          <option value="45">45 mins</option>
-          <option value="60">60 mins</option>
-          <option value="90">90 mins</option>
+          <option value="WALKING">Dog Walking</option>
+          <option value="TRAINING">Training</option>
+          <option value="GROOMING">Grooming</option>
+          <option value="BOARDING">Boarding</option>
+          <option value="PET_TRANSPORT">Pet Transport</option>
         </select>
-      )}
 
-      {/* GROOMING OPTIONS */}
-      {service === "GROOMING" && (
-        <>
+        {(service === "WALKING" ||
+          service === "TRAINING" ||
+          service === "PET_TRANSPORT") && (
           <select
             className="w-full border p-2 rounded"
-            value={groomingType}
-            onChange={(e) => setGroomingType(e.target.value)}
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
           >
-            <option value="WASH">Wash & Brush</option>
-            <option value="CUT">Wash & Cut</option>
+            <option value="">Select duration</option>
+            <option value="30">30 mins</option>
+            <option value="45">45 mins</option>
+            <option value="60">60 mins</option>
+            <option value="90">90 mins</option>
           </select>
+        )}
 
-          <select
-            className="w-full border p-2 rounded"
-            value={dogSize}
-            onChange={(e) => setDogSize(e.target.value)}
-          >
-            <option value="SMALL">Small</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LARGE">Large</option>
-            <option value="XL">XL</option>
-          </select>
-        </>
-      )}
+        {service === "GROOMING" && (
+          <>
+            <select
+              className="w-full border p-2 rounded"
+              value={groomingType}
+              onChange={(e) => setGroomingType(e.target.value)}
+            >
+              <option value="WASH">Wash & Brush</option>
+              <option value="CUT">Wash & Cut</option>
+            </select>
 
-      {/* BOARDING INFO */}
-      {service === "BOARDING" && (
-        <p className="text-sm text-gray-500">
-          Price is per night (1 dog). Multi-dog pricing coming next.
-        </p>
-      )}
+            <select
+              className="w-full border p-2 rounded"
+              value={dogSize}
+              onChange={(e) => setDogSize(e.target.value)}
+            >
+              <option value="SMALL">Small</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LARGE">Large</option>
+              <option value="XL">XL</option>
+            </select>
+          </>
+        )}
 
-      {/* TRANSPORT INFO */}
-      {service === "PET_TRANSPORT" && (
-        <p className="text-sm text-gray-500">
-          Set your base trip price. Distance pricing coming next.
-        </p>
-      )}
+        <div className="relative">
+          <span className="absolute left-3 top-2 text-gray-500">R</span>
+          <input
+            type="number"
+            className="w-full border p-2 pl-8 rounded"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
 
-      {/* PRICE INPUT */}
-      <div className="relative">
-        <span className="absolute left-3 top-2 text-gray-500">R</span>
-        <input
-          type="number"
-          placeholder="Price"
-          className="w-full border p-2 pl-8 rounded"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-        />
+        <button
+          onClick={handleSave}
+          className="w-full bg-orange-500 text-white py-2 rounded"
+        >
+          Save Service
+        </button>
       </div>
 
-      {/* SAVE BUTTON */}
-      <button
-        onClick={handleSave}
-        className="w-full bg-orange-500 text-white py-2 rounded"
-      >
-        Save Service
-      </button>
+      {/* ------------------ SAVED SERVICES ------------------ */}
+      <div className="bg-white p-6 rounded-xl shadow">
+        <h2 className="text-lg font-semibold mb-4">Your Services</h2>
+
+        {savedServices.length === 0 ? (
+          <p className="text-gray-500">No services added yet</p>
+        ) : (
+          <div className="space-y-2">
+            {savedServices.map((s, i) => (
+              <div
+                key={i}
+                className="flex justify-between border p-3 rounded"
+              >
+                <span>{s.service}</span>
+                <span>R {s.baseRateCents / 100}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

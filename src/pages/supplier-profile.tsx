@@ -24,23 +24,6 @@ export default function SupplierProfilePage() {
     },
   });
 
-  /* ================================
-     FETCH DOGS (PUBLIC ONLY)
-  ================================ */
-
-  const { data: dogsData } = useQuery({
-    queryKey: ["owner-dogs"],
-    enabled: isPublicView,
-    queryFn: async () => {
-      const res = await api.get("/api/owner/dogs");
-      return res.data;
-    },
-  });
-
-  const dogs = dogsData?.dogs ?? [];
-
-  console.log("PROFILE RESPONSE:", data);
-
   const supplier = isPublicView ? data?.supplier : data?.profile;
   const services = supplier?.services ?? [];
 
@@ -58,10 +41,6 @@ export default function SupplierProfilePage() {
     contactPhone: "",
   });
 
-  /* ================================
-     SAFE FORM SYNC (FIXED)
-  ================================ */
-
   useEffect(() => {
     if (!supplier) return;
 
@@ -72,91 +51,52 @@ export default function SupplierProfilePage() {
       address: supplier.businessAddress || "",
       contactPhone: supplier.businessPhone || "",
     });
-
-  }, [supplier?.id]); // ✅ prevents reset bug
+  }, [supplier?.id]);
 
   /* ================================
-     PROFILE SAVE (FIXED)
+     UPDATE PROFILE
   ================================ */
 
   const updateMutation = useMutation({
     mutationFn: async () => {
-
-      const payload = {
+      const res = await api.patch("/api/supplier/profile", {
         businessName: form.businessName,
         aboutServices: form.description,
         websiteUrl: form.website,
         businessAddress: form.address,
         businessPhone: form.contactPhone,
         suburbId: null,
-      };
-
-      console.log("🚀 SENDING PROFILE UPDATE:", payload);
-
-      const res = await api.patch("/api/supplier/profile", payload);
-
-      console.log("✅ RESPONSE:", res.data);
-
+      });
       return res.data;
     },
-
     onSuccess: () => {
       alert("Profile updated ✅");
       setIsEditing(false);
       refetch();
     },
-
-    onError: (err: any) => {
-      console.error("❌ UPDATE FAILED:", err?.response?.data || err);
-      alert(err?.response?.data?.error || "Update failed");
-    }
+    onError: () => {
+      alert("Update failed");
+    },
   });
 
   /* ================================
-     SERVICES STATE (UI ONLY FOR NOW)
-  ================================ */
-
-  const [servicesForm, setServicesForm] = useState([
-    { service: "", unit: "PER_HOUR", baseRateCents: "", durationMinutes: "" }
-  ]);
-
-  /* ================================
-     AVAILABILITY STATE
+     AVAILABILITY
   ================================ */
 
   const [availabilityForm, setAvailabilityForm] = useState([
-    { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }
+    { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" },
   ]);
 
   const saveAvailabilityMutation = useMutation({
     mutationFn: async () => {
       return api.post("/api/supplier/availability", {
-        availability: availabilityForm
+        availability: availabilityForm,
       });
     },
     onSuccess: () => {
-      alert("Availability saved ✅ 🎉");
+      alert("Availability saved ✅");
       refetch();
     },
-  });
-
-  /* ================================
-     BOOKING (PUBLIC)
-  ================================ */
-
-  const [selectedService, setSelectedService] = useState("");
-  const [selectedDog, setSelectedDog] = useState("");
-  const [selectedDateTime, setSelectedDateTime] = useState("");
-
-  const bookingMutation = useMutation({
-    mutationFn: async () => {
-      return api.post("/api/bookings", {
-        supplierServiceId: selectedService,
-        dogIds: [selectedDog],
-        startAt: new Date(selectedDateTime).toISOString(),
-      });
-    },
-    onSuccess: () => alert("Booking requested ✅"),
   });
 
   /* ================================
@@ -175,14 +115,9 @@ export default function SupplierProfilePage() {
 
       {/* HEADER */}
       <div className="flex justify-between items-start">
-
         <div>
-          <h1 className="text-3xl font-bold">
-            {supplier.businessName}
-          </h1>
-          <p className="text-gray-500">
-            {supplier.businessAddress}
-          </p>
+          <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
+          <p className="text-gray-500">{supplier.businessAddress}</p>
         </div>
 
         {!isPublicView && (
@@ -205,45 +140,35 @@ export default function SupplierProfilePage() {
       {/* EDIT PROFILE */}
       {!isPublicView && isEditing && (
         <div className="border p-6 rounded space-y-4">
-
           <input
-            placeholder="Business Name"
             className="border p-2 w-full"
             value={form.businessName}
             onChange={(e) =>
               setForm({ ...form, businessName: e.target.value })
             }
           />
-
           <textarea
-            placeholder="About services"
             className="border p-2 w-full"
             value={form.description}
             onChange={(e) =>
               setForm({ ...form, description: e.target.value })
             }
           />
-
           <input
-            placeholder="Website"
             className="border p-2 w-full"
             value={form.website}
             onChange={(e) =>
               setForm({ ...form, website: e.target.value })
             }
           />
-
           <input
-            placeholder="Address"
             className="border p-2 w-full"
             value={form.address}
             onChange={(e) =>
               setForm({ ...form, address: e.target.value })
             }
           />
-
           <input
-            placeholder="Phone"
             className="border p-2 w-full"
             value={form.contactPhone}
             onChange={(e) =>
@@ -255,69 +180,48 @@ export default function SupplierProfilePage() {
             onClick={() => updateMutation.mutate()}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
-            {updateMutation.isPending ? "Saving..." : "Save Profile"}
+            Save Profile
           </button>
         </div>
       )}
 
       {/* SERVICES */}
-      {!isPublicView && (
-        <div className="border p-6 rounded space-y-4">
+      <div className="border p-6 rounded space-y-4">
+        <h2 className="text-xl font-semibold">Services</h2>
 
-          <h2 className="text-xl font-semibold">Services</h2>
+        {services.length === 0 && (
+          <p className="text-gray-500">No services added yet.</p>
+        )}
 
-          {servicesForm.map((s, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2">
-              <input
-                placeholder="Service"
-                className="border p-2"
-                value={s.service}
-                onChange={(e) => {
-                  const updated = [...servicesForm];
-                  updated[i].service = e.target.value;
-                  setServicesForm(updated);
-                }}
-              />
-              <input
-                placeholder="Price (R)"
-                className="border p-2"
-                value={s.baseRateCents}
-                onChange={(e) => {
-                  const updated = [...servicesForm];
-                  updated[i].baseRateCents = e.target.value;
-                  setServicesForm(updated);
-                }}
-              />
-            </div>
-          ))}
-
-          <button
-            onClick={() =>
-              setServicesForm([
-                ...servicesForm,
-                { service: "", unit: "PER_HOUR", baseRateCents: "", durationMinutes: "" }
-              ])
-            }
-            className="border px-3 py-1 rounded"
+        {services.map((service: any) => (
+          <div
+            key={service.id}
+            className="flex justify-between items-center border-b pb-2"
           >
-            + Add Service
-          </button>
+            <div>
+              <p className="font-medium">{service.service}</p>
 
-          <button className="bg-gray-400 text-white px-4 py-2 rounded">
-            Save Services (Next Step)
-          </button>
-        </div>
-      )}
+              {service.durationMinutes && (
+                <p className="text-sm text-gray-500">
+                  {service.durationMinutes} mins
+                </p>
+              )}
+            </div>
+
+            <div className="font-semibold">
+              R {service.baseRateCents / 100}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {/* AVAILABILITY */}
       {!isPublicView && (
         <div className="border p-6 rounded space-y-4">
-
           <h2 className="text-xl font-semibold">Availability</h2>
 
           {availabilityForm.map((slot, i) => (
             <div key={i} className="grid grid-cols-3 gap-2">
-
               <select
                 value={slot.dayOfWeek}
                 onChange={(e) => {
@@ -354,7 +258,6 @@ export default function SupplierProfilePage() {
                   setAvailabilityForm(updated);
                 }}
               />
-
             </div>
           ))}
 
@@ -362,7 +265,7 @@ export default function SupplierProfilePage() {
             onClick={() =>
               setAvailabilityForm([
                 ...availabilityForm,
-                { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" }
+                { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" },
               ])
             }
             className="border px-3 py-1 rounded"
@@ -376,7 +279,6 @@ export default function SupplierProfilePage() {
           >
             Save Availability
           </button>
-
         </div>
       )}
 
