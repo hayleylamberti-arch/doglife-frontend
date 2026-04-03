@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 const DAYS = [
@@ -11,9 +11,16 @@ const DAYS = [
   "Sunday"
 ];
 
+type DayAvailability = {
+  day: string;
+  enabled: boolean;
+  start: string;
+  end: string;
+};
+
 export default function SupplierAvailability() {
 
-  const [availability, setAvailability] = useState(
+  const [availability, setAvailability] = useState<DayAvailability[]>(
     DAYS.map(day => ({
       day,
       enabled: false,
@@ -22,6 +29,50 @@ export default function SupplierAvailability() {
     }))
   );
 
+  /* -------------------------------------------------- */
+  /* 🧠 LOAD EXISTING AVAILABILITY                      */
+  /* -------------------------------------------------- */
+  useEffect(() => {
+    fetchAvailability();
+  }, []);
+
+  async function fetchAvailability() {
+    try {
+      const res = await api.get("/api/supplier/availability");
+
+      const saved = res.data?.availability || [];
+
+      // Map backend → frontend
+      const mapped = DAYS.map((day, index) => {
+        const match = saved.find((s: any) => s.dayOfWeek === index);
+
+        if (match) {
+          return {
+            day,
+            enabled: true,
+            start: match.startTime,
+            end: match.endTime,
+          };
+        }
+
+        return {
+          day,
+          enabled: false,
+          start: "09:00",
+          end: "17:00",
+        };
+      });
+
+      setAvailability(mapped);
+
+    } catch (err) {
+      console.error("Failed to load availability", err);
+    }
+  }
+
+  /* -------------------------------------------------- */
+  /* 🔄 UI HANDLERS                                     */
+  /* -------------------------------------------------- */
   function toggleDay(index: number) {
     const updated = [...availability];
     updated[index].enabled = !updated[index].enabled;
@@ -34,15 +85,39 @@ export default function SupplierAvailability() {
     setAvailability(updated);
   }
 
+  /* -------------------------------------------------- */
+  /* 💾 SAVE AVAILABILITY                               */
+  /* -------------------------------------------------- */
   async function saveAvailability() {
+    try {
+      const formatted = availability
+        .filter(day => day.enabled)
+        .map(day => ({
+          dayOfWeek: DAYS.indexOf(day.day),
+          startTime: day.start,
+          endTime: day.end,
+        }));
 
-    await api.post("/api/supplier/availability", {
-      availability
-    });
+      console.log("SENDING:", formatted);
 
-    alert("Availability saved");
+      await api.post("/api/supplier/availability", {
+        availability: formatted,
+      });
+
+      alert("✅ Availability saved");
+
+      // 🔥 refresh from backend (ensures sync)
+      fetchAvailability();
+
+    } catch (err) {
+      console.error(err);
+      alert("❌ Failed to save availability");
+    }
   }
 
+  /* -------------------------------------------------- */
+  /* UI                                                 */
+  /* -------------------------------------------------- */
   return (
 
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -96,13 +171,11 @@ export default function SupplierAvailability() {
 
       <button
         onClick={saveAvailability}
-        className="bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700"
+        className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700"
       >
         Save Availability
       </button>
 
     </div>
-
   );
-
 }

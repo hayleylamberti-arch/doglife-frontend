@@ -173,9 +173,12 @@ export default function SupplierDashboard() {
 
                     </div>
 
-                    <span className="font-semibold">
-                      R {s.baseRateCents / 100}
-                    </span>
+                   <span className="font-semibold">
+  R {s.baseRateCents / 100}
+  {s.unit === "PER_NIGHT" && " / night"}
+  {s.unit === "PER_DAY" && " / day"}
+  {s.unit === "PER_SESSION" && ""}
+</span> 
                   </div>
                 ))}
               </div>
