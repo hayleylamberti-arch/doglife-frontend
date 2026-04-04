@@ -58,7 +58,7 @@ export default function SupplierProfilePage() {
     mutationFn: async ({ start, end }: any) => {
 
     console.log("BOOKING DEBUG:", {
-  supplierId: id,
+  supplierId: id!,
   selectedService,
   serviceType:
     selectedService?.service ||
@@ -70,10 +70,13 @@ export default function SupplierProfilePage() {
 const res = await api.post("/api/bookings", {
   supplierId: id,
 
-  serviceType:
+  serviceType: (
   selectedService?.service ||
   selectedService?.name ||
-  selectedService?.serviceType,
+  selectedService?.serviceType
+)
+  ?.toUpperCase()
+  .replace(/\s+/g, "_"),
 
   totalCents:
     selectedService?.baseRateCents || 0,
