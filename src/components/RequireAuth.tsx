@@ -2,24 +2,28 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
 type Props = {
-  allowRoles?: string[];
+  allowRoles?: ("OWNER" | "SUPPLIER" | "ADMIN")[];
 };
 
 export default function RequireAuth({ allowRoles }: Props) {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { token, role, isLoading } = useAuth();
   const location = useLocation();
 
+  // ✅ 1. WAIT for auth to load
   if (isLoading) {
     return <div className="p-6">Loading...</div>;
   }
 
-  if (!isAuthenticated) {
+  // ✅ 2. Check token (NOT user)
+  if (!token) {
     return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  if (allowRoles && (!user || !allowRoles.includes(user.role))) {
-    return <Navigate to="/" replace />;
+  // ✅ 3. Check role safely
+  if (allowRoles && role && !allowRoles.includes(role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
+  // ✅ 4. Allow access
   return <Outlet />;
 }
