@@ -58,9 +58,28 @@ export default function Dashboard() {
     },
   });
 
+  const now = new Date();
+
+const isToday = (date: string) => {
+  const d = new Date(date);
+  return d.toDateString() === now.toDateString();
+};
+
+const isThisWeek = (date: string) => {
+  const d = new Date(date);
+
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+
+  return d >= startOfWeek && d < endOfWeek;
+};
+
   // ✅ GROUP BOOKINGS
   
-const upcoming = data
+const upcomingAll = data
   ?.filter(
     (b: any) => b.status === "PENDING" || b.status === "CONFIRMED"
   )
@@ -68,6 +87,16 @@ const upcoming = data
     (a: any, b: any) =>
       new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
   );
+
+const today = upcomingAll?.filter((b: any) => isToday(b.startAt));
+
+const thisWeek = upcomingAll?.filter(
+  (b: any) => !isToday(b.startAt) && isThisWeek(b.startAt)
+);
+
+const later = upcomingAll?.filter(
+  (b: any) => !isToday(b.startAt) && !isThisWeek(b.startAt)
+);
 
 const completed = data
   ?.filter(
@@ -85,7 +114,7 @@ const cancelled = data
     (a: any, b: any) =>
       new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
   );
-  
+
   const renderBooking = (booking: any) => (
     <div
       key={booking.id}
@@ -147,11 +176,38 @@ const cancelled = data
 
       {/* ✅ UPCOMING */}
       <section>
-        <h2 className="text-lg font-medium mb-4">Upcoming</h2>
-        <div className="space-y-3">
-          {upcoming?.map(renderBooking)}
-        </div>
-      </section>
+  <h2 className="text-lg font-medium mb-4">Upcoming</h2>
+
+  {/* TODAY */}
+  {today?.length > 0 && (
+    <>
+      <h3 className="text-md font-medium mb-2 text-green-700">Today</h3>
+      <div className="space-y-3 mb-6">
+        {today.map(renderBooking)}
+      </div>
+    </>
+  )}
+
+  {/* THIS WEEK */}
+  {thisWeek?.length > 0 && (
+    <>
+      <h3 className="text-md font-medium mb-2 text-yellow-700">This Week</h3>
+      <div className="space-y-3 mb-6">
+        {thisWeek.map(renderBooking)}
+      </div>
+    </>
+  )}
+
+  {/* LATER */}
+  {later?.length > 0 && (
+    <>
+      <h3 className="text-md font-medium mb-2 text-gray-600">Later</h3>
+      <div className="space-y-3">
+        {later.map(renderBooking)}
+      </div>
+    </>
+  )}
+</section>
 
       {/* ✅ COMPLETED */}
       <section>
