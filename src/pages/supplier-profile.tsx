@@ -28,79 +28,55 @@ export default function SupplierProfilePage() {
   const services = supplier?.services ?? [];
 
   /* ================================
-     EDIT PROFILE STATE
+     BOOKING STATE
   ================================ */
 
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [form, setForm] = useState({
-    businessName: "",
-    description: "",
-    website: "",
-    address: "",
-    contactPhone: "",
-  });
-
-  useEffect(() => {
-    if (!supplier) return;
-
-    setForm({
-      businessName: supplier.businessName || "",
-      description: supplier.aboutServices || "",
-      website: supplier.websiteUrl || "",
-      address: supplier.businessAddress || "",
-      contactPhone: supplier.businessPhone || "",
-    });
-  }, [supplier?.id]);
+  const [selectedService, setSelectedService] = useState<any | null>(null);
+  const [selectedDate, setSelectedDate] = useState("");
 
   /* ================================
-     UPDATE PROFILE
+     FETCH SLOTS
   ================================ */
 
-  const updateMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.patch("/api/supplier/profile", {
-        businessName: form.businessName,
-        aboutServices: form.description,
-        websiteUrl: form.website,
-        businessAddress: form.address,
-        businessPhone: form.contactPhone,
-        suburbId: null,
+  const { data: slotData, refetch: refetchSlots, isLoading: slotsLoading } = useQuery({
+    queryKey: ["slots", id, selectedService?.id, selectedDate],
+    enabled: false, // only fetch when user clicks
+    queryFn: async () => {
+      const res = await api.get(
+        `/api/suppliers/${id}/services/${selectedService.id}/bookable-slots`,
+        {
+          params: { date: selectedDate },
+        }
+      );
+      return res.data;
+    },
+  });
+
+  /* ================================
+     CREATE BOOKING
+  ================================ */
+
+  const createBookingMutation = useMutation({
+    mutationFn: async ({ start, end }: any) => {
+      const res = await api.post("/api/bookings", {
+        supplierId: id,
+        serviceId: selectedService.id,
+        startAt: start,
+        endAt: end,
       });
       return res.data;
     },
     onSuccess: () => {
-      alert("Profile updated ✅");
-      setIsEditing(false);
+      alert("Booking created 🎉");
       refetch();
     },
-    onError: () => {
-      alert("Update failed");
+    onError: (err: any) => {
+      alert(err?.response?.data?.error || "Booking failed");
     },
   });
 
   /* ================================
-     AVAILABILITY
-  ================================ */
-
-  const [availabilityForm, setAvailabilityForm] = useState([
-    { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" },
-  ]);
-
-  const saveAvailabilityMutation = useMutation({
-    mutationFn: async () => {
-      return api.post("/api/supplier/availability", {
-        availability: availabilityForm,
-      });
-    },
-    onSuccess: () => {
-      alert("Availability saved ✅");
-      refetch();
-    },
-  });
-
-  /* ================================
-     LOADING
+     LOAD
   ================================ */
 
   if (isLoading) return <div className="p-6">Loading...</div>;
@@ -114,171 +90,104 @@ export default function SupplierProfilePage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
 
       {/* HEADER */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
-          <p className="text-gray-500">{supplier.businessAddress}</p>
-        </div>
-
-        {!isPublicView && (
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="border px-4 py-2 rounded"
-          >
-            {isEditing ? "Cancel" : "Edit Profile"}
-          </button>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
+        <p className="text-gray-500">{supplier.businessAddress}</p>
       </div>
 
-      {/* ONBOARDING */}
-      {!isPublicView && (
-        <div className="bg-blue-50 border p-4 rounded">
-          Onboarding Step: {supplier?.user?.onboardingStep || 1} / 3
-        </div>
-      )}
+      {/* ================================
+         SERVICES
+      ================================ */}
 
-      {/* EDIT PROFILE */}
-      {!isPublicView && isEditing && (
-        <div className="border p-6 rounded space-y-4">
-          <input
-            className="border p-2 w-full"
-            value={form.businessName}
-            onChange={(e) =>
-              setForm({ ...form, businessName: e.target.value })
-            }
-          />
-          <textarea
-            className="border p-2 w-full"
-            value={form.description}
-            onChange={(e) =>
-              setForm({ ...form, description: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 w-full"
-            value={form.website}
-            onChange={(e) =>
-              setForm({ ...form, website: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 w-full"
-            value={form.address}
-            onChange={(e) =>
-              setForm({ ...form, address: e.target.value })
-            }
-          />
-          <input
-            className="border p-2 w-full"
-            value={form.contactPhone}
-            onChange={(e) =>
-              setForm({ ...form, contactPhone: e.target.value })
-            }
-          />
-
-          <button
-            onClick={() => updateMutation.mutate()}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Save Profile
-          </button>
-        </div>
-      )}
-
-      {/* SERVICES */}
       <div className="border p-6 rounded space-y-4">
-        <h2 className="text-xl font-semibold">Services</h2>
-
-        {services.length === 0 && (
-          <p className="text-gray-500">No services added yet.</p>
-        )}
+        <h2 className="text-xl font-semibold">Select a Service</h2>
 
         {services.map((service: any) => (
-          <div
+          <button
             key={service.id}
-            className="flex justify-between items-center border-b pb-2"
+            onClick={() => {
+              setSelectedService(service);
+              setSelectedDate("");
+            }}
+            className={`w-full text-left p-3 border rounded ${
+              selectedService?.id === service.id
+                ? "bg-orange-50 border-orange-400"
+                : ""
+            }`}
           >
-            <div>
-              <p className="font-medium">{service.service}</p>
-
-              {service.durationMinutes && (
-                <p className="text-sm text-gray-500">
-                  {service.durationMinutes} mins
-                </p>
-              )}
+            <div className="flex justify-between">
+              <span>{service.service}</span>
+              <span>R {service.baseRateCents / 100}</span>
             </div>
-
-            <div className="font-semibold">
-              R {service.baseRateCents / 100}
-            </div>
-          </div>
+          </button>
         ))}
       </div>
 
-      {/* AVAILABILITY */}
-      {!isPublicView && (
+      {/* ================================
+         DATE PICKER
+      ================================ */}
+
+      {selectedService && (
         <div className="border p-6 rounded space-y-4">
-          <h2 className="text-xl font-semibold">Availability</h2>
+          <h2 className="text-xl font-semibold">Select a Date</h2>
 
-          {availabilityForm.map((slot, i) => (
-            <div key={i} className="grid grid-cols-3 gap-2">
-              <select
-                value={slot.dayOfWeek}
-                onChange={(e) => {
-                  const updated = [...availabilityForm];
-                  updated[i].dayOfWeek = Number(e.target.value);
-                  setAvailabilityForm(updated);
-                }}
-              >
-                <option value={1}>Monday</option>
-                <option value={2}>Tuesday</option>
-                <option value={3}>Wednesday</option>
-                <option value={4}>Thursday</option>
-                <option value={5}>Friday</option>
-                <option value={6}>Saturday</option>
-                <option value={0}>Sunday</option>
-              </select>
+          <input
+            type="date"
+            className="border p-2"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+          />
 
-              <input
-                type="time"
-                value={slot.startTime}
-                onChange={(e) => {
-                  const updated = [...availabilityForm];
-                  updated[i].startTime = e.target.value;
-                  setAvailabilityForm(updated);
-                }}
-              />
+          <button
+            onClick={() => refetchSlots()}
+            className="bg-black text-white px-4 py-2 rounded"
+          >
+            Check Availability
+          </button>
+        </div>
+      )}
 
-              <input
-                type="time"
-                value={slot.endTime}
-                onChange={(e) => {
-                  const updated = [...availabilityForm];
-                  updated[i].endTime = e.target.value;
-                  setAvailabilityForm(updated);
-                }}
-              />
+      {/* ================================
+         SLOTS
+      ================================ */}
+
+      {slotData && (
+        <div className="border p-6 rounded space-y-6">
+
+          <h2 className="text-xl font-semibold">Available Slots</h2>
+
+          {slotsLoading && <p>Loading slots...</p>}
+
+          {["morning", "afternoon", "evening"].map((period) => (
+            <div key={period}>
+              <h3 className="font-medium capitalize mb-2">{period}</h3>
+
+              <div className="flex flex-wrap gap-2">
+                {slotData.slots[period]?.map((slot: any) => (
+                  <button
+                    key={slot.start}
+                    onClick={() =>
+                      createBookingMutation.mutate({
+                        start: slot.start,
+                        end: slot.end,
+                      })
+                    }
+                    className="border px-3 py-2 rounded hover:bg-black hover:text-white"
+                  >
+                    {new Date(slot.start).toLocaleTimeString("en-ZA", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
 
-          <button
-            onClick={() =>
-              setAvailabilityForm([
-                ...availabilityForm,
-                { dayOfWeek: 1, startTime: "08:00", endTime: "17:00" },
-              ])
-            }
-            className="border px-3 py-1 rounded"
-          >
-            + Add Slot
-          </button>
+          {slotData.totalSlots === 0 && (
+            <p className="text-gray-500">No availability on this date</p>
+          )}
 
-          <button
-            onClick={() => saveAvailabilityMutation.mutate()}
-            className="bg-green-600 text-white px-4 py-2 rounded"
-          >
-            Save Availability
-          </button>
         </div>
       )}
 
