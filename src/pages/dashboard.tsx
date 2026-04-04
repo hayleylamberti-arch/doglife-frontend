@@ -59,19 +59,33 @@ export default function Dashboard() {
   });
 
   // ✅ GROUP BOOKINGS
-  const upcoming = data?.filter(
+  
+const upcoming = data
+  ?.filter(
     (b: any) => b.status === "PENDING" || b.status === "CONFIRMED"
+  )
+  .sort(
+    (a: any, b: any) =>
+      new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
   );
 
-  const completed = data?.filter(
+const completed = data
+  ?.filter(
     (b: any) =>
       b.status === "COMPLETED" || b.status === "COMPLETED_UNBILLED"
+  )
+  .sort(
+    (a: any, b: any) =>
+      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
   );
 
-  const cancelled = data?.filter(
-    (b: any) => b.status === "CANCELLED"
+const cancelled = data
+  ?.filter((b: any) => b.status === "CANCELLED")
+  .sort(
+    (a: any, b: any) =>
+      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
   );
-
+  
   const renderBooking = (booking: any) => (
     <div
       key={booking.id}
