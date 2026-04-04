@@ -56,16 +56,31 @@ export default function SupplierProfilePage() {
 
   const createBookingMutation = useMutation({
     mutationFn: async ({ start, end }: any) => {
-      const res = await api.post("/api/bookings", {
-        supplierId: id,
 
-        // ✅ CRITICAL FIXES
-        serviceType: selectedService.service,
-        totalCents: selectedService.baseRateCents,
+    console.log("BOOKING DEBUG:", {
+  supplierId: id,
+  selectedService,
+  serviceType:
+    selectedService?.service ||
+    selectedService?.name ||
+    selectedService?.serviceType,
+  totalCents: selectedService?.baseRateCents,
+});
 
-        startAt: start,
-        endAt: end,
-      });
+const res = await api.post("/api/bookings", {
+  supplierId: id,
+
+  serviceType:
+  selectedService?.service ||
+  selectedService?.name ||
+  selectedService?.serviceType,
+
+  totalCents:
+    selectedService?.baseRateCents || 0,
+
+  startAt: start,
+  endAt: end,
+});
 
       return res.data;
     },
