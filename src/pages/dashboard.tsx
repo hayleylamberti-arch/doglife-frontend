@@ -1,93 +1,136 @@
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
+function formatDate(date: string) {
+  return new Date(date).toLocaleDateString("en-ZA", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatTime(date: string) {
+  return new Date(date).toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatPrice(cents?: number | null) {
+  if (!cents) return "—";
+  return `R${(cents / 100).toFixed(0)}`;
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "CONFIRMED":
+      return "bg-green-100 text-green-700";
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-700";
+    case "CANCELLED":
+      return "bg-red-100 text-red-700";
+    case "COMPLETED":
+    case "COMPLETED_UNBILLED":
+      return "bg-blue-100 text-blue-700";
+    default:
+      return "bg-gray-100 text-gray-600";
+  }
+}
+
 export default function Dashboard() {
-  // 🔹 Fetch dogs (safe even if empty)
-  const { data: dogs = [], isLoading } = useQuery({
-    queryKey: ["my-dogs"],
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["bookings"],
     queryFn: async () => {
-      const res = await api.get("/api/owner/dogs");
-      return res.data?.dogs ?? [];
+      const res = await api.get("/api/bookings");
+      return res.data.bookings;
     },
   });
 
-  if (isLoading) {
-    return <div className="p-6">Loading dashboard...</div>;
-  }
+  // ✅ CANCEL MUTATION (correct place)
+  const cancelBookingMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const res = await api.patch(`/api/bookings/${bookingId}/cancel`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
-      
-      {/* ========================= */}
-      {/* PAGE TITLE */}
-      {/* ========================= */}
+    <div className="space-y-10">
+
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {/* ========================= */}
-      {/* HEALTH ALERTS */}
-      {/* ========================= */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Health Alerts</h2>
-        <p className="text-gray-500">No alerts today</p>
-      </div>
+      {/* BOOKINGS */}
+      <section>
+        <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
 
-      {/* ========================= */}
-      {/* YOUR DOGS */}
-      {/* ========================= */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Your Dogs</h2>
+        {isLoading && <p>Loading bookings...</p>}
 
-        {dogs.length === 0 ? (
-          <div className="p-4 bg-gray-50 rounded">
-            <p className="mb-2">You haven’t added any dogs yet.</p>
-            <Link to="/owner/my-dogs" className="text-blue-600">
-              Add your first dog →
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {dogs.map((dog: any) => (
-              <div key={dog.id} className="p-4 border rounded">
-                <p className="font-medium">{dog.name}</p>
+        {!isLoading && data?.length === 0 && (
+          <p className="text-gray-500">No bookings yet</p>
+        )}
+
+        <div className="space-y-3">
+
+          {data?.map((booking: any) => (
+            <div
+              key={booking.id}
+              className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
+            >
+
+              {/* LEFT */}
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {booking.supplier?.businessName || "Service Provider"}
+                </p>
+
+                <p className="text-sm text-gray-600">
+                  {formatDate(booking.startAt)} •{" "}
+                  {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
+                </p>
+
                 <p className="text-sm text-gray-500">
-                  No alerts today
+                  {booking.serviceType}
                 </p>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* ========================= */}
-      {/* UPCOMING BOOKINGS */}
-      {/* ========================= */}
-      <div>
-        <h2 className="text-lg font-semibold mb-2">Upcoming Bookings</h2>
+              {/* RIGHT */}
+              <div className="text-right space-y-2">
 
-        <div className="p-4 bg-gray-50 rounded">
-          <p className="mb-2">No upcoming bookings</p>
-          <Link to="/search" className="text-blue-600">
-            Book a service →
-          </Link>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+                    booking.status
+                  )}`}
+                >
+                  {booking.status}
+                </span>
+
+                <p className="text-sm font-medium">
+                  {formatPrice(booking.totalCents)}
+                </p>
+
+                {/* ✅ CANCEL BUTTON (THIS is “inside the map”) */}
+                {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
+                  <button
+                    onClick={() => cancelBookingMutation.mutate(booking.id)}
+                    disabled={cancelBookingMutation.isPending}
+                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+                  >
+                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
+                  </button>
+                )}
+
+              </div>
+
+            </div>
+          ))}
+
         </div>
-      </div>
-
-      {/* ========================= */}
-      {/* CTA */}
-      {/* ========================= */}
-      <div className="p-5 bg-orange-50 rounded-lg text-center">
-        <h3 className="font-semibold mb-2">
-          Need help with your dog?
-        </h3>
-
-        <Link
-          to="/search"
-          className="inline-block mt-2 bg-orange-500 text-white px-4 py-2 rounded"
-        >
-          Find a service
-        </Link>
-      </div>
+      </section>
 
     </div>
   );
