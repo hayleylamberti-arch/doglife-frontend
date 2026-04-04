@@ -1,30 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 
 export default function SupplierProfilePage() {
   const { id } = useParams();
-  const isPublicView = Boolean(id);
 
   /* ================================
-     FETCH PROFILE
+     FETCH SUPPLIER
   ================================ */
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["supplierProfile", id],
     queryFn: async () => {
-      if (isPublicView) {
-        const res = await api.get(`/api/public/suppliers/${id}`);
-        return res.data;
-      } else {
-        const res = await api.get("/api/supplier/profile");
-        return res.data;
-      }
+      const res = await api.get(`/api/public/suppliers/${id}`);
+      return res.data;
     },
   });
 
-  const supplier = isPublicView ? data?.supplier : data?.profile;
+  const supplier = data?.supplier;
   const services = supplier?.services ?? [];
 
   /* ================================
@@ -38,9 +32,13 @@ export default function SupplierProfilePage() {
      FETCH SLOTS
   ================================ */
 
-  const { data: slotData, refetch: refetchSlots, isLoading: slotsLoading } = useQuery({
+  const {
+    data: slotData,
+    refetch: refetchSlots,
+    isLoading: slotsLoading,
+  } = useQuery({
     queryKey: ["slots", id, selectedService?.id, selectedDate],
-    enabled: false, // only fetch when user clicks
+    enabled: false,
     queryFn: async () => {
       const res = await api.get(
         `/api/suppliers/${id}/services/${selectedService.id}/bookable-slots`,
@@ -53,22 +51,26 @@ export default function SupplierProfilePage() {
   });
 
   /* ================================
-     CREATE BOOKING
+     CREATE BOOKING (FIXED)
   ================================ */
 
   const createBookingMutation = useMutation({
     mutationFn: async ({ start, end }: any) => {
       const res = await api.post("/api/bookings", {
         supplierId: id,
-        serviceId: selectedService.id,
+
+        // ✅ CRITICAL FIXES
+        serviceType: selectedService.service,
+        totalCents: selectedService.baseRateCents,
+
         startAt: start,
         endAt: end,
       });
+
       return res.data;
     },
     onSuccess: () => {
-      alert("Booking created 🎉");
-      refetch();
+      alert("Booking confirmed 🎉");
     },
     onError: (err: any) => {
       alert(err?.response?.data?.error || "Booking failed");
@@ -76,11 +78,11 @@ export default function SupplierProfilePage() {
   });
 
   /* ================================
-     LOAD
+     LOAD STATES
   ================================ */
 
   if (isLoading) return <div className="p-6">Loading...</div>;
-  if (!supplier) return <div className="p-6">Not found</div>;
+  if (!supplier) return <div className="p-6">Supplier not found</div>;
 
   /* ================================
      UI
@@ -139,7 +141,13 @@ export default function SupplierProfilePage() {
           />
 
           <button
-            onClick={() => refetchSlots()}
+            onClick={() => {
+              if (!selectedDate) {
+                alert("Please select a date first");
+                return;
+              }
+              refetchSlots();
+            }}
             className="bg-black text-white px-4 py-2 rounded"
           >
             Check Availability
@@ -163,7 +171,7 @@ export default function SupplierProfilePage() {
               <h3 className="font-medium capitalize mb-2">{period}</h3>
 
               <div className="flex flex-wrap gap-2">
-                {slotData.slots[period]?.map((slot: any) => (
+                {slotData.slots?.[period]?.map((slot: any) => (
                   <button
                     key={slot.start}
                     onClick={() =>
