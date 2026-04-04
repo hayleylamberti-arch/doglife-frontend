@@ -48,7 +48,6 @@ export default function Dashboard() {
     },
   });
 
-  // ✅ CANCEL MUTATION
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       const res = await api.patch(`/api/bookings/${bookingId}/cancel`);
@@ -59,83 +58,102 @@ export default function Dashboard() {
     },
   });
 
+  // ✅ GROUP BOOKINGS
+  const upcoming = data?.filter(
+    (b: any) => b.status === "PENDING" || b.status === "CONFIRMED"
+  );
+
+  const completed = data?.filter(
+    (b: any) =>
+      b.status === "COMPLETED" || b.status === "COMPLETED_UNBILLED"
+  );
+
+  const cancelled = data?.filter(
+    (b: any) => b.status === "CANCELLED"
+  );
+
+  const renderBooking = (booking: any) => (
+    <div
+      key={booking.id}
+      className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
+    >
+      <div className="space-y-1">
+        <p className="font-medium">
+          {booking.supplier?.businessName || "Service Provider"}
+        </p>
+
+        <p className="text-sm text-gray-600">
+          {formatDate(booking.startAt)} •{" "}
+          {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
+        </p>
+
+        <p className="text-sm text-gray-500">
+          {booking.serviceType}
+        </p>
+      </div>
+
+      <div className="text-right space-y-2">
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+            booking.status
+          )}`}
+        >
+          {booking.status}
+        </span>
+
+        <p className="text-sm font-medium">
+          {formatPrice(booking.totalCents)}
+        </p>
+
+        <p className="text-xs text-gray-400">
+          ID: {booking.id.slice(-6)}
+        </p>
+
+        {(booking.status === "PENDING" ||
+          booking.status === "CONFIRMED") && (
+          <button
+            onClick={() => cancelBookingMutation.mutate(booking.id)}
+            disabled={cancelBookingMutation.isPending}
+            className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+          >
+            {cancelBookingMutation.isPending
+              ? "Cancelling..."
+              : "Cancel"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-10">
-
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
+      {isLoading && <p>Loading bookings...</p>}
+
+      {/* ✅ UPCOMING */}
       <section>
-        <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
-
-        {isLoading && <p>Loading bookings...</p>}
-
-        {!isLoading && data?.length === 0 && (
-          <p className="text-gray-500">No bookings yet</p>
-        )}
-
+        <h2 className="text-lg font-medium mb-4">Upcoming</h2>
         <div className="space-y-3">
-
-          {data?.map((booking: any) => (
-            <div
-              key={booking.id}
-              className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
-            >
-
-              {/* LEFT */}
-              <div className="space-y-1">
-                <p className="font-medium">
-                  {booking.supplier?.businessName || "Service Provider"}
-                </p>
-
-                <p className="text-sm text-gray-600">
-                  {formatDate(booking.startAt)} •{" "}
-                  {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  {booking.serviceType}
-                </p>
-              </div>
-
-              {/* RIGHT */}
-              <div className="text-right space-y-2">
-
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                    booking.status
-                  )}`}
-                >
-                  {booking.status}
-                </span>
-
-                <p className="text-sm font-medium">
-                  {formatPrice(booking.totalCents)}
-                </p>
-
-                {/* ✅ DEBUG ID */}
-                <p className="text-xs text-gray-400">
-                  ID: {booking.id.slice(-6)}
-                </p>
-
-                {/* ✅ CANCEL BUTTON */}
-                {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
-                  <button
-                    onClick={() => cancelBookingMutation.mutate(booking.id)}
-                    disabled={cancelBookingMutation.isPending}
-                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                  >
-                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
-                  </button>
-                )}
-
-              </div>
-
-            </div>
-          ))}
-
+          {upcoming?.map(renderBooking)}
         </div>
       </section>
 
+      {/* ✅ COMPLETED */}
+      <section>
+        <h2 className="text-lg font-medium mb-4">Completed</h2>
+        <div className="space-y-3">
+          {completed?.map(renderBooking)}
+        </div>
+      </section>
+
+      {/* ✅ CANCELLED */}
+      <section>
+        <h2 className="text-lg font-medium mb-4">Cancelled</h2>
+        <div className="space-y-3">
+          {cancelled?.map(renderBooking)}
+        </div>
+      </section>
     </div>
   );
 }
