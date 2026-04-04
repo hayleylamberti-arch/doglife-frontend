@@ -41,7 +41,7 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
 
   // 📦 BOOKINGS
-  const { data, isLoading } = useQuery({
+  const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
       const res = await api.get("/api/bookings");
@@ -49,8 +49,8 @@ export default function Dashboard() {
     },
   });
 
-  // 🔔 NOTIFICATIONS (NEW)
-  const { data: notifications } = useQuery({
+  // 🔔 NOTIFICATIONS
+  const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
       const res = await api.get("/api/notifications");
@@ -61,21 +61,93 @@ export default function Dashboard() {
   // ❌ CANCEL BOOKING
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
-      const res = await api.patch(`/api/bookings/${bookingId}/cancel`);
-      return res.data;
+      await api.patch(`/api/bookings/${bookingId}/cancel`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 
+  // ✅ GROUPING LOGIC
+  const now = new Date();
+
+  const upcoming = data.filter(
+    (b: any) =>
+      new Date(b.startAt) >= now &&
+      (b.status === "PENDING" || b.status === "CONFIRMED")
+  );
+
+  const completed = data.filter(
+    (b: any) =>
+      b.status === "COMPLETED" || b.status === "COMPLETED_UNBILLED"
+  );
+
+  const cancelled = data.filter(
+    (b: any) => b.status === "CANCELLED"
+  );
+
+  // 🎴 CARD COMPONENT
+  const renderBookingCard = (booking: any) => (
+    <div
+      key={booking.id}
+      className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
+    >
+      <div className="space-y-1">
+        <p className="font-medium">
+          {booking.supplier?.businessName || "Service Provider"}
+        </p>
+
+        <p className="text-sm text-gray-600">
+          {formatDate(booking.startAt)} •{" "}
+          {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
+        </p>
+
+        <p className="text-sm text-gray-500">
+          {booking.serviceType}
+        </p>
+      </div>
+
+      <div className="text-right space-y-2">
+        <span
+          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+            booking.status
+          )}`}
+        >
+          {booking.status}
+        </span>
+
+        <p className="text-sm font-medium">
+          {formatPrice(booking.totalCents)}
+        </p>
+
+        <p className="text-xs text-gray-400">
+          ID: {booking.id.slice(-6)}
+        </p>
+
+        {(booking.status === "PENDING" ||
+          booking.status === "CONFIRMED") && (
+          <button
+            onClick={() =>
+              cancelBookingMutation.mutate(booking.id)
+            }
+            disabled={cancelBookingMutation.isPending}
+            className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+          >
+            {cancelBookingMutation.isPending
+              ? "Cancelling..."
+              : "Cancel"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-10">
-
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {/* 🔔 NOTIFICATIONS UI (NEW) */}
-      {notifications?.length > 0 && (
+      {/* 🔔 NOTIFICATIONS */}
+      {notifications.length > 0 && (
         <div className="space-y-2">
           {notifications.slice(0, 3).map((n: any) => (
             <div
@@ -95,71 +167,50 @@ export default function Dashboard() {
 
         {isLoading && <p>Loading bookings...</p>}
 
-        {!isLoading && data?.length === 0 && (
+        {!isLoading && data.length === 0 && (
           <p className="text-gray-500">No bookings yet</p>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-8">
 
-          {data?.map((booking: any) => (
-            <div
-              key={booking.id}
-              className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
-            >
-
-              {/* LEFT */}
-              <div className="space-y-1">
-                <p className="font-medium">
-                  {booking.supplier?.businessName || "Service Provider"}
-                </p>
-
-                <p className="text-sm text-gray-600">
-                  {formatDate(booking.startAt)} •{" "}
-                  {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
-                </p>
-
-                <p className="text-sm text-gray-500">
-                  {booking.serviceType}
-                </p>
+          {/* UPCOMING */}
+          {upcoming.length > 0 && (
+            <div>
+              <h3 className="text-md font-semibold mb-3">
+                Upcoming
+              </h3>
+              <div className="space-y-3">
+                {upcoming.map(renderBookingCard)}
               </div>
-
-              {/* RIGHT */}
-              <div className="text-right space-y-2">
-
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-                    booking.status
-                  )}`}
-                >
-                  {booking.status}
-                </span>
-
-                <p className="text-sm font-medium">
-                  {formatPrice(booking.totalCents)}
-                </p>
-
-                <p className="text-xs text-gray-400">
-                  ID: {booking.id.slice(-6)}
-                </p>
-
-                {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
-                  <button
-                    onClick={() => cancelBookingMutation.mutate(booking.id)}
-                    disabled={cancelBookingMutation.isPending}
-                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-                  >
-                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
-                  </button>
-                )}
-
-              </div>
-
             </div>
-          ))}
+          )}
+
+          {/* COMPLETED */}
+          {completed.length > 0 && (
+            <div>
+              <h3 className="text-md font-semibold mb-3">
+                Completed
+              </h3>
+              <div className="space-y-3">
+                {completed.map(renderBookingCard)}
+              </div>
+            </div>
+          )}
+
+          {/* CANCELLED */}
+          {cancelled.length > 0 && (
+            <div>
+              <h3 className="text-md font-semibold mb-3">
+                Cancelled
+              </h3>
+              <div className="space-y-3">
+                {cancelled.map(renderBookingCard)}
+              </div>
+            </div>
+          )}
 
         </div>
       </section>
-
     </div>
   );
 }
