@@ -68,12 +68,32 @@ export default function Dashboard() {
     },
   });
 
-  // ✅ GROUPING LOGIC
+  // =========================
+  // 📍 TODAY LOGIC
+  // =========================
   const now = new Date();
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const todayBookings = data.filter((b: any) => {
+    const date = new Date(b.startAt);
+    return (
+      date >= todayStart &&
+      date <= todayEnd &&
+      (b.status === "PENDING" || b.status === "CONFIRMED")
+    );
+  });
+
+  // =========================
+  // 📊 GROUPING
+  // =========================
   const upcoming = data.filter(
     (b: any) =>
-      new Date(b.startAt) >= now &&
+      new Date(b.startAt) > todayEnd &&
       (b.status === "PENDING" || b.status === "CONFIRMED")
   );
 
@@ -86,11 +106,15 @@ export default function Dashboard() {
     (b: any) => b.status === "CANCELLED"
   );
 
-  // 🎴 CARD COMPONENT
-  const renderBookingCard = (booking: any) => (
+  // =========================
+  // 🎴 CARD
+  // =========================
+  const renderBookingCard = (booking: any, isToday = false) => (
     <div
       key={booking.id}
-      className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
+      className={`p-4 border rounded-lg shadow-sm flex justify-between items-center ${
+        isToday ? "bg-blue-50 border-blue-200" : "bg-white"
+      }`}
     >
       <div className="space-y-1">
         <p className="font-medium">
@@ -161,7 +185,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* BOOKINGS */}
       <section>
         <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
 
@@ -173,38 +196,58 @@ export default function Dashboard() {
 
         <div className="space-y-8">
 
-          {/* UPCOMING */}
+          {/* 📍 TODAY */}
+          {todayBookings.length > 0 && (
+            <div>
+              <h3 className="text-md font-semibold mb-3 text-blue-700">
+                Today
+              </h3>
+              <div className="space-y-3">
+                {todayBookings.map((b: any) =>
+                  renderBookingCard(b, true)
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 📅 UPCOMING */}
           {upcoming.length > 0 && (
             <div>
               <h3 className="text-md font-semibold mb-3">
                 Upcoming
               </h3>
               <div className="space-y-3">
-                {upcoming.map(renderBookingCard)}
+                {upcoming.map((b: any) =>
+                  renderBookingCard(b)
+                )}
               </div>
             </div>
           )}
 
-          {/* COMPLETED */}
+          {/* ✅ COMPLETED */}
           {completed.length > 0 && (
             <div>
               <h3 className="text-md font-semibold mb-3">
                 Completed
               </h3>
               <div className="space-y-3">
-                {completed.map(renderBookingCard)}
+                {completed.map((b: any) =>
+                  renderBookingCard(b)
+                )}
               </div>
             </div>
           )}
 
-          {/* CANCELLED */}
+          {/* ❌ CANCELLED */}
           {cancelled.length > 0 && (
             <div>
               <h3 className="text-md font-semibold mb-3">
                 Cancelled
               </h3>
               <div className="space-y-3">
-                {cancelled.map(renderBookingCard)}
+                {cancelled.map((b: any) =>
+                  renderBookingCard(b)
+                )}
               </div>
             </div>
           )}
