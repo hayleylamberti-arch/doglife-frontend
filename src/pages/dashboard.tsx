@@ -40,6 +40,7 @@ function getStatusColor(status: string) {
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
+  // 📦 BOOKINGS
   const { data, isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
@@ -48,6 +49,16 @@ export default function Dashboard() {
     },
   });
 
+  // 🔔 NOTIFICATIONS (NEW)
+  const { data: notifications } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await api.get("/api/notifications");
+      return res.data.notifications;
+    },
+  });
+
+  // ❌ CANCEL BOOKING
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       const res = await api.patch(`/api/bookings/${bookingId}/cancel`);
@@ -58,172 +69,97 @@ export default function Dashboard() {
     },
   });
 
-  const now = new Date();
-
-const isToday = (date: string) => {
-  const d = new Date(date);
-  return d.toDateString() === now.toDateString();
-};
-
-const isThisWeek = (date: string) => {
-  const d = new Date(date);
-
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 7);
-
-  return d >= startOfWeek && d < endOfWeek;
-};
-
-  // ✅ GROUP BOOKINGS
-  
-const upcomingAll = data
-  ?.filter(
-    (b: any) => b.status === "PENDING" || b.status === "CONFIRMED"
-  )
-  .sort(
-    (a: any, b: any) =>
-      new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-  );
-
-const today = upcomingAll?.filter((b: any) => isToday(b.startAt));
-
-const thisWeek = upcomingAll?.filter(
-  (b: any) => !isToday(b.startAt) && isThisWeek(b.startAt)
-);
-
-const later = upcomingAll?.filter(
-  (b: any) => !isToday(b.startAt) && !isThisWeek(b.startAt)
-);
-
-const completed = data
-  ?.filter(
-    (b: any) =>
-      b.status === "COMPLETED" || b.status === "COMPLETED_UNBILLED"
-  )
-  .sort(
-    (a: any, b: any) =>
-      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
-  );
-
-const cancelled = data
-  ?.filter((b: any) => b.status === "CANCELLED")
-  .sort(
-    (a: any, b: any) =>
-      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
-  );
-
-  const renderBooking = (booking: any) => (
-    <div
-      key={booking.id}
-      className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
-    >
-      <div className="space-y-1">
-        <p className="font-medium">
-          {booking.supplier?.businessName || "Service Provider"}
-        </p>
-
-        <p className="text-sm text-gray-600">
-          {formatDate(booking.startAt)} •{" "}
-          {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
-        </p>
-
-        <p className="text-sm text-gray-500">
-          {booking.serviceType}
-        </p>
-      </div>
-
-      <div className="text-right space-y-2">
-        <span
-          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-            booking.status
-          )}`}
-        >
-          {booking.status}
-        </span>
-
-        <p className="text-sm font-medium">
-          {formatPrice(booking.totalCents)}
-        </p>
-
-        <p className="text-xs text-gray-400">
-          ID: {booking.id.slice(-6)}
-        </p>
-
-        {(booking.status === "PENDING" ||
-          booking.status === "CONFIRMED") && (
-          <button
-            onClick={() => cancelBookingMutation.mutate(booking.id)}
-            disabled={cancelBookingMutation.isPending}
-            className="bg-red-500 text-white px-3 py-1 rounded text-sm"
-          >
-            {cancelBookingMutation.isPending
-              ? "Cancelling..."
-              : "Cancel"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-10">
+
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {isLoading && <p>Loading bookings...</p>}
+      {/* 🔔 NOTIFICATIONS UI (NEW) */}
+      {notifications?.length > 0 && (
+        <div className="space-y-2">
+          {notifications.slice(0, 3).map((n: any) => (
+            <div
+              key={n.id}
+              className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm"
+            >
+              <p className="font-medium">{n.title}</p>
+              <p className="text-gray-600">{n.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* ✅ UPCOMING */}
+      {/* BOOKINGS */}
       <section>
-  <h2 className="text-lg font-medium mb-4">Upcoming</h2>
+        <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
 
-  {/* TODAY */}
-  {today?.length > 0 && (
-    <>
-      <h3 className="text-md font-medium mb-2 text-green-700">Today</h3>
-      <div className="space-y-3 mb-6">
-        {today.map(renderBooking)}
-      </div>
-    </>
-  )}
+        {isLoading && <p>Loading bookings...</p>}
 
-  {/* THIS WEEK */}
-  {thisWeek?.length > 0 && (
-    <>
-      <h3 className="text-md font-medium mb-2 text-yellow-700">This Week</h3>
-      <div className="space-y-3 mb-6">
-        {thisWeek.map(renderBooking)}
-      </div>
-    </>
-  )}
+        {!isLoading && data?.length === 0 && (
+          <p className="text-gray-500">No bookings yet</p>
+        )}
 
-  {/* LATER */}
-  {later?.length > 0 && (
-    <>
-      <h3 className="text-md font-medium mb-2 text-gray-600">Later</h3>
-      <div className="space-y-3">
-        {later.map(renderBooking)}
-      </div>
-    </>
-  )}
-</section>
-
-      {/* ✅ COMPLETED */}
-      <section>
-        <h2 className="text-lg font-medium mb-4">Completed</h2>
         <div className="space-y-3">
-          {completed?.map(renderBooking)}
+
+          {data?.map((booking: any) => (
+            <div
+              key={booking.id}
+              className="p-4 border rounded-lg bg-white shadow-sm flex justify-between items-center"
+            >
+
+              {/* LEFT */}
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {booking.supplier?.businessName || "Service Provider"}
+                </p>
+
+                <p className="text-sm text-gray-600">
+                  {formatDate(booking.startAt)} •{" "}
+                  {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  {booking.serviceType}
+                </p>
+              </div>
+
+              {/* RIGHT */}
+              <div className="text-right space-y-2">
+
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+                    booking.status
+                  )}`}
+                >
+                  {booking.status}
+                </span>
+
+                <p className="text-sm font-medium">
+                  {formatPrice(booking.totalCents)}
+                </p>
+
+                <p className="text-xs text-gray-400">
+                  ID: {booking.id.slice(-6)}
+                </p>
+
+                {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
+                  <button
+                    onClick={() => cancelBookingMutation.mutate(booking.id)}
+                    disabled={cancelBookingMutation.isPending}
+                    className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+                  >
+                    {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
+                  </button>
+                )}
+
+              </div>
+
+            </div>
+          ))}
+
         </div>
       </section>
 
-      {/* ✅ CANCELLED */}
-      <section>
-        <h2 className="text-lg font-medium mb-4">Cancelled</h2>
-        <div className="space-y-3">
-          {cancelled?.map(renderBooking)}
-        </div>
-      </section>
     </div>
   );
 }
