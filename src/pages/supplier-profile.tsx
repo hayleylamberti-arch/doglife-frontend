@@ -54,46 +54,25 @@ export default function SupplierProfilePage() {
      CREATE BOOKING (FIXED)
   ================================ */
 
-  const createBookingMutation = useMutation({
-    mutationFn: async ({ start, end }: any) => {
+   const createBookingMutation = useMutation({
+  mutationFn: async ({ start, end }: any) => {
 
-    console.log("BOOKING DEBUG:", {
-  supplierId: id!,
-  selectedService,
-  serviceType:
-    selectedService?.service ||
-    selectedService?.name ||
-    selectedService?.serviceType,
-  totalCents: selectedService?.baseRateCents,
+    const res = await api.post("/api/bookings", {
+      supplierId: id,
+      supplierServiceId: selectedService?.id,
+      startAt: start,
+      endAt: end,
+    });
+
+    return res.data;
+  },
+  onSuccess: () => {
+    alert("Booking confirmed 🎉");
+  },
+  onError: (err: any) => {
+    alert(err?.response?.data?.error || "Booking failed");
+  },
 });
-
-const res = await api.post("/api/bookings", {
-  supplierId: id,
-
-  serviceType: (
-  selectedService?.service ||
-  selectedService?.name ||
-  selectedService?.serviceType
-)
-  ?.toUpperCase()
-  .replace(/\s+/g, "_"),
-
-  totalCents:
-    selectedService?.baseRateCents || 0,
-
-  startAt: start,
-  endAt: end,
-});
-
-      return res.data;
-    },
-    onSuccess: () => {
-      alert("Booking confirmed 🎉");
-    },
-    onError: (err: any) => {
-      alert(err?.response?.data?.error || "Booking failed");
-    },
-  });
 
   /* ================================
      LOAD STATES
