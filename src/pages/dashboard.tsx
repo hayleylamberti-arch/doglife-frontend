@@ -1,125 +1,92 @@
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-
-type Dog = {
-  id: string;
-  name: string;
-  breed: string;
-  dateOfBirth?: string;
-};
+import { api } from "@/lib/api";
 
 export default function Dashboard() {
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["/api/owner/dogs"],
+  // 🔹 Fetch dogs (safe even if empty)
+  const { data: dogs = [], isLoading } = useQuery({
+    queryKey: ["my-dogs"],
     queryFn: async () => {
-      const res = await apiRequest("/api/owner/dogs");
-      return res.json();
-    }
-  });
-
-  const dogs: Dog[] = data?.dogs || [];
-
-  const today = new Date();
-
-  const alerts: string[] = [];
-
-  const addDays = (date: Date, days: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    return d;
-  };
-
-  dogs.forEach((dog) => {
-
-    // Birthday detection
-    if (dog.dateOfBirth) {
-      const dob = new Date(dog.dateOfBirth);
-
-      if (
-        dob.getDate() === today.getDate() &&
-        dob.getMonth() === today.getMonth()
-      ) {
-        alerts.push(`🎂 Today is ${dog.name}'s birthday!`);
-      }
-    }
-
-    // Example reminder alerts (placeholder logic)
-    const nextFlea = addDays(today, 30);
-    const nextDeworm = addDays(today, 90);
-
-    alerts.push(`🦟 ${dog.name}: Flea treatment due ${nextFlea.toDateString()}`);
-    alerts.push(`🪱 ${dog.name}: Deworming due ${nextDeworm.toDateString()}`);
-
+      const res = await api.get("/api/owner/dogs");
+      return res.data?.dogs ?? [];
+    },
   });
 
   if (isLoading) {
-    return <div className="p-10">Loading dashboard...</div>;
+    return <div className="p-6">Loading dashboard...</div>;
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-8">
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      
+      {/* ========================= */}
+      {/* PAGE TITLE */}
+      {/* ========================= */}
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      <h1 className="text-3xl font-bold mb-8">
-        Dashboard
-      </h1>
+      {/* ========================= */}
+      {/* HEALTH ALERTS */}
+      {/* ========================= */}
+      <div>
+        <h2 className="text-lg font-semibold mb-2">Health Alerts</h2>
+        <p className="text-gray-500">No alerts today</p>
+      </div>
 
-      {/* Alerts */}
-      <div className="mb-10">
+      {/* ========================= */}
+      {/* YOUR DOGS */}
+      {/* ========================= */}
+      <div>
+        <h2 className="text-lg font-semibold mb-2">Your Dogs</h2>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Health Alerts
-        </h2>
-
-        {alerts.length === 0 ? (
-          <div className="text-gray-500">
-            No alerts today
+        {dogs.length === 0 ? (
+          <div className="p-4 bg-gray-50 rounded">
+            <p className="mb-2">You haven’t added any dogs yet.</p>
+            <Link to="/owner/my-dogs" className="text-blue-600">
+              Add your first dog →
+            </Link>
           </div>
         ) : (
           <div className="space-y-3">
-
-            {alerts.map((alert, index) => (
-              <div
-                key={index}
-                className="border border-yellow-200 bg-yellow-50 p-4 rounded-md"
-              >
-                {alert}
+            {dogs.map((dog: any) => (
+              <div key={dog.id} className="p-4 border rounded">
+                <p className="font-medium">{dog.name}</p>
+                <p className="text-sm text-gray-500">
+                  No alerts today
+                </p>
               </div>
             ))}
-
           </div>
         )}
-
       </div>
 
-      {/* Dogs */}
+      {/* ========================= */}
+      {/* UPCOMING BOOKINGS */}
+      {/* ========================= */}
       <div>
+        <h2 className="text-lg font-semibold mb-2">Upcoming Bookings</h2>
 
-        <h2 className="text-xl font-semibold mb-4">
-          Your Dogs
-        </h2>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-          {dogs.map((dog) => (
-            <div
-              key={dog.id}
-              className="border rounded-lg p-4"
-            >
-
-              <h3 className="font-semibold text-lg">
-                {dog.name}
-              </h3>
-
-              <p className="text-gray-500 text-sm">
-                {dog.breed}
-              </p>
-
-            </div>
-          ))}
-
+        <div className="p-4 bg-gray-50 rounded">
+          <p className="mb-2">No upcoming bookings</p>
+          <Link to="/search" className="text-blue-600">
+            Book a service →
+          </Link>
         </div>
+      </div>
 
+      {/* ========================= */}
+      {/* CTA */}
+      {/* ========================= */}
+      <div className="p-5 bg-orange-50 rounded-lg text-center">
+        <h3 className="font-semibold mb-2">
+          Need help with your dog?
+        </h3>
+
+        <Link
+          to="/search"
+          className="inline-block mt-2 bg-orange-500 text-white px-4 py-2 rounded"
+        >
+          Find a service
+        </Link>
       </div>
 
     </div>
