@@ -48,7 +48,7 @@ export default function Dashboard() {
     },
   });
 
-  // ✅ CANCEL MUTATION (correct place)
+  // ✅ CANCEL MUTATION
   const cancelBookingMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       const res = await api.patch(`/api/bookings/${bookingId}/cancel`);
@@ -64,7 +64,6 @@ export default function Dashboard() {
 
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
-      {/* BOOKINGS */}
       <section>
         <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
 
@@ -113,7 +112,12 @@ export default function Dashboard() {
                   {formatPrice(booking.totalCents)}
                 </p>
 
-                {/* ✅ CANCEL BUTTON (THIS is “inside the map”) */}
+                {/* ✅ DEBUG ID */}
+                <p className="text-xs text-gray-400">
+                  ID: {booking.id.slice(-6)}
+                </p>
+
+                {/* ✅ CANCEL BUTTON */}
                 {(booking.status === "PENDING" || booking.status === "CONFIRMED") && (
                   <button
                     onClick={() => cancelBookingMutation.mutate(booking.id)}
