@@ -46,6 +46,8 @@ export default function SupplierDashboard() {
   const queryClient = useQueryClient();
 
   const prevBookingCount = useRef(0);
+  const hasPlayedSound = useRef(false);
+
   const [activeAlert, setActiveAlert] = useState<any | null>(null);
   const [countdown, setCountdown] = useState(15);
 
@@ -57,17 +59,28 @@ export default function SupplierDashboard() {
     queryKey: ["supplierBookings"],
     queryFn: async () => {
       const res = await api.get("/api/supplier/bookings");
-      return res.data.bookings;
+      return res.data.bookings || [];
     },
     refetchInterval: 5000,
   });
+
+  /* =========================
+     SORT BOOKINGS (NEWEST FIRST)
+  ========================= */
+
+  const sortedBookings = [...data].sort(
+    (a: any, b: any) =>
+      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
+  );
 
   /* =========================
      UBER-STYLE ALERT SYSTEM
   ========================= */
 
   useEffect(() => {
-    const pending = data.filter((b: any) => b.status === "PENDING");
+    const pending = sortedBookings.filter(
+      (b: any) => b.status === "PENDING"
+    );
 
     if (pending.length > prevBookingCount.current) {
       const newest = pending[0];
@@ -75,28 +88,35 @@ export default function SupplierDashboard() {
       setActiveAlert(newest);
       setCountdown(15);
 
-      // 🔔 SOUND
-      const audio = new Audio("/notification.mp3");
-      audio.play().catch(() => {});
+      // 🔔 SOUND (play once per alert)
+      if (!hasPlayedSound.current) {
+        const audio = new Audio("/notification.mp3");
+        audio.play().catch(() => {});
+        hasPlayedSound.current = true;
+      }
 
-      // 📳 VIBRATION (mobile only)
+      // 📳 VIBRATION
       if (navigator.vibrate) {
         navigator.vibrate([300, 150, 300, 150, 500]);
       }
     }
 
     prevBookingCount.current = pending.length;
-  }, [data]);
+  }, [sortedBookings]);
 
   /* =========================
      COUNTDOWN TIMER
   ========================= */
 
   useEffect(() => {
-    if (!activeAlert) return;
+    if (!activeAlert) {
+      hasPlayedSound.current = false;
+      return;
+    }
 
     if (countdown <= 0) {
       setActiveAlert(null);
+      hasPlayedSound.current = false;
       return;
     }
 
@@ -117,6 +137,7 @@ export default function SupplierDashboard() {
     },
     onSuccess: () => {
       setActiveAlert(null);
+      hasPlayedSound.current = false;
       queryClient.invalidateQueries({ queryKey: ["supplierBookings"] });
     },
   });
@@ -127,6 +148,7 @@ export default function SupplierDashboard() {
     },
     onSuccess: () => {
       setActiveAlert(null);
+      hasPlayedSound.current = false;
       queryClient.invalidateQueries({ queryKey: ["supplierBookings"] });
     },
   });
@@ -138,12 +160,13 @@ export default function SupplierDashboard() {
   const renderCard = (booking: any) => (
     <div
       key={booking.id}
-      className="p-5 rounded-xl border bg-white shadow-sm"
+      className="p-5 rounded-xl border bg-white shadow-sm hover:shadow-md transition"
     >
       <div className="flex justify-between">
 
-        <div>
-          <p className="font-semibold text-lg">
+        {/* LEFT */}
+        <div className="space-y-2">
+          <p className="font-semibold text-lg text-gray-900">
             {booking.owner?.firstName} {booking.owner?.lastName}
           </p>
 
@@ -152,41 +175,50 @@ export default function SupplierDashboard() {
             {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
           </p>
 
-          <p className="text-sm uppercase text-gray-600">
-            {booking.supplierService?.service}
+          <p className="text-xs uppercase text-gray-600">
+            {booking.supplierService?.service || booking.serviceType}
           </p>
 
-          <p className="text-sm">
-            🐶 {booking.dogs?.map((d: any) => d.dog.name).join(", ")}
+          <p className="text-sm text-gray-700">
+            🐶{" "}
+            {booking.dogs?.length
+              ? booking.dogs.map((d: any) => d.dog.name).join(", ")
+              : "No dogs"}
           </p>
         </div>
 
+        {/* RIGHT */}
         <div className="text-right space-y-2">
-          <span className={`px-2 py-1 rounded text-xs ${getStatusColor(booking.status)}`}>
+          <span
+            className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
+              booking.status
+            )}`}
+          >
             {booking.status}
           </span>
 
-          <p className="font-semibold">{formatPrice(booking.totalCents)}</p>
+          <p className="font-semibold text-gray-900">
+            {formatPrice(booking.totalCents)}
+          </p>
 
           {booking.status === "PENDING" && (
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => acceptMutation.mutate(booking.id)}
-                className="bg-green-500 text-white px-3 py-1 rounded"
+                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded"
               >
                 Accept
               </button>
 
               <button
                 onClick={() => declineMutation.mutate(booking.id)}
-                className="bg-red-500 text-white px-3 py-1 rounded"
+                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
               >
                 Decline
               </button>
             </div>
           )}
         </div>
-
       </div>
     </div>
   );
@@ -200,14 +232,15 @@ export default function SupplierDashboard() {
 
       <h1 className="text-3xl font-bold">Supplier Dashboard</h1>
 
-      {/* 🚨 UBER ALERT BANNER */}
+      {/* 🚨 ALERT */}
       {activeAlert && (
         <div className="fixed bottom-6 left-6 right-6 z-50 bg-black text-white p-5 rounded-2xl shadow-2xl">
 
           <div className="flex justify-between items-center">
-
             <div>
-              <p className="font-semibold text-lg">🚨 New Booking Request</p>
+              <p className="font-semibold text-lg">
+                🚨 New Booking Request
+              </p>
               <p className="text-sm opacity-80">
                 {activeAlert.owner?.firstName} •{" "}
                 {formatTime(activeAlert.startAt)}
@@ -217,7 +250,6 @@ export default function SupplierDashboard() {
             <div className="text-right">
               <p className="text-xl font-bold">{countdown}s</p>
             </div>
-
           </div>
 
           <div className="flex gap-3 mt-4">
@@ -235,15 +267,18 @@ export default function SupplierDashboard() {
               Decline
             </button>
           </div>
-
         </div>
       )}
 
       {/* BOOKINGS */}
-      {isLoading && <p>Loading...</p>}
+      {isLoading && <p>Loading bookings...</p>}
+
+      {!isLoading && sortedBookings.length === 0 && (
+        <p className="text-gray-500">No bookings yet</p>
+      )}
 
       <div className="space-y-4">
-        {data.map((b: any) => renderCard(b))}
+        {sortedBookings.map((b: any) => renderCard(b))}
       </div>
 
     </div>

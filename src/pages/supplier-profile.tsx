@@ -18,7 +18,7 @@ export default function SupplierProfilePage() {
     },
   });
 
-  const supplier = data?.supplier;
+  const supplier = data?.profile;
   const services = supplier?.services ?? [];
 
   /* ================================
