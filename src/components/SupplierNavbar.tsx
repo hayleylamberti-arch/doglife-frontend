@@ -1,14 +1,21 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Brand from "@/components/Brand";
 
 export default function SupplierNavbar() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("authToken");
-    navigate("/"); // cleaner than window.location
+    navigate("/");
+  };
+
+  const isActive = (path: string) => {
+    return location.pathname.startsWith(path)
+      ? "text-black font-semibold"
+      : "text-gray-600 hover:text-black";
   };
 
   return (
@@ -22,34 +29,44 @@ export default function SupplierNavbar() {
           <Brand />
 
           {/* NAV */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6 text-sm">
+
             <Link
               to="/supplier/dashboard"
-              className="text-sm font-medium text-gray-700 hover:underline"
+              className={isActive("/supplier/dashboard")}
             >
               Dashboard
             </Link>
 
             <Link
               to="/supplier/profile"
-              className="text-sm font-medium text-gray-700 hover:underline"
+              className={isActive("/supplier/profile")}
             >
-              Profile
+              Business Profile
+            </Link>
+
+            {/* FUTURE EXPANSION (optional but recommended) */}
+            <Link
+              to="/supplier/services"
+              className="text-gray-400 cursor-not-allowed"
+            >
+              Services
             </Link>
 
             <Link
-              to="/supplier/profile"
-              className="text-sm font-medium text-gray-700 hover:underline"
+              to="/supplier/availability"
+              className="text-gray-400 cursor-not-allowed"
             >
-              Edit Business Info
+              Availability
             </Link>
+
           </div>
         </div>
 
         {/* RIGHT */}
         <button
           onClick={handleLogout}
-          className="text-sm font-medium text-red-600 hover:underline"
+          className="text-sm font-medium text-red-500 hover:text-red-600"
         >
           Logout
         </button>
