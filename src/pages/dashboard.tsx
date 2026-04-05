@@ -71,8 +71,6 @@ export default function Dashboard() {
   // =========================
   // 📍 TODAY LOGIC
   // =========================
-  const now = new Date();
-
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -107,68 +105,96 @@ export default function Dashboard() {
   );
 
   // =========================
-  // 🎴 CARD
+  // 🎴 PREMIUM CARD
   // =========================
   const renderBookingCard = (booking: any, isToday = false) => (
     <div
       key={booking.id}
-      className={`p-4 border rounded-lg shadow-sm flex justify-between items-center ${
-        isToday ? "bg-blue-50 border-blue-200" : "bg-white"
+      className={`p-5 rounded-xl border shadow-sm transition hover:shadow-md ${
+        isToday
+          ? "bg-blue-50 border-blue-200"
+          : "bg-white border-gray-200"
       }`}
     >
-      <div className="space-y-1">
-        <p className="font-medium">
-          {booking.supplier?.businessName || "Service Provider"}
-        </p>
+      <div className="flex justify-between items-start">
 
-        <p className="text-sm text-gray-600">
-          {formatDate(booking.startAt)} •{" "}
-          {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
-        </p>
+        {/* LEFT */}
+        <div className="space-y-2">
 
-        <p className="text-sm text-gray-500">
-          {booking.serviceType}
-        </p>
-      </div>
+          {/* SUPPLIER */}
+          <p className="text-lg font-semibold text-gray-900">
+            {booking.supplier?.businessName || "Service Provider"}
+          </p>
 
-      <div className="text-right space-y-2">
-        <span
-          className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(
-            booking.status
-          )}`}
-        >
-          {booking.status}
-        </span>
+          {/* DATE */}
+          <p className="text-sm text-gray-500">
+            {formatDate(booking.startAt)} •{" "}
+            {formatTime(booking.startAt)} – {formatTime(booking.endAt)}
+          </p>
 
-        <p className="text-sm font-medium">
-          {formatPrice(booking.totalCents)}
-        </p>
+          {/* SERVICE */}
+          <span className="inline-block text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 uppercase tracking-wide">
+            {booking.supplierService?.service || booking.serviceType}
+          </span>
 
-        <p className="text-xs text-gray-400">
-          ID: {booking.id.slice(-6)}
-        </p>
+          {/* DOGS */}
+          <p className="text-sm text-gray-700">
+            🐶{" "}
+            {booking.dogs?.length
+              ? booking.dogs.map((d: any) => d.dog.name).join(", ")
+              : "No dogs selected"}
+          </p>
+        </div>
 
-        {(booking.status === "PENDING" ||
-          booking.status === "CONFIRMED") && (
-          <button
-            onClick={() =>
-              cancelBookingMutation.mutate(booking.id)
-            }
-            disabled={cancelBookingMutation.isPending}
-            className="bg-red-500 text-white px-3 py-1 rounded text-sm"
+        {/* RIGHT */}
+        <div className="text-right space-y-3">
+
+          {/* STATUS */}
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+              booking.status
+            )}`}
           >
-            {cancelBookingMutation.isPending
-              ? "Cancelling..."
-              : "Cancel"}
-          </button>
-        )}
+            {booking.status}
+          </span>
+
+          {/* PRICE */}
+          <p className="text-lg font-semibold text-gray-900">
+            {formatPrice(booking.totalCents)}
+          </p>
+
+          {/* ID */}
+          <p className="text-xs text-gray-400">
+            #{booking.id.slice(-6)}
+          </p>
+
+          {/* CANCEL */}
+          {(booking.status === "PENDING" ||
+            booking.status === "CONFIRMED") && (
+            <button
+              onClick={() =>
+                cancelBookingMutation.mutate(booking.id)
+              }
+              disabled={cancelBookingMutation.isPending}
+              className="bg-red-500 hover:bg-red-600 transition text-white px-3 py-1.5 rounded-lg text-sm"
+            >
+              {cancelBookingMutation.isPending
+                ? "Cancelling..."
+                : "Cancel"}
+            </button>
+          )}
+        </div>
+
       </div>
     </div>
   );
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+    <div className="space-y-10 max-w-5xl mx-auto p-6">
+
+      <h1 className="text-3xl font-bold text-gray-900">
+        Dashboard
+      </h1>
 
       {/* 🔔 NOTIFICATIONS */}
       {notifications.length > 0 && (
@@ -176,33 +202,43 @@ export default function Dashboard() {
           {notifications.slice(0, 3).map((n: any) => (
             <div
               key={n.id}
-              className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm"
+              className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
             >
-              <p className="font-medium">{n.title}</p>
-              <p className="text-gray-600">{n.message}</p>
+              <p className="font-semibold text-gray-800">
+                {n.title}
+              </p>
+              <p className="text-sm text-gray-600">
+                {n.message}
+              </p>
             </div>
           ))}
         </div>
       )}
 
-      <section>
-        <h2 className="text-lg font-medium mb-4">Your Bookings</h2>
+      {/* BOOKINGS */}
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+
+        <h2 className="text-xl font-semibold mb-6 text-gray-800">
+          Your Bookings
+        </h2>
 
         {isLoading && <p>Loading bookings...</p>}
 
         {!isLoading && data.length === 0 && (
-          <p className="text-gray-500">No bookings yet</p>
+          <p className="text-gray-500">
+            No bookings yet — find trusted dog services near you 🐾
+          </p>
         )}
 
-        <div className="space-y-8">
+        <div className="space-y-10">
 
-          {/* 📍 TODAY */}
+          {/* TODAY */}
           {todayBookings.length > 0 && (
             <div>
-              <h3 className="text-md font-semibold mb-3 text-blue-700">
+              <h3 className="text-lg font-semibold mb-4 text-blue-700">
                 Today
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {todayBookings.map((b: any) =>
                   renderBookingCard(b, true)
                 )}
@@ -210,13 +246,13 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* 📅 UPCOMING */}
+          {/* UPCOMING */}
           {upcoming.length > 0 && (
             <div>
-              <h3 className="text-md font-semibold mb-3">
+              <h3 className="text-lg font-semibold mb-4">
                 Upcoming
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {upcoming.map((b: any) =>
                   renderBookingCard(b)
                 )}
@@ -224,13 +260,13 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ✅ COMPLETED */}
+          {/* COMPLETED */}
           {completed.length > 0 && (
             <div>
-              <h3 className="text-md font-semibold mb-3">
+              <h3 className="text-lg font-semibold mb-4">
                 Completed
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {completed.map((b: any) =>
                   renderBookingCard(b)
                 )}
@@ -238,13 +274,13 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ❌ CANCELLED */}
+          {/* CANCELLED */}
           {cancelled.length > 0 && (
             <div>
-              <h3 className="text-md font-semibold mb-3">
+              <h3 className="text-lg font-semibold mb-4">
                 Cancelled
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {cancelled.map((b: any) =>
                   renderBookingCard(b)
                 )}
@@ -253,7 +289,7 @@ export default function Dashboard() {
           )}
 
         </div>
-      </section>
+      </div>
     </div>
   );
 }

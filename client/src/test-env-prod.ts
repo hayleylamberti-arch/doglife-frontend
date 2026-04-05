@@ -1,1 +1,1 @@
-console.log("🌍 Production VITE_API_BASE =", import.meta.env.VITE_API_BASE);
+console.log("🌍 Production VITE_API_BASE =", (import.meta as any).env.VITE_API_BASE);

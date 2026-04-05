@@ -1,14 +1,29 @@
 import { Outlet } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { getMe } from "@/lib/api";
 import RoleNavbar from "@/components/RoleNavbar";
 
 export default function AppLayout() {
-  // Force recompile - change 124
+  const {
+    data: user,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
+    retry: false,
+  });
+
+  if (isLoading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div style={{backgroundColor: 'red', padding: '20px', fontSize: '24px', fontWeight: 'bold'}}>
-        THIS IS THE APPLAYOUT - IF YOU SEE THIS, RoleNavbar is not working
-      </div>
-      <RoleNavbar />
+
+      {/* 👇 PASS USER INTO NAVBAR */}
+      <RoleNavbar user={user} />
+
       <main className="max-w-7xl mx-auto p-6">
         <Outlet />
       </main>

@@ -22,11 +22,26 @@ export default function SupplierProfilePage() {
   const services = supplier?.services ?? [];
 
   /* ================================
+     FETCH USER DOGS 🐶
+  ================================ */
+
+  const { data: dogsData } = useQuery({
+    queryKey: ["myDogs"],
+    queryFn: async () => {
+      const res = await api.get("/api/dogs");
+      return res.data;
+    },
+  });
+
+  const dogs = dogsData?.dogs || [];
+
+  /* ================================
      BOOKING STATE
   ================================ */
 
   const [selectedService, setSelectedService] = useState<any | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
 
   /* ================================
      FETCH SLOTS
@@ -51,28 +66,34 @@ export default function SupplierProfilePage() {
   });
 
   /* ================================
-     CREATE BOOKING (FIXED)
+     CREATE BOOKING
   ================================ */
 
-   const createBookingMutation = useMutation({
-  mutationFn: async ({ start, end }: any) => {
+  const createBookingMutation = useMutation({
+    mutationFn: async ({ start, end }: any) => {
+      if (!selectedDogs.length) {
+        alert("Please select at least one dog 🐶");
+        return;
+      }
 
-    const res = await api.post("/api/bookings", {
-      supplierId: id,
-      supplierServiceId: selectedService?.id,
-      startAt: start,
-      endAt: end,
-    });
+      const res = await api.post("/api/bookings", {
+        supplierId: supplier.id,
+        supplierServiceId: selectedService?.id,
+        startAt: start,
+        endAt: end,
+        dogIds: selectedDogs, // ✅ KEY ADDITION
+      });
 
-    return res.data;
-  },
-  onSuccess: () => {
-    alert("Booking confirmed 🎉");
-  },
-  onError: (err: any) => {
-    alert(err?.response?.data?.error || "Booking failed");
-  },
-});
+      return res.data;
+    },
+    onSuccess: () => {
+      alert("Booking confirmed 🎉");
+      window.location.href = "/dashboard";
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.error || "Booking failed");
+    },
+  });
 
   /* ================================
      LOAD STATES
@@ -121,6 +142,44 @@ export default function SupplierProfilePage() {
           </button>
         ))}
       </div>
+
+      {/* ================================
+         DOG SELECTION 🐶
+      ================================ */}
+
+      {selectedService && (
+        <div className="border p-6 rounded space-y-4">
+          <h2 className="text-xl font-semibold">Select Dog(s)</h2>
+
+          {dogs.length === 0 && (
+            <p className="text-gray-500">
+              No dogs found. Please add a dog first.
+            </p>
+          )}
+
+          {dogs.map((dog: any) => (
+            <label
+              key={dog.id}
+              className="flex items-center gap-3 border p-3 rounded cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={selectedDogs.includes(dog.id)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedDogs([...selectedDogs, dog.id]);
+                  } else {
+                    setSelectedDogs(
+                      selectedDogs.filter((d) => d !== dog.id)
+                    );
+                  }
+                }}
+              />
+              <span>{dog.name}</span>
+            </label>
+          ))}
+        </div>
+      )}
 
       {/* ================================
          DATE PICKER
