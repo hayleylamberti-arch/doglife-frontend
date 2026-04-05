@@ -1,259 +1,83 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 export default function SupplierProfilePage() {
-  const { id } = useParams();
-
-  /* ================================
-     FETCH SUPPLIER
-  ================================ */
-
   const { data, isLoading } = useQuery({
-    queryKey: ["supplierProfile", id],
+    queryKey: ["mySupplierProfile"],
     queryFn: async () => {
-      const res = await api.get(`/api/public/suppliers/${id}`);
-      return res.data;
+      const res = await api.get("/api/supplier/profile");
+      return res.data.profile;
     },
   });
 
-  const supplier = data?.profile;
-  const services = supplier?.services ?? [];
+  if (isLoading) {
+    return <div className="p-6">Loading profile...</div>;
+  }
 
-  /* ================================
-     FETCH USER DOGS 🐶
-  ================================ */
+  if (!data) {
+    return <div className="p-6 text-red-500">Supplier not found</div>;
+  }
 
-  const { data: dogsData } = useQuery({
-    queryKey: ["myDogs"],
-    queryFn: async () => {
-      const res = await api.get("/api/dogs");
-      return res.data;
-    },
-  });
-
-  const dogs = dogsData?.dogs || [];
-
-  /* ================================
-     BOOKING STATE
-  ================================ */
-
-  const [selectedService, setSelectedService] = useState<any | null>(null);
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedDogs, setSelectedDogs] = useState<string[]>([]);
-
-  /* ================================
-     FETCH SLOTS
-  ================================ */
-
-  const {
-    data: slotData,
-    refetch: refetchSlots,
-    isLoading: slotsLoading,
-  } = useQuery({
-    queryKey: ["slots", id, selectedService?.id, selectedDate],
-    enabled: false,
-    queryFn: async () => {
-      const res = await api.get(
-        `/api/suppliers/${id}/services/${selectedService.id}/bookable-slots`,
-        {
-          params: { date: selectedDate },
-        }
-      );
-      return res.data;
-    },
-  });
-
-  /* ================================
-     CREATE BOOKING
-  ================================ */
-
-  const createBookingMutation = useMutation({
-    mutationFn: async ({ start, end }: any) => {
-      if (!selectedDogs.length) {
-        alert("Please select at least one dog 🐶");
-        return;
-      }
-
-      const res = await api.post("/api/bookings", {
-        supplierId: supplier.id,
-        supplierServiceId: selectedService?.id,
-        startAt: start,
-        endAt: end,
-        dogIds: selectedDogs, // ✅ KEY ADDITION
-      });
-
-      return res.data;
-    },
-    onSuccess: () => {
-      alert("Booking confirmed 🎉");
-      window.location.href = "/dashboard";
-    },
-    onError: (err: any) => {
-      alert(err?.response?.data?.error || "Booking failed");
-    },
-  });
-
-  /* ================================
-     LOAD STATES
-  ================================ */
-
-  if (isLoading) return <div className="p-6">Loading...</div>;
-  if (!supplier) return <div className="p-6">Supplier not found</div>;
-
-  /* ================================
-     UI
-  ================================ */
+  const supplier = data;
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-8">
 
       {/* HEADER */}
       <div>
-        <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
-        <p className="text-gray-500">{supplier.businessAddress}</p>
+        <h1 className="text-3xl font-bold">
+          {supplier.businessName || "Your Business"}
+        </h1>
+        <p className="text-gray-500">
+          {supplier.businessAddress || "No address added"}
+        </p>
       </div>
 
-      {/* ================================
-         SERVICES
-      ================================ */}
+      {/* ABOUT */}
+      <div className="border rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-2">About</h2>
+        <p className="text-gray-600">
+          {supplier.aboutServices || "No description yet"}
+        </p>
+      </div>
 
-      <div className="border p-6 rounded space-y-4">
-        <h2 className="text-xl font-semibold">Select a Service</h2>
+      {/* SERVICES */}
+      <div className="border rounded-xl p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Services</h2>
 
-        {services.map((service: any) => (
-          <button
+        {supplier.services?.length === 0 && (
+          <p className="text-gray-500">No services added yet</p>
+        )}
+
+        {supplier.services?.map((service: any) => (
+          <div
             key={service.id}
-            onClick={() => {
-              setSelectedService(service);
-              setSelectedDate("");
-            }}
-            className={`w-full text-left p-3 border rounded ${
-              selectedService?.id === service.id
-                ? "bg-orange-50 border-orange-400"
-                : ""
-            }`}
+            className="flex justify-between border p-3 rounded-lg"
           >
-            <div className="flex justify-between">
-              <span>{service.service}</span>
-              <span>R {service.baseRateCents / 100}</span>
-            </div>
-          </button>
+            <span>{service.service}</span>
+            <span>R {service.baseRateCents / 100}</span>
+          </div>
         ))}
       </div>
 
-      {/* ================================
-         DOG SELECTION 🐶
-      ================================ */}
+      {/* STATUS */}
+      <div className="border rounded-xl p-6">
+        <h2 className="text-xl font-semibold mb-2">Status</h2>
 
-      {selectedService && (
-        <div className="border p-6 rounded space-y-4">
-          <h2 className="text-xl font-semibold">Select Dog(s)</h2>
+        <p className="text-sm">
+          Approval:{" "}
+          <span className="font-semibold">
+            {supplier.approvalStatus}
+          </span>
+        </p>
 
-          {dogs.length === 0 && (
-            <p className="text-gray-500">
-              No dogs found. Please add a dog first.
-            </p>
-          )}
-
-          {dogs.map((dog: any) => (
-            <label
-              key={dog.id}
-              className="flex items-center gap-3 border p-3 rounded cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selectedDogs.includes(dog.id)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedDogs([...selectedDogs, dog.id]);
-                  } else {
-                    setSelectedDogs(
-                      selectedDogs.filter((d) => d !== dog.id)
-                    );
-                  }
-                }}
-              />
-              <span>{dog.name}</span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {/* ================================
-         DATE PICKER
-      ================================ */}
-
-      {selectedService && (
-        <div className="border p-6 rounded space-y-4">
-          <h2 className="text-xl font-semibold">Select a Date</h2>
-
-          <input
-            type="date"
-            className="border p-2"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
-
-          <button
-            onClick={() => {
-              if (!selectedDate) {
-                alert("Please select a date first");
-                return;
-              }
-              refetchSlots();
-            }}
-            className="bg-black text-white px-4 py-2 rounded"
-          >
-            Check Availability
-          </button>
-        </div>
-      )}
-
-      {/* ================================
-         SLOTS
-      ================================ */}
-
-      {slotData && (
-        <div className="border p-6 rounded space-y-6">
-
-          <h2 className="text-xl font-semibold">Available Slots</h2>
-
-          {slotsLoading && <p>Loading slots...</p>}
-
-          {["morning", "afternoon", "evening"].map((period) => (
-            <div key={period}>
-              <h3 className="font-medium capitalize mb-2">{period}</h3>
-
-              <div className="flex flex-wrap gap-2">
-                {slotData.slots?.[period]?.map((slot: any) => (
-                  <button
-                    key={slot.start}
-                    onClick={() =>
-                      createBookingMutation.mutate({
-                        start: slot.start,
-                        end: slot.end,
-                      })
-                    }
-                    className="border px-3 py-2 rounded hover:bg-black hover:text-white"
-                  >
-                    {new Date(slot.start).toLocaleTimeString("en-ZA", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {slotData.totalSlots === 0 && (
-            <p className="text-gray-500">No availability on this date</p>
-          )}
-
-        </div>
-      )}
+        <p className="text-sm">
+          Public:{" "}
+          <span className="font-semibold">
+            {supplier.isPublicVisible ? "Visible" : "Hidden"}
+          </span>
+        </p>
+      </div>
 
     </div>
   );
