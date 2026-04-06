@@ -108,7 +108,7 @@ export default function SupplierDashboard() {
 
   const saveProfileMutation = useMutation({
     mutationFn: async (payload: any) => {
-      await api.post("/api/supplier/profile", payload);
+      await api.patch("/api/supplier/profile", payload);
     },
   });
 
@@ -258,12 +258,17 @@ export default function SupplierDashboard() {
 
         {/* DELETE BUTTON */}
         <button
-          onClick={async () => {
-            const updated = gallery.filter((_, index) => index !== i);
-            setGallery(updated);
-            await saveGalleryMutation.mutateAsync(updated);
-          }}
-          className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100"
+         onClick={async () => {
+  if (!confirm("Delete this image?")) return;
+
+  const updated = gallery.filter((_, index) => index !== i);
+  setGallery(updated);
+
+  await saveGalleryMutation.mutateAsync(updated);
+
+  alert("🗑️ Image removed");
+}} 
+          className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1 rounded"
         >
           ✕
         </button>
@@ -290,6 +295,7 @@ export default function SupplierDashboard() {
 
           setGallery(updatedGallery);
           await saveGalleryMutation.mutateAsync(updatedGallery);
+          alert("✅ Image saved");
 
           setGalleryUploading(false);
         }}
