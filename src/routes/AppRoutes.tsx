@@ -23,6 +23,8 @@ import RegisterPage from "@/pages/auth/RegisterPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 
+import AdminDashboard from "@/pages/admin-dashboard";
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -74,6 +76,13 @@ export default function AppRoutes() {
     <Route path="supplier/availability" element={<SupplierAvailability />} />
 
   </Route>
+</Route>
+
+{/* ========================= */}
+{/* ADMIN ROUTE */}
+{/* ========================= */}
+<Route element={<RequireAuth />}>
+  <Route path="admin" element={<AdminDashboard />} />
 </Route>
 
       {/* ========================= */}

@@ -6,71 +6,31 @@ export default function NeighbourhoodWaitlist() {
   const [email, setEmail] = useState("")
   const [suburb, setSuburb] = useState("")
   const [province, setProvince] = useState("")
-  const [userType, setUserType] = useState("owner")
-  const [serviceType, setServiceType] = useState("")
+  const [userType, setUserType] = useState("OWNER")
+  const [serviceTypes, setServiceTypes] = useState<string[]>([])
   const [businessStatus, setBusinessStatus] = useState("")
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const provinceSuburbs: Record<string, string[]> = {
-  "Gauteng": [
-    "Sandton",
-    "Fourways",
-    "Midrand",
-    "Rosebank",
-    "Randburg",
-    "Centurion",
-    "Pretoria"
-  ],
-
-  "Western Cape": [
-    "Cape Town",
-    "Claremont",
-    "Sea Point",
-    "Stellenbosch",
-    "Bellville"
-  ],
-
-  "KwaZulu-Natal": [
-    "Durban",
-    "Umhlanga",
-    "Ballito",
-    "Pinetown"
-  ],
-
-  "Eastern Cape": [
-    "Port Elizabeth",
-    "East London"
-  ],
-
-  "Free State": [
-    "Bloemfontein"
-  ],
-
-  "Limpopo": [
-    "Polokwane"
-  ],
-
-  "Mpumalanga": [
-    "Nelspruit"
-  ],
-
-  "North West": [
-    "Rustenburg"
-  ],
-
-  "Northern Cape": [
-    "Kimberley"
-  ]
-}
+    "Gauteng": ["Sandton","Fourways","Midrand","Rosebank","Randburg","Centurion","Pretoria"],
+    "Western Cape": ["Cape Town","Claremont","Sea Point","Stellenbosch","Bellville"],
+    "KwaZulu-Natal": ["Durban","Umhlanga","Ballito","Pinetown"],
+    "Eastern Cape": ["Port Elizabeth","East London"],
+    "Free State": ["Bloemfontein"],
+    "Limpopo": ["Polokwane"],
+    "Mpumalanga": ["Nelspruit"],
+    "North West": ["Rustenburg"],
+    "Northern Cape": ["Kimberley"]
+  }
 
   const services = [
-    "Dog Walking",
-    "Dog Grooming",
-    "Dog Training",
-    "Boarding",
-    "Mobile Vet",
-    "Pet Transport"
+    { label: "Dog Walking", value: "WALKING" },
+    { label: "Dog Grooming", value: "GROOMING" },
+    { label: "Dog Training", value: "TRAINING" },
+    { label: "Boarding", value: "BOARDING" },
+    { label: "Mobile Vet", value: "MOBILE_VET" },
+    { label: "Pet Transport", value: "PET_TRANSPORT" }
   ]
 
   const businessOptions = [
@@ -93,7 +53,7 @@ export default function NeighbourhoodWaitlist() {
           suburb,
           province,
           userType,
-          serviceType,
+          serviceTypes,
           businessStatus
         })
       })
@@ -103,7 +63,7 @@ export default function NeighbourhoodWaitlist() {
         setEmail("")
         setSuburb("")
         setProvince("")
-        setServiceType("")
+        setServiceTypes([])
         setBusinessStatus("")
       }
 
@@ -128,7 +88,7 @@ export default function NeighbourhoodWaitlist() {
 
         {success ? (
           <div className="bg-green-100 text-green-800 p-4 rounded-lg">
-            ✅ You're on the list! We'll notify you when DogLife launches near you.
+            ✅ You're on the list!
           </div>
         ) : (
 
@@ -139,8 +99,8 @@ export default function NeighbourhoodWaitlist() {
             onChange={(e) => setUserType(e.target.value)}
             className="w-full p-3 border rounded-lg"
           >
-            <option value="owner">Dog Owner</option>
-            <option value="provider">Service Provider</option>
+            <option value="OWNER">Dog Owner</option>
+            <option value="SUPPLIER">Service Provider</option>
           </select>
 
           <select
@@ -174,7 +134,6 @@ export default function NeighbourhoodWaitlist() {
                 <option key={s} value={s}>{s}</option>
               ))
             }
-
           </select>
 
           <input
@@ -186,19 +145,32 @@ export default function NeighbourhoodWaitlist() {
             required
           />
 
-          {userType === "provider" && (
+          {userType === "SUPPLIER" && (
             <>
-              <select
-                value={serviceType}
-                onChange={(e) => setServiceType(e.target.value)}
-                className="w-full p-3 border rounded-lg"
-                required
-              >
-                <option value="">Service offered</option>
-                {services.map((service) => (
-                  <option key={service} value={service}>{service}</option>
-                ))}
-              </select>
+              <div className="text-left">
+                <p className="text-sm font-medium mb-2">Services offered</p>
+
+                <div className="space-y-2">
+                  {services.map((s) => (
+                    <label key={s.value} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={serviceTypes.includes(s.value)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setServiceTypes([...serviceTypes, s.value])
+                          } else {
+                            setServiceTypes(
+                              serviceTypes.filter((v) => v !== s.value)
+                            )
+                          }
+                        }}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               <select
                 value={businessStatus}
@@ -215,7 +187,7 @@ export default function NeighbourhoodWaitlist() {
 
           <Button
             type="submit"
-            className="w-full bg-[hsl(24,100%,50%)] hover:bg-[hsl(24,100%,45%)] text-white"
+            className="w-full bg-[hsl(24,100%,50%)] text-white"
             disabled={loading}
           >
             {loading ? "Joining..." : "Join the Waitlist"}
