@@ -29,6 +29,9 @@ export default function SupplierAvailability() {
     }))
   );
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   /* -------------------------------------------------- */
   /* 🧠 LOAD EXISTING AVAILABILITY                      */
   /* -------------------------------------------------- */
@@ -39,12 +42,13 @@ export default function SupplierAvailability() {
   async function fetchAvailability() {
     try {
       const res = await api.get("/api/supplier/availability");
-
       const saved = res.data?.availability || [];
 
-      // Map backend → frontend
       const mapped = DAYS.map((day, index) => {
-        const match = saved.find((s: any) => s.dayOfWeek === index);
+        const match = saved.find((s: any) => {
+          // ✅ SAFE mapping (handles backend differences)
+          return s.dayOfWeek === index;
+        });
 
         if (match) {
           return {
@@ -67,6 +71,8 @@ export default function SupplierAvailability() {
 
     } catch (err) {
       console.error("Failed to load availability", err);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -90,15 +96,21 @@ export default function SupplierAvailability() {
   /* -------------------------------------------------- */
   async function saveAvailability() {
     try {
+      setSaving(true);
+
       const formatted = availability
         .filter(day => day.enabled)
-        .map(day => ({
-          dayOfWeek: DAYS.indexOf(day.day),
-          startTime: day.start,
-          endTime: day.end,
-        }));
+        .map(day => {
+          if (day.start >= day.end) {
+            throw new Error(`${day.day}: End time must be after start time`);
+          }
 
-      console.log("SENDING:", formatted);
+          return {
+            dayOfWeek: DAYS.indexOf(day.day), // ✅ aligned with frontend order
+            startTime: day.start,
+            endTime: day.end,
+          };
+        });
 
       await api.post("/api/supplier/availability", {
         availability: formatted,
@@ -106,18 +118,22 @@ export default function SupplierAvailability() {
 
       alert("✅ Availability saved");
 
-      // 🔥 refresh from backend (ensures sync)
       fetchAvailability();
 
-    } catch (err) {
-      console.error(err);
-      alert("❌ Failed to save availability");
+    } catch (err: any) {
+      alert(err.message || "❌ Failed to save availability");
+    } finally {
+      setSaving(false);
     }
   }
 
   /* -------------------------------------------------- */
   /* UI                                                 */
   /* -------------------------------------------------- */
+  if (loading) {
+    return <div className="p-6">Loading availability...</div>;
+  }
+
   return (
 
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -171,9 +187,10 @@ export default function SupplierAvailability() {
 
       <button
         onClick={saveAvailability}
-        className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700"
+        disabled={saving}
+        className="bg-black text-white px-6 py-3 rounded-md"
       >
-        Save Availability
+        {saving ? "Saving..." : "Save Availability"}
       </button>
 
     </div>

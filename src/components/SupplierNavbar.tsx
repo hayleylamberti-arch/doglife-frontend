@@ -13,7 +13,7 @@ export default function SupplierNavbar() {
   };
 
   const isActive = (path: string) => {
-    return location.pathname.startsWith(path)
+    return location.pathname.includes(path)
       ? "text-black font-semibold"
       : "text-gray-600 hover:text-black";
   };
@@ -25,10 +25,8 @@ export default function SupplierNavbar() {
         {/* LEFT */}
         <div className="flex items-center space-x-8">
 
-          {/* BRAND */}
           <Brand />
 
-          {/* NAV */}
           <div className="flex items-center space-x-6 text-sm">
 
             <Link
@@ -45,17 +43,16 @@ export default function SupplierNavbar() {
               Business Profile
             </Link>
 
-            {/* FUTURE EXPANSION (optional but recommended) */}
             <Link
               to="/supplier/services"
-              className="text-gray-400 cursor-not-allowed"
+              className={isActive("/supplier/services")}
             >
               Services
             </Link>
 
             <Link
               to="/supplier/availability"
-              className="text-gray-400 cursor-not-allowed"
+              className={isActive("/supplier/availability")}
             >
               Availability
             </Link>

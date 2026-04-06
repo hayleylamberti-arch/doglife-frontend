@@ -15,6 +15,8 @@ import MyDogs from "@/pages/my-dogs";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
+import SupplierServices from "@/pages/supplier-services";
+import SupplierAvailability from "@/pages/supplier-availability";
 
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
@@ -58,14 +60,18 @@ export default function AppRoutes() {
   </Route>
 </Route>
 
-{/* ========================= */}
-{/* SUPPLIER ROUTES */}
-{/* ========================= */}
+/* ========================= */
+/* SUPPLIER ROUTES */
+/* ========================= */
 <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
   <Route element={<SupplierLayout />}>
 
     <Route path="supplier/dashboard" element={<SupplierDashboard />} />
     <Route path="supplier/profile" element={<SupplierProfile />} />
+
+    {/* ✅ ADD THESE */}
+    <Route path="supplier/services" element={<SupplierServices />} />
+    <Route path="supplier/availability" element={<SupplierAvailability />} />
 
   </Route>
 </Route>

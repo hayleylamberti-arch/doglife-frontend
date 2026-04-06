@@ -88,19 +88,37 @@ export default function SupplierDashboard() {
 
   const profile = profileData;
 
+  /* =========================
+     LOAD MEDIA FROM BACKEND
+  ========================= */
+
   useEffect(() => {
     if (profile?.logoUrl) {
       setLogoUrl(profile.logoUrl);
     }
+
+    if (profile?.galleryUrls) {
+      setGallery(profile.galleryUrls);
+    }
   }, [profile]);
 
   /* =========================
-     SAVE PROFILE
+     SAVE PROFILE (LOGO)
   ========================= */
 
   const saveProfileMutation = useMutation({
     mutationFn: async (payload: any) => {
-      await api.patch("/api/supplier/profile", payload);
+      await api.post("/api/supplier/profile", payload);
+    },
+  });
+
+  /* =========================
+     SAVE GALLERY
+  ========================= */
+
+  const saveGalleryMutation = useMutation({
+    mutationFn: async (images: string[]) => {
+      await api.post("/api/supplier/gallery", { images });
     },
   });
 
@@ -232,7 +250,7 @@ export default function SupplierDashboard() {
             ))}
 
             <label className="w-24 h-24 border rounded-xl flex items-center justify-center cursor-pointer">
-              +
+              {galleryUploading ? "..." : "+"}
               <input
                 type="file"
                 hidden
@@ -244,7 +262,11 @@ export default function SupplierDashboard() {
                   setGalleryUploading(true);
 
                   const url = await uploadToCloudinary(file);
-                  setGallery((prev) => [...prev, url]);
+
+                  const updatedGallery = [...gallery, url];
+                  setGallery(updatedGallery);
+
+                  await saveGalleryMutation.mutateAsync(updatedGallery);
 
                   setGalleryUploading(false);
                 }}

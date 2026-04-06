@@ -1,24 +1,22 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 
 export default function SupplierProfilePage() {
-  const { id } = useParams();
 
   /* ================================
      FETCH SUPPLIER
   ================================ */
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["supplierProfile", id],
-    queryFn: async () => {
-      const res = await api.get(`/api/public/suppliers/${id}`);
-      return res.data;
-    },
-  });
+  const { data: profileData, isLoading } = useQuery({
+  queryKey: ["supplierProfile"],
+  queryFn: async () => {
+    const res = await api.get("/api/supplier/profile");
+    return res.data.profile;
+  },
+});
 
-  const supplier = data?.supplier;
+  const supplier = profileData;
   const services = supplier?.services ?? [];
   const gallery = supplier?.galleryUrls ?? [];
 
@@ -51,22 +49,22 @@ export default function SupplierProfilePage() {
   ================================ */
 
   const {
-    data: slotData,
-    refetch: refetchSlots,
-    isLoading: slotsLoading,
-  } = useQuery({
-    queryKey: ["slots", id, selectedService?.id, selectedDate],
-    enabled: false,
-    queryFn: async () => {
-      const res = await api.get(
-        `/api/suppliers/${id}/services/${selectedService.id}/bookable-slots`,
-        {
-          params: { date: selectedDate },
-        }
-      );
-      return res.data;
-    },
-  });
+  data: slotData,
+  refetch: refetchSlots,
+  isLoading: slotsLoading,
+} = useQuery({
+  queryKey: ["slots", supplier?.id, selectedService?.id, selectedDate],
+  enabled: false,
+  queryFn: async () => {
+    const res = await api.get(
+      `/api/suppliers/${supplier.id}/services/${selectedService.id}/bookable-slots`,
+      {
+        params: { date: selectedDate },
+      }
+    );
+    return res.data;
+  },
+});
 
   /* ================================
      CREATE BOOKING

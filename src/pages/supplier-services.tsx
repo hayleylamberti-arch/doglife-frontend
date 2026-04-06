@@ -65,7 +65,7 @@ export default function SupplierServicesPage() {
 
       return api.post("/api/supplier/services", {
         service,
-        baseRateCents: Number(price) * 100,
+        baseRate: Number(price), // ✅ FIXED (was baseRateCents)
         durationMinutes: Number(duration),
       });
     },
@@ -150,7 +150,7 @@ export default function SupplierServicesPage() {
         <button
           onClick={() => createMutation.mutate()}
           disabled={createMutation.isPending}
-          className="w-full bg-blue-600 text-white py-3 rounded-md"
+          className="w-full bg-black text-white py-3 rounded-md"
         >
           {createMutation.isPending ? "Adding..." : "Add Service"}
         </button>
@@ -170,7 +170,7 @@ export default function SupplierServicesPage() {
         {isLoading && <p>Loading services...</p>}
 
         {!isLoading && services.length === 0 && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             No services added yet.
           </p>
         )}
