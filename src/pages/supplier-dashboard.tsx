@@ -240,41 +240,64 @@ export default function SupplierDashboard() {
         </div>
 
         {/* GALLERY */}
-        <div>
-          <p className="text-sm text-gray-500 mb-2">Gallery</p>
+<div>
+  <p className="text-sm text-gray-500 mb-2">Gallery</p>
 
-          <div className="flex flex-wrap gap-3">
+  <div className="flex flex-wrap gap-3">
 
-            {gallery.map((img, i) => (
-              <img key={i} src={img} className="w-24 h-24 rounded-xl object-cover border" />
-            ))}
+    {gallery.map((img, i) => (
+      <div key={i} className="relative group">
 
-            <label className="w-24 h-24 border rounded-xl flex items-center justify-center cursor-pointer">
-              {galleryUploading ? "..." : "+"}
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
+        <img
+          src={img}
+          className="w-24 h-24 rounded-xl object-cover border"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+          }}
+        />
 
-                  setGalleryUploading(true);
+        {/* DELETE BUTTON */}
+        <button
+          onClick={async () => {
+            const updated = gallery.filter((_, index) => index !== i);
+            setGallery(updated);
+            await saveGalleryMutation.mutateAsync(updated);
+          }}
+          className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100"
+        >
+          ✕
+        </button>
 
-                  const url = await uploadToCloudinary(file);
+      </div>
+    ))}
 
-                  const updatedGallery = [...gallery, url];
-                  setGallery(updatedGallery);
+    {/* ADD IMAGE */}
+    <label className="w-24 h-24 border rounded-xl flex items-center justify-center cursor-pointer">
+      {galleryUploading ? "..." : "+"}
+      <input
+        type="file"
+        hidden
+        accept="image/*"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
 
-                  await saveGalleryMutation.mutateAsync(updatedGallery);
+          setGalleryUploading(true);
 
-                  setGalleryUploading(false);
-                }}
-              />
-            </label>
+          const url = await uploadToCloudinary(file);
 
-          </div>
-        </div>
+          const updatedGallery = [...gallery, url];
+
+          setGallery(updatedGallery);
+          await saveGalleryMutation.mutateAsync(updatedGallery);
+
+          setGalleryUploading(false);
+        }}
+      />
+    </label>
+
+  </div>
+</div>
 
       </div>
 
