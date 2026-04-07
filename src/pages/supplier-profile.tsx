@@ -156,7 +156,7 @@ export default function SupplierProfilePage() {
         >
           <option value="">Select Suburb</option>
           {SUBURBS.map((s) => (
-            <option key={s.id} value={s.id}>
+            <option key={s.id} value={s.name}>
               {s.name}
             </option>
           ))}
