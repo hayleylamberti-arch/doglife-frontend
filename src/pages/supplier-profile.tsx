@@ -167,48 +167,12 @@ export default function SupplierProfilePage() {
             saveProfile.mutate({
               businessName,
               businessAddress,
-              suburbId: Number (suburbId),
+              suburb: suburbId,
             })
           }
           className="bg-black text-white px-4 py-2 rounded"
         >
           Save Details
-        </button>
-
-      </div>
-
-      {/* ================================
-         SERVICES
-      ================================ */}
-
-      <div className="bg-white p-6 rounded-xl shadow space-y-4">
-
-        <h2 className="font-semibold">Services Offered</h2>
-
-        {SERVICE_TYPES.map((service) => (
-          <label key={service} className="flex gap-3">
-            <input
-              type="checkbox"
-              checked={selectedServices.includes(service)}
-              onChange={(e) => {
-                if (e.target.checked) {
-                  setSelectedServices([...selectedServices, service]);
-                } else {
-                  setSelectedServices(
-                    selectedServices.filter((s) => s !== service)
-                  );
-                }
-              }}
-            />
-            {formatService(service)}
-          </label>
-        ))}
-
-        <button
-          onClick={() => saveServices.mutate()}
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Save Services
         </button>
 
       </div>
