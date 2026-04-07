@@ -3,19 +3,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 /* ================================
-   CONSTANTS
+   SUBURBS (TEMP STATIC)
 ================================ */
-
-const SERVICE_TYPES = [
-  "WALKING",
-  "GROOMING",
-  "BOARDING",
-  "TRAINING",
-  "DAYCARE",
-  "PET_SITTING",
-  "PET_TRANSPORT",
-  "MOBILE_VET"
-];
 
 const SUBURBS = [
   { id: "1", name: "Bryanston" },
@@ -23,17 +12,6 @@ const SUBURBS = [
   { id: "3", name: "Fourways" },
   { id: "4", name: "Rosebank" },
 ];
-
-/* ================================
-   FORMATTERS
-================================ */
-
-function formatService(service: string) {
-  return service
-    .toLowerCase()
-    .replace("_", " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-}
 
 /* ================================
    COMPONENT
@@ -56,14 +34,10 @@ export default function SupplierProfilePage() {
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
   const [aboutServices, setAboutServices] = useState("");
-  const [businessPhone, setBusinessPhone] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
-
   const [suburbId, setSuburbId] = useState("");
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
 
   /* ================================
-     LOAD DATA
+     LOAD DATA (🔥 FIXED)
   ================================ */
 
   useEffect(() => {
@@ -71,14 +45,9 @@ export default function SupplierProfilePage() {
       setBusinessName(supplier.businessName || "");
       setBusinessAddress(supplier.businessAddress || "");
       setAboutServices(supplier.aboutServices || "");
-      setBusinessPhone(supplier.businessPhone || "");
-      setWebsiteUrl(supplier.websiteUrl || "");
-      setSuburbId(supplier.suburbId || "");
 
-      const existingServices =
-        supplier.services?.map((s: any) => s.service) || [];
-
-      setSelectedServices(existingServices);
+      // ✅ FIX: use "suburb" not "suburbId"
+      setSuburbId(supplier.suburb || "");
     }
   }, [supplier]);
 
@@ -91,23 +60,7 @@ export default function SupplierProfilePage() {
       return api.patch("/api/supplier/profile", payload);
     },
     onSuccess: () => alert("✅ Saved"),
-  });
-
-  /* ================================
-     SAVE SERVICES
-  ================================ */
-
-  const saveServices = useMutation({
-    mutationFn: async () => {
-      // simple approach: recreate services
-      for (const service of selectedServices) {
-        await api.post("/api/supplier/services", {
-          service,
-          baseRate: 0,
-        });
-      }
-    },
-    onSuccess: () => alert("✅ Services updated"),
+    onError: () => alert("❌ Failed to save"),
   });
 
   /* ================================
@@ -167,7 +120,7 @@ export default function SupplierProfilePage() {
             saveProfile.mutate({
               businessName,
               businessAddress,
-              suburb: suburbId,
+              suburb: suburbId, // ✅ CORRECT
             })
           }
           className="bg-black text-white px-4 py-2 rounded"
