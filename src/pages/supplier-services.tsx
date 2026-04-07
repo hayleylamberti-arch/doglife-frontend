@@ -2,6 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
+/* ================================
+   CONSTANTS
+================================ */
+
 const SERVICE_TYPES = [
   "WALKING",
   "GROOMING",
@@ -27,6 +31,10 @@ function formatService(service: string) {
 
   return map[service] ?? service;
 }
+
+/* ================================
+   COMPONENT
+================================ */
 
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
@@ -63,15 +71,23 @@ export default function SupplierServicesPage() {
         throw new Error("Missing fields");
       }
 
+      // prevent duplicates (basic check)
+      const exists = services.find((s: any) => s.service === service);
+      if (exists) {
+        throw new Error("Service already exists");
+      }
+
       return api.post("/api/supplier/services", {
         service,
-        baseRate: Number(price), // ✅ FIXED (was baseRateCents)
-        durationMinutes: Number(duration),
+        baseRate: Number(price),
+        durationMinutes:
+          service === "BOARDING" || service === "PET_TRANSPORT"
+            ? null
+            : Number(duration),
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-
       setService("");
       setPrice("");
       setDuration("60");
@@ -95,6 +111,39 @@ export default function SupplierServicesPage() {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
     },
   });
+
+  /* ================================
+     DELETE SERVICE
+  ================================ */
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return api.delete(`/api/supplier/services/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+    },
+  });
+
+  /* ================================
+     HELPERS
+  ================================ */
+
+  function getDurationLabel() {
+    if (service === "WALKING" || service === "TRAINING") {
+      return "Duration (minutes)";
+    }
+
+    if (service === "BOARDING") {
+      return "Per night (no duration needed)";
+    }
+
+    if (service === "PET_TRANSPORT") {
+      return "Per trip (distance-based)";
+    }
+
+    return "Duration";
+  }
 
   /* ================================
      UI
@@ -133,19 +182,21 @@ export default function SupplierServicesPage() {
 
         <input
           type="number"
-          placeholder="Price (e.g. 150)"
+          placeholder="Price (ZAR)"
           className="w-full border rounded px-3 py-2"
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
 
-        <input
-          type="number"
-          placeholder="Duration (minutes)"
-          className="w-full border rounded px-3 py-2"
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
-        />
+        {service !== "BOARDING" && service !== "PET_TRANSPORT" && (
+          <input
+            type="number"
+            placeholder={getDurationLabel()}
+            className="w-full border rounded px-3 py-2"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+          />
+        )}
 
         <button
           onClick={() => createMutation.mutate()}
@@ -187,20 +238,32 @@ export default function SupplierServicesPage() {
               </p>
 
               <p className="text-sm text-gray-500">
-                R{(s.baseRateCents / 100).toFixed(0)} • {s.durationMinutes} mins
+                R{(s.baseRateCents / 100).toFixed(0)}
+                {s.durationMinutes ? ` • ${s.durationMinutes} mins` : ""}
               </p>
             </div>
 
-            <button
-              onClick={() => toggleMutation.mutate(s)}
-              className={`px-4 py-2 rounded-md text-sm ${
-                s.isActive
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {s.isActive ? "Active" : "Inactive"}
-            </button>
+            <div className="flex gap-2">
+
+              <button
+                onClick={() => toggleMutation.mutate(s)}
+                className={`px-3 py-1 rounded text-sm ${
+                  s.isActive
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {s.isActive ? "Active" : "Inactive"}
+              </button>
+
+              <button
+                onClick={() => deleteMutation.mutate(s.id)}
+                className="px-3 py-1 rounded text-sm bg-red-100 text-red-600"
+              >
+                Delete
+              </button>
+
+            </div>
 
           </div>
         ))}
