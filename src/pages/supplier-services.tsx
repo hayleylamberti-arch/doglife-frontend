@@ -263,19 +263,37 @@ export default function SupplierServicesPage() {
                 </p>
               )}
 
-              {s.service === "GROOMING" && s.groomingOptions && (
-                <>
-                  <p className="text-xs text-gray-400">Wash & Brush</p>
-                  {Object.entries(s.groomingOptions.washBrush || {}).map(([k,v]: any) =>
-                    v > 0 && <p key={k}>{k}: R{v}</p>
-                  )}
+              {s.service === "GROOMING" && s.pricingJson && (
+  <>
+    {/* Wash & Brush */}
+    {Object.values(s.pricingJson?.washBrush || {}).some((v: any) => v > 0) && (
+      <>
+        <p className="text-xs text-gray-400">Wash & Brush</p>
+        {Object.entries(s.pricingJson.washBrush).map(([size, value]: any) =>
+          value > 0 && (
+            <p key={size}>
+              {size}: R{value}
+            </p>
+          )
+        )}
+      </>
+    )}
 
-                  <p className="text-xs text-gray-400 mt-2">Wash & Cut</p>
-                  {Object.entries(s.groomingOptions.washCut || {}).map(([k,v]: any) =>
-                    v > 0 && <p key={k}>{k}: R{v}</p>
-                  )}
-                </>
-              )}
+    {/* Wash & Cut */}
+    {Object.values(s.pricingJson?.washCut || {}).some((v: any) => v > 0) && (
+      <>
+        <p className="text-xs text-gray-400 mt-2">Wash & Cut</p>
+        {Object.entries(s.pricingJson.washCut).map(([size, value]: any) =>
+          value > 0 && (
+            <p key={size}>
+              {size}: R{value}
+            </p>
+          )
+        )}
+      </>
+    )}
+  </>
+)}
             </div>
 
             <button onClick={() => deleteMutation.mutate(s.id)}>
