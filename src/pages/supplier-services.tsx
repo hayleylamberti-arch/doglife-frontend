@@ -32,6 +32,41 @@ function formatService(service: string) {
   return map[service] ?? service;
 }
 
+/* ================================
+   SERVICE UNIT LABELS
+================================ */
+
+function getServiceUnit(service: string, s: any) {
+  switch (service) {
+    case "WALKING":
+      return `${s.durationMinutes || 30} mins`;
+
+    case "TRAINING":
+      return `${s.durationMinutes || 60} mins`;
+
+    case "BOARDING":
+      return "per night";
+
+    case "DAYCARE":
+      return "per day";
+
+    case "PET_SITTING":
+      return "per night";
+
+    case "GROOMING":
+      return "per visit";
+
+    case "PET_TRANSPORT":
+      return "per trip";
+
+    case "MOBILE_VET":
+      return "call-out fee";
+
+    default:
+      return "";
+  }
+}
+
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
@@ -172,9 +207,7 @@ export default function SupplierServicesPage() {
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
-      {/* ================================
-         ADD SERVICE (RESTORED ✅)
-      ================================ */}
+      {/* ADD SERVICE */}
 
       <div className="border rounded-xl p-6 bg-white shadow-sm space-y-4">
 
@@ -193,7 +226,6 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {/* WALKING */}
         {serviceType === "WALKING" && (
           <>
             <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -204,7 +236,6 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* GROOMING */}
         {serviceType === "GROOMING" && (
           <>
             <select value={groomType} onChange={(e) => setGroomType(e.target.value)}>
@@ -219,7 +250,6 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* BOARDING / DAYCARE / SITTING */}
         {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
           <>
             <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -233,7 +263,6 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* TRAINING */}
         {serviceType === "TRAINING" && (
           <>
             <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -244,7 +273,6 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* BUTTON */}
         {serviceType && (
           <button
             onClick={() => createMutation.mutate()}
@@ -253,12 +281,9 @@ export default function SupplierServicesPage() {
             Add Service
           </button>
         )}
-
       </div>
 
-      {/* ================================
-         LIST
-      ================================ */}
+      {/* LIST */}
 
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Your Services</h2>
@@ -274,13 +299,27 @@ export default function SupplierServicesPage() {
               <div className="text-sm text-gray-500 space-y-1">
 
                 {s.baseRateCents && (
-                  <p>R{(s.baseRateCents / 100).toFixed(0)}</p>
+                  <p>
+                    R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                    <span className="text-gray-400 text-xs">
+                      {getServiceUnit(s.service, s)}
+                    </span>
+                  </p>
                 )}
 
                 {s.service === "GROOMING" && s.groomingOptions && (
-                  Object.entries(s.groomingOptions).map(([size, value]: any) => (
-                    <p key={size}>{size}: R{value}</p>
-                  ))
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      {s.groomingOptions.type === "WASH_BRUSH"
+                        ? "Wash & Brush"
+                        : "Wash & Cut"}
+                    </p>
+
+                    <p>Small: R{s.groomingOptions.small}</p>
+                    <p>Medium: R{s.groomingOptions.medium}</p>
+                    <p>Large: R{s.groomingOptions.large}</p>
+                    <p>XL: R{s.groomingOptions.xl}</p>
+                  </div>
                 )}
 
                 {["BOARDING", "DAYCARE", "PET_SITTING"].includes(s.service) && (
@@ -290,10 +329,6 @@ export default function SupplierServicesPage() {
                       <p>+R{(s.additionalDogPriceCents / 100).toFixed(0)} per extra dog</p>
                     )}
                   </>
-                )}
-
-                {s.service === "TRAINING" && s.durationMinutes && (
-                  <p>{s.durationMinutes} mins</p>
                 )}
 
               </div>
