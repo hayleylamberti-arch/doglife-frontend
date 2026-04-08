@@ -2,10 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
-/* ================================
-   SERVICE TYPES
-================================ */
-
 const SERVICE_TYPES = [
   "WALKING",
   "GROOMING",
@@ -28,40 +24,25 @@ function formatService(service: string) {
     PET_TRANSPORT: "🚗 Transport",
     MOBILE_VET: "🩺 Mobile Vet"
   };
-
   return map[service] ?? service;
 }
-
-/* ================================
-   SERVICE UNIT LABELS
-================================ */
 
 function getServiceUnit(service: string, s: any) {
   switch (service) {
     case "WALKING":
-      return `${s.durationMinutes || 30} mins`;
-
     case "TRAINING":
-      return `${s.durationMinutes || 60} mins`;
-
+      return `${s.durationMinutes || 30} mins`;
     case "BOARDING":
-      return "per night";
-
-    case "DAYCARE":
-      return "per day";
-
     case "PET_SITTING":
       return "per night";
-
+    case "DAYCARE":
+      return "per day";
     case "GROOMING":
       return "per visit";
-
     case "PET_TRANSPORT":
       return "per trip";
-
     case "MOBILE_VET":
       return "call-out fee";
-
     default:
       return "";
   }
@@ -80,10 +61,6 @@ export default function SupplierServicesPage() {
 
   const services = data ?? [];
 
-  /* ================================
-     STATE
-  ================================ */
-
   const [serviceType, setServiceType] = useState("");
 
   const [price, setPrice] = useState("");
@@ -91,90 +68,49 @@ export default function SupplierServicesPage() {
 
   const [capacity, setCapacity] = useState("");
   const [additionalDogPrice, setAdditionalDogPrice] = useState("");
-  const [boardingType, setBoardingType] = useState("SOCIAL");
 
-  const [groomType, setGroomType] = useState("WASH_BRUSH");
-  const [smallPrice, setSmallPrice] = useState("");
-  const [mediumPrice, setMediumPrice] = useState("");
-  const [largePrice, setLargePrice] = useState("");
-  const [xlPrice, setXlPrice] = useState("");
-
-  const [trainingType, setTrainingType] = useState("OBEDIENCE");
-
-  const [pricePerKm, setPricePerKm] = useState("");
-
-  const [vetService, setVetService] = useState("VACCINATION");
-
-  /* ================================
-     CREATE SERVICE
-  ================================ */
+  // NEW GROOMING STATE
+  const [washBrush, setWashBrush] = useState({ small: "", medium: "", large: "", xl: "" });
+  const [washCut, setWashCut] = useState({ small: "", medium: "", large: "", xl: "" });
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!serviceType) throw new Error("Select a service");
 
-      switch (serviceType) {
-        case "WALKING":
-          return api.post("/api/supplier/services", {
-            service: "WALKING",
-            baseRate: Number(price),
-            durationMinutes: Number(duration),
-          });
+      if (serviceType === "GROOMING") {
+        const hasAny =
+          Object.values(washBrush).some(v => v) ||
+          Object.values(washCut).some(v => v);
 
-        case "GROOMING":
-  if (!smallPrice) throw new Error("Enter at least small dog price");
+        if (!hasAny) throw new Error("Enter at least one grooming price");
 
-  return api.post("/api/supplier/services", {
-    service: "GROOMING",
-    baseRate: Number(smallPrice),
-    groomingOptions: {
-      type: groomType,
-      small: Number(smallPrice || 0),
-      medium: Number(mediumPrice || 0),
-      large: Number(largePrice || 0),
-      xl: Number(xlPrice || 0),
-    },
-  });
-
-        case "BOARDING":
-        case "DAYCARE":
-        case "PET_SITTING":
-          return api.post("/api/supplier/services", {
-            service: serviceType,
-            baseRate: Number(price),
-            concurrentCapacityDogs: Number(capacity),
-            additionalDogPrice: Number(additionalDogPrice),
-            boardingType,
-          });
-
-        case "TRAINING":
-          return api.post("/api/supplier/services", {
-            service: "TRAINING",
-            baseRate: Number(price),
-            durationMinutes: Number(duration),
-            trainingType,
-          });
-
-        case "PET_TRANSPORT":
-          return api.post("/api/supplier/services", {
-            service: "PET_TRANSPORT",
-            baseRate: Number(price),
-            pricePerKm: Number(pricePerKm),
-          });
-
-        case "MOBILE_VET":
-          return api.post("/api/supplier/services", {
-            service: "MOBILE_VET",
-            baseRate: Number(price),
-            vetService,
-          });
-
-        default:
-          return api.post("/api/supplier/services", {
-            service: serviceType,
-            baseRate: Number(price),
-          });
+        return api.post("/api/supplier/services", {
+          service: "GROOMING",
+          baseRate: Number(washBrush.small || washCut.small || 0),
+          groomingOptions: {
+            washBrush: {
+              small: Number(washBrush.small || 0),
+              medium: Number(washBrush.medium || 0),
+              large: Number(washBrush.large || 0),
+              xl: Number(washBrush.xl || 0),
+            },
+            washCut: {
+              small: Number(washCut.small || 0),
+              medium: Number(washCut.medium || 0),
+              large: Number(washCut.large || 0),
+              xl: Number(washCut.xl || 0),
+            },
+          },
+        });
       }
+
+      return api.post("/api/supplier/services", {
+        service: serviceType,
+        baseRate: Number(price),
+        durationMinutes: Number(duration),
+        concurrentCapacityDogs: Number(capacity),
+        additionalDogPrice: Number(additionalDogPrice),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
@@ -184,169 +120,97 @@ export default function SupplierServicesPage() {
       setDuration("30");
       setCapacity("");
       setAdditionalDogPrice("");
-      setSmallPrice("");
-      setMediumPrice("");
-      setLargePrice("");
-      setXlPrice("");
+      setWashBrush({ small: "", medium: "", large: "", xl: "" });
+      setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return api.delete(`/api/supplier/services/${id}`);
-    },
+    mutationFn: async (id: string) => api.delete(`/api/supplier/services/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
     },
   });
-
-  /* ================================
-     UI
-  ================================ */
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
-      {/* ADD SERVICE */}
+      <div className="border rounded-xl p-6 bg-white space-y-4">
+        <h2>Add New Service</h2>
 
-      <div className="border rounded-xl p-6 bg-white shadow-sm space-y-4">
-
-        <h2 className="text-lg font-semibold">Add New Service</h2>
-
-        <select
-          className="w-full border rounded px-3 py-2"
-          value={serviceType}
-          onChange={(e) => setServiceType(e.target.value)}
-        >
+        <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
           <option value="">Select service</option>
-          {SERVICE_TYPES.map((s) => (
-            <option key={s} value={s}>
-              {formatService(s)}
-            </option>
+          {SERVICE_TYPES.map(s => (
+            <option key={s} value={s}>{formatService(s)}</option>
           ))}
         </select>
 
-        {serviceType === "WALKING" && (
-          <>
-            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-              <option value="30">30 mins</option>
-              <option value="60">60 mins</option>
-            </select>
-          </>
-        )}
-
         {serviceType === "GROOMING" && (
           <>
-            <select value={groomType} onChange={(e) => setGroomType(e.target.value)}>
-              <option value="WASH_BRUSH">Wash & Brush</option>
-              <option value="WASH_CUT">Wash & Cut</option>
-            </select>
+            <p className="font-medium">Wash & Brush</p>
+            {["small","medium","large","xl"].map(size => (
+              <input
+                key={size}
+                placeholder={size}
+                value={(washBrush as any)[size]}
+                onChange={(e) =>
+                  setWashBrush(prev => ({ ...prev, [size]: e.target.value }))
+                }
+              />
+            ))}
 
-            <input placeholder="Small" value={smallPrice} onChange={(e) => setSmallPrice(e.target.value)} />
-            <input placeholder="Medium" value={mediumPrice} onChange={(e) => setMediumPrice(e.target.value)} />
-            <input placeholder="Large" value={largePrice} onChange={(e) => setLargePrice(e.target.value)} />
-            <input placeholder="XL" value={xlPrice} onChange={(e) => setXlPrice(e.target.value)} />
-          </>
-        )}
-
-        {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
-          <>
-            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <input placeholder="Capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-            <input placeholder="Additional dog price" value={additionalDogPrice} onChange={(e) => setAdditionalDogPrice(e.target.value)} />
-
-            <select value={boardingType} onChange={(e) => setBoardingType(e.target.value)}>
-              <option value="SOCIAL">Social</option>
-              <option value="PRIVATE">Private kennel</option>
-            </select>
-          </>
-        )}
-
-        {serviceType === "TRAINING" && (
-          <>
-            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-              <option value="60">60 mins</option>
-              <option value="90">90 mins</option>
-            </select>
+            <p className="font-medium mt-4">Wash & Cut</p>
+            {["small","medium","large","xl"].map(size => (
+              <input
+                key={size}
+                placeholder={size}
+                value={(washCut as any)[size]}
+                onChange={(e) =>
+                  setWashCut(prev => ({ ...prev, [size]: e.target.value }))
+                }
+              />
+            ))}
           </>
         )}
 
         {serviceType && (
-          <button
-            onClick={() => createMutation.mutate()}
-            className="w-full bg-black text-white py-3 rounded-md"
-          >
+          <button onClick={() => createMutation.mutate()}>
             Add Service
           </button>
         )}
       </div>
 
-      {/* LIST */}
-
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Your Services</h2>
-
-        {isLoading && <p>Loading...</p>}
+      <div>
+        <h2>Your Services</h2>
 
         {services.map((s: any) => (
           <div key={s.id} className="border p-4 flex justify-between">
-
             <div>
-              <p className="font-medium">{formatService(s.service)}</p>
+              <p>{formatService(s.service)}</p>
 
-              <div className="text-sm text-gray-500 space-y-1">
+              {s.service === "GROOMING" && s.groomingOptions && (
+                <>
+                  <p className="text-xs text-gray-400">Wash & Brush</p>
+                  {Object.entries(s.groomingOptions.washBrush || {}).map(([k,v]: any) =>
+                    v > 0 && <p key={k}>{k}: R{v}</p>
+                  )}
 
-                {s.baseRateCents && (
-                  <p>
-                    R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                    <span className="text-gray-400 text-xs">
-                      {getServiceUnit(s.service, s)}
-                    </span>
-                  </p>
-                )}
-
-                {s.service === "GROOMING" && s.groomingOptions?.small > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400">
-                      {s.groomingOptions.type === "WASH_BRUSH"
-                        ? "Wash & Brush"
-                        : "Wash & Cut"}
-                    </p>
-
-                    <p>Small: R{s.groomingOptions.small}</p>
-                    <p>Medium: R{s.groomingOptions.medium}</p>
-                    <p>Large: R{s.groomingOptions.large}</p>
-                    <p>XL: R{s.groomingOptions.xl}</p>
-                  </div>
-                )}
-
-                {["BOARDING", "DAYCARE", "PET_SITTING"].includes(s.service) && (
-                  <>
-                    {s.concurrentCapacityDogs && <p>Capacity: {s.concurrentCapacityDogs}</p>}
-                    {s.additionalDogPriceCents && (
-                      <p>+R{(s.additionalDogPriceCents / 100).toFixed(0)} per extra dog</p>
-                    )}
-                  </>
-                )}
-
-              </div>
+                  <p className="text-xs text-gray-400 mt-2">Wash & Cut</p>
+                  {Object.entries(s.groomingOptions.washCut || {}).map(([k,v]: any) =>
+                    v > 0 && <p key={k}>{k}: R{v}</p>
+                  )}
+                </>
+              )}
             </div>
 
-            <button
-              onClick={() => deleteMutation.mutate(s.id)}
-              className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded"
-            >
+            <button onClick={() => deleteMutation.mutate(s.id)}>
               Delete
             </button>
-
           </div>
         ))}
       </div>
-
     </div>
   );
 }
