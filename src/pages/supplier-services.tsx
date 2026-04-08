@@ -37,8 +37,6 @@ function getServiceUnit(service: string, s: any) {
       return "per night";
     case "DAYCARE":
       return "per day";
-    case "GROOMING":
-      return "per visit";
     case "PET_TRANSPORT":
       return "per trip";
     case "MOBILE_VET":
@@ -51,7 +49,7 @@ function getServiceUnit(service: string, s: any) {
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data } = useQuery({
     queryKey: ["supplier-services"],
     queryFn: async () => {
       const res = await api.get("/api/supplier/services");
@@ -69,13 +67,54 @@ export default function SupplierServicesPage() {
   const [capacity, setCapacity] = useState("");
   const [additionalDogPrice, setAdditionalDogPrice] = useState("");
 
-  // GROOMING (NEW)
+  const [pricePerKm, setPricePerKm] = useState("");
+
   const [washBrush, setWashBrush] = useState({ small: "", medium: "", large: "", xl: "" });
   const [washCut, setWashCut] = useState({ small: "", medium: "", large: "", xl: "" });
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!serviceType) throw new Error("Select a service");
+
+      if (serviceType === "WALKING") {
+        return api.post("/api/supplier/services", {
+          service: "WALKING",
+          baseRate: Number(price),
+          durationMinutes: Number(duration),
+        });
+      }
+
+      if (serviceType === "TRAINING") {
+        return api.post("/api/supplier/services", {
+          service: "TRAINING",
+          baseRate: Number(price),
+          durationMinutes: Number(duration),
+        });
+      }
+
+      if (["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType)) {
+        return api.post("/api/supplier/services", {
+          service: serviceType,
+          baseRate: Number(price),
+          concurrentCapacityDogs: Number(capacity),
+          additionalDogPrice: Number(additionalDogPrice),
+        });
+      }
+
+      if (serviceType === "PET_TRANSPORT") {
+        return api.post("/api/supplier/services", {
+          service: "PET_TRANSPORT",
+          baseRate: Number(price),
+          pricePerKm: Number(pricePerKm),
+        });
+      }
+
+      if (serviceType === "MOBILE_VET") {
+        return api.post("/api/supplier/services", {
+          service: "MOBILE_VET",
+          baseRate: Number(price),
+        });
+      }
 
       if (serviceType === "GROOMING") {
         const hasAny =
@@ -86,7 +125,7 @@ export default function SupplierServicesPage() {
 
         return api.post("/api/supplier/services", {
           service: "GROOMING",
-          baseRate: Number(washBrush.small || washCut.small || 0),
+          baseRate: 0,
           groomingOptions: {
             washBrush: {
               small: Number(washBrush.small || 0),
@@ -103,14 +142,6 @@ export default function SupplierServicesPage() {
           },
         });
       }
-
-      return api.post("/api/supplier/services", {
-        service: serviceType,
-        baseRate: Number(price),
-        durationMinutes: Number(duration),
-        concurrentCapacityDogs: Number(capacity),
-        additionalDogPrice: Number(additionalDogPrice),
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
@@ -120,6 +151,7 @@ export default function SupplierServicesPage() {
       setDuration("30");
       setCapacity("");
       setAdditionalDogPrice("");
+      setPricePerKm("");
       setWashBrush({ small: "", medium: "", large: "", xl: "" });
       setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
@@ -137,7 +169,6 @@ export default function SupplierServicesPage() {
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
-      {/* ADD SERVICE */}
       <div className="border rounded-xl p-6 bg-white space-y-4">
 
         <h2>Add New Service</h2>
@@ -149,7 +180,6 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {/* WALKING */}
         {serviceType === "WALKING" && (
           <>
             <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -160,16 +190,6 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* BOARDING / DAYCARE / SITTING */}
-        {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
-          <>
-            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <input placeholder="Capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
-            <input placeholder="Additional dog price" value={additionalDogPrice} onChange={(e) => setAdditionalDogPrice(e.target.value)} />
-          </>
-        )}
-
-        {/* TRAINING */}
         {serviceType === "TRAINING" && (
           <>
             <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
@@ -180,30 +200,40 @@ export default function SupplierServicesPage() {
           </>
         )}
 
-        {/* GROOMING */}
+        {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <input placeholder="Capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            <input placeholder="Additional dog price" value={additionalDogPrice} onChange={(e) => setAdditionalDogPrice(e.target.value)} />
+          </>
+        )}
+
+        {serviceType === "PET_TRANSPORT" && (
+          <>
+            <input placeholder="Base price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <input placeholder="Price per km" value={pricePerKm} onChange={(e) => setPricePerKm(e.target.value)} />
+          </>
+        )}
+
+        {serviceType === "MOBILE_VET" && (
+          <input placeholder="Call-out fee" value={price} onChange={(e) => setPrice(e.target.value)} />
+        )}
+
         {serviceType === "GROOMING" && (
           <>
-            <p className="font-medium">Wash & Brush</p>
+            <p>Wash & Brush</p>
             {["small","medium","large","xl"].map(size => (
-              <input
-                key={size}
-                placeholder={size}
+              <input key={size} placeholder={size}
                 value={(washBrush as any)[size]}
-                onChange={(e) =>
-                  setWashBrush(prev => ({ ...prev, [size]: e.target.value }))
-                }
+                onChange={(e) => setWashBrush(prev => ({ ...prev, [size]: e.target.value }))}
               />
             ))}
 
-            <p className="font-medium mt-4">Wash & Cut</p>
+            <p>Wash & Cut</p>
             {["small","medium","large","xl"].map(size => (
-              <input
-                key={size}
-                placeholder={size}
+              <input key={size} placeholder={size}
                 value={(washCut as any)[size]}
-                onChange={(e) =>
-                  setWashCut(prev => ({ ...prev, [size]: e.target.value }))
-                }
+                onChange={(e) => setWashCut(prev => ({ ...prev, [size]: e.target.value }))}
               />
             ))}
           </>
@@ -216,7 +246,6 @@ export default function SupplierServicesPage() {
         )}
       </div>
 
-      {/* LIST */}
       <div>
         <h2>Your Services</h2>
 
@@ -225,7 +254,7 @@ export default function SupplierServicesPage() {
             <div>
               <p>{formatService(s.service)}</p>
 
-              {s.baseRateCents && (
+              {s.service !== "GROOMING" && s.baseRateCents && (
                 <p>
                   R{(s.baseRateCents / 100).toFixed(0)}{" "}
                   <span className="text-xs text-gray-400">
@@ -234,7 +263,6 @@ export default function SupplierServicesPage() {
                 </p>
               )}
 
-              {/* GROOMING DISPLAY */}
               {s.service === "GROOMING" && s.groomingOptions && (
                 <>
                   <p className="text-xs text-gray-400">Wash & Brush</p>
