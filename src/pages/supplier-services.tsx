@@ -122,17 +122,19 @@ export default function SupplierServicesPage() {
           });
 
         case "GROOMING":
-          return api.post("/api/supplier/services", {
-            service: "GROOMING",
-            baseRate: Number(smallPrice),
-            groomingOptions: {
-              type: groomType,
-              small: Number(smallPrice),
-              medium: Number(mediumPrice),
-              large: Number(largePrice),
-              xl: Number(xlPrice),
-            },
-          });
+  if (!smallPrice) throw new Error("Enter at least small dog price");
+
+  return api.post("/api/supplier/services", {
+    service: "GROOMING",
+    baseRate: Number(smallPrice),
+    groomingOptions: {
+      type: groomType,
+      small: Number(smallPrice || 0),
+      medium: Number(mediumPrice || 0),
+      large: Number(largePrice || 0),
+      xl: Number(xlPrice || 0),
+    },
+  });
 
         case "BOARDING":
         case "DAYCARE":
@@ -307,7 +309,7 @@ export default function SupplierServicesPage() {
                   </p>
                 )}
 
-                {s.service === "GROOMING" && s.groomingOptions && (
+                {s.service === "GROOMING" && s.groomingOptions?.small > 0 && (
                   <div>
                     <p className="text-xs text-gray-400">
                       {s.groomingOptions.type === "WASH_BRUSH"
