@@ -173,6 +173,90 @@ export default function SupplierServicesPage() {
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
       {/* ================================
+         ADD SERVICE (RESTORED ✅)
+      ================================ */}
+
+      <div className="border rounded-xl p-6 bg-white shadow-sm space-y-4">
+
+        <h2 className="text-lg font-semibold">Add New Service</h2>
+
+        <select
+          className="w-full border rounded px-3 py-2"
+          value={serviceType}
+          onChange={(e) => setServiceType(e.target.value)}
+        >
+          <option value="">Select service</option>
+          {SERVICE_TYPES.map((s) => (
+            <option key={s} value={s}>
+              {formatService(s)}
+            </option>
+          ))}
+        </select>
+
+        {/* WALKING */}
+        {serviceType === "WALKING" && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              <option value="30">30 mins</option>
+              <option value="60">60 mins</option>
+            </select>
+          </>
+        )}
+
+        {/* GROOMING */}
+        {serviceType === "GROOMING" && (
+          <>
+            <select value={groomType} onChange={(e) => setGroomType(e.target.value)}>
+              <option value="WASH_BRUSH">Wash & Brush</option>
+              <option value="WASH_CUT">Wash & Cut</option>
+            </select>
+
+            <input placeholder="Small" value={smallPrice} onChange={(e) => setSmallPrice(e.target.value)} />
+            <input placeholder="Medium" value={mediumPrice} onChange={(e) => setMediumPrice(e.target.value)} />
+            <input placeholder="Large" value={largePrice} onChange={(e) => setLargePrice(e.target.value)} />
+            <input placeholder="XL" value={xlPrice} onChange={(e) => setXlPrice(e.target.value)} />
+          </>
+        )}
+
+        {/* BOARDING / DAYCARE / SITTING */}
+        {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <input placeholder="Capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            <input placeholder="Additional dog price" value={additionalDogPrice} onChange={(e) => setAdditionalDogPrice(e.target.value)} />
+
+            <select value={boardingType} onChange={(e) => setBoardingType(e.target.value)}>
+              <option value="SOCIAL">Social</option>
+              <option value="PRIVATE">Private kennel</option>
+            </select>
+          </>
+        )}
+
+        {/* TRAINING */}
+        {serviceType === "TRAINING" && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              <option value="60">60 mins</option>
+              <option value="90">90 mins</option>
+            </select>
+          </>
+        )}
+
+        {/* BUTTON */}
+        {serviceType && (
+          <button
+            onClick={() => createMutation.mutate()}
+            className="w-full bg-black text-white py-3 rounded-md"
+          >
+            Add Service
+          </button>
+        )}
+
+      </div>
+
+      {/* ================================
          LIST
       ================================ */}
 
@@ -182,10 +266,8 @@ export default function SupplierServicesPage() {
         {isLoading && <p>Loading...</p>}
 
         {services.map((s: any) => (
-          <div
-            key={s.id}
-            className="border p-4 flex justify-between items-start"
-          >
+          <div key={s.id} className="border p-4 flex justify-between">
+
             <div>
               <p className="font-medium">{formatService(s.service)}</p>
 
@@ -196,26 +278,16 @@ export default function SupplierServicesPage() {
                 )}
 
                 {s.service === "GROOMING" && s.groomingOptions && (
-                  <div>
-                    <p className="text-xs text-gray-400">By size:</p>
-                    {Object.entries(s.groomingOptions).map(([size, value]: any) => (
-                      <p key={size}>
-                        {size}: R{value}
-                      </p>
-                    ))}
-                  </div>
+                  Object.entries(s.groomingOptions).map(([size, value]: any) => (
+                    <p key={size}>{size}: R{value}</p>
+                  ))
                 )}
 
                 {["BOARDING", "DAYCARE", "PET_SITTING"].includes(s.service) && (
                   <>
-                    {s.concurrentCapacityDogs && (
-                      <p>Capacity: {s.concurrentCapacityDogs} dogs</p>
-                    )}
-
+                    {s.concurrentCapacityDogs && <p>Capacity: {s.concurrentCapacityDogs}</p>}
                     {s.additionalDogPriceCents && (
-                      <p>
-                        +R{(s.additionalDogPriceCents / 100).toFixed(0)} per extra dog
-                      </p>
+                      <p>+R{(s.additionalDogPriceCents / 100).toFixed(0)} per extra dog</p>
                     )}
                   </>
                 )}
@@ -233,9 +305,11 @@ export default function SupplierServicesPage() {
             >
               Delete
             </button>
+
           </div>
         ))}
       </div>
+
     </div>
   );
 }
