@@ -69,7 +69,7 @@ export default function SupplierServicesPage() {
   const [capacity, setCapacity] = useState("");
   const [additionalDogPrice, setAdditionalDogPrice] = useState("");
 
-  // NEW GROOMING STATE
+  // GROOMING (NEW)
   const [washBrush, setWashBrush] = useState({ small: "", medium: "", large: "", xl: "" });
   const [washCut, setWashCut] = useState({ small: "", medium: "", large: "", xl: "" });
 
@@ -137,7 +137,9 @@ export default function SupplierServicesPage() {
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
+      {/* ADD SERVICE */}
       <div className="border rounded-xl p-6 bg-white space-y-4">
+
         <h2>Add New Service</h2>
 
         <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
@@ -147,6 +149,38 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
+        {/* WALKING */}
+        {serviceType === "WALKING" && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              <option value="30">30 mins</option>
+              <option value="60">60 mins</option>
+            </select>
+          </>
+        )}
+
+        {/* BOARDING / DAYCARE / SITTING */}
+        {["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType) && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <input placeholder="Capacity" value={capacity} onChange={(e) => setCapacity(e.target.value)} />
+            <input placeholder="Additional dog price" value={additionalDogPrice} onChange={(e) => setAdditionalDogPrice(e.target.value)} />
+          </>
+        )}
+
+        {/* TRAINING */}
+        {serviceType === "TRAINING" && (
+          <>
+            <input placeholder="Price" value={price} onChange={(e) => setPrice(e.target.value)} />
+            <select value={duration} onChange={(e) => setDuration(e.target.value)}>
+              <option value="60">60 mins</option>
+              <option value="90">90 mins</option>
+            </select>
+          </>
+        )}
+
+        {/* GROOMING */}
         {serviceType === "GROOMING" && (
           <>
             <p className="font-medium">Wash & Brush</p>
@@ -182,6 +216,7 @@ export default function SupplierServicesPage() {
         )}
       </div>
 
+      {/* LIST */}
       <div>
         <h2>Your Services</h2>
 
@@ -190,6 +225,16 @@ export default function SupplierServicesPage() {
             <div>
               <p>{formatService(s.service)}</p>
 
+              {s.baseRateCents && (
+                <p>
+                  R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                  <span className="text-xs text-gray-400">
+                    {getServiceUnit(s.service, s)}
+                  </span>
+                </p>
+              )}
+
+              {/* GROOMING DISPLAY */}
               {s.service === "GROOMING" && s.groomingOptions && (
                 <>
                   <p className="text-xs text-gray-400">Wash & Brush</p>
