@@ -60,13 +60,10 @@ export default function SupplierServicesPage() {
   const services = data ?? [];
 
   const [serviceType, setServiceType] = useState("");
-
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("30");
-
   const [capacity, setCapacity] = useState("");
   const [additionalDogPrice, setAdditionalDogPrice] = useState("");
-
   const [pricePerKm, setPricePerKm] = useState("");
 
   const [washBrush, setWashBrush] = useState({ small: "", medium: "", large: "", xl: "" });
@@ -76,17 +73,9 @@ export default function SupplierServicesPage() {
     mutationFn: async () => {
       if (!serviceType) throw new Error("Select a service");
 
-      if (serviceType === "WALKING") {
+      if (serviceType === "WALKING" || serviceType === "TRAINING") {
         return api.post("/api/supplier/services", {
-          service: "WALKING",
-          baseRate: Number(price),
-          durationMinutes: Number(duration),
-        });
-      }
-
-      if (serviceType === "TRAINING") {
-        return api.post("/api/supplier/services", {
-          service: "TRAINING",
+          service: serviceType,
           baseRate: Number(price),
           durationMinutes: Number(duration),
         });
@@ -117,12 +106,6 @@ export default function SupplierServicesPage() {
       }
 
       if (serviceType === "GROOMING") {
-        const hasAny =
-          Object.values(washBrush).some(v => v) ||
-          Object.values(washCut).some(v => v);
-
-        if (!hasAny) throw new Error("Enter at least one grooming price");
-
         return api.post("/api/supplier/services", {
           service: "GROOMING",
           baseRate: 0,
@@ -164,11 +147,18 @@ export default function SupplierServicesPage() {
     },
   });
 
+  const groupedServices = services.reduce((acc: any, service: any) => {
+    if (!acc[service.service]) acc[service.service] = [];
+    acc[service.service].push(service);
+    return acc;
+  }, {});
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
+      {/* ADD SERVICE */}
       <div className="border rounded-xl p-6 bg-white space-y-4">
 
         <h2>Add New Service</h2>
@@ -246,61 +236,56 @@ export default function SupplierServicesPage() {
         )}
       </div>
 
+      {/* SERVICES LIST */}
       <div>
         <h2>Your Services</h2>
 
-        {services.map((s: any) => (
-          <div key={s.id} className="border p-4 flex justify-between">
-            <div>
-              <p>{formatService(s.service)}</p>
+        {Object.entries(groupedServices).map(([type, group]: any) => (
+          <div key={type} className="border rounded-lg p-4 mb-4">
 
-              {s.service !== "GROOMING" && s.baseRateCents && (
-                <p>
-                  R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                  <span className="text-xs text-gray-400">
-                    {getServiceUnit(s.service, s)}
-                  </span>
-                </p>
-              )}
+            <div className="flex justify-between">
 
-              {s.service === "GROOMING" && s.pricingJson && (
-  <>
-    {/* Wash & Brush */}
-    {Object.values(s.pricingJson?.washBrush || {}).some((v: any) => v > 0) && (
-      <>
-        <p className="text-xs text-gray-400">Wash & Brush</p>
-        {Object.entries(s.pricingJson.washBrush).map(([size, value]: any) =>
-          value > 0 && (
-            <p key={size}>
-              {size}: R{value}
-            </p>
-          )
-        )}
-      </>
-    )}
+              <div>
+                <p className="font-medium">{formatService(type)}</p>
 
-    {/* Wash & Cut */}
-    {Object.values(s.pricingJson?.washCut || {}).some((v: any) => v > 0) && (
-      <>
-        <p className="text-xs text-gray-400 mt-2">Wash & Cut</p>
-        {Object.entries(s.pricingJson.washCut).map(([size, value]: any) =>
-          value > 0 && (
-            <p key={size}>
-              {size}: R{value}
-            </p>
-          )
-        )}
-      </>
-    )}
-  </>
-)}
+                <div className="text-sm text-gray-500 mt-2 space-y-1">
+
+                  {type === "GROOMING" &&
+                    group.map((s: any) => (
+                      <div key={s.id}>
+
+                        {Object.entries(s.pricingJson?.washBrush || {}).map(([k,v]: any) =>
+                          v > 0 && <p key={k}>Brush {k}: R{v}</p>
+                        )}
+
+                        {Object.entries(s.pricingJson?.washCut || {}).map(([k,v]: any) =>
+                          v > 0 && <p key={k}>Cut {k}: R{v}</p>
+                        )}
+
+                      </div>
+                    ))}
+
+                  {type !== "GROOMING" &&
+                    group.map((s: any) => (
+                      <p key={s.id}>
+                        R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
+                      </p>
+                    ))}
+
+                </div>
+              </div>
+
+              <button
+                onClick={() => group.forEach((s: any) => deleteMutation.mutate(s.id))}
+                className="px-3 py-1 text-sm bg-red-100 text-red-600 rounded"
+              >
+                Delete
+              </button>
+
             </div>
-
-            <button onClick={() => deleteMutation.mutate(s.id)}>
-              Delete
-            </button>
           </div>
         ))}
+
       </div>
     </div>
   );
