@@ -281,46 +281,38 @@ export default function SupplierServicesPage() {
             ))}
 
           {/* GROOMING */}
-          {editingService.type === "GROOMING" && (() => {
-  const combined: any = {
-  washBrush: {},
-  washCut: {}
-};
+{editingService.type === "GROOMING" &&
+  editingService.group.map((s: any) => (
+    <div key={s.id} className="space-y-2">
+      <p className="text-sm font-medium">Edit grooming</p>
 
-  editingService.group.forEach((s: any) => {
-    Object.entries(s.pricingJson?.washBrush || {}).forEach(([k, v]: any) => {
-      if (v > 0) combined.washBrush[k] = v;
-    });
+      {["washBrush", "washCut"].map((type: any) =>
+        Object.entries(s.pricingJson?.[type] || {}).map(([size, value]: any) => (
+          <div key={size} className="flex gap-2">
+            <span>{type} {size}</span>
+            <input
+              defaultValue={value}
+              onBlur={(e) => {
+                const updated = {
+                  ...s.pricingJson,
+                  [type]: {
+                    ...s.pricingJson[type],
+                    [size]: Number(e.target.value),
+                  },
+                };
 
-    Object.entries(s.pricingJson?.washCut || {}).forEach(([k, v]: any) => {
-      if (v > 0) combined.washCut[k] = v;
-    });
-  });
-
-  return (
-    <div>
-      {/* Wash & Brush */}
-      {Object.keys(combined.washBrush).length > 0 && (
-        <>
-          <p className="font-medium">Wash & Brush (required)</p>
-          {Object.entries(combined.washBrush).map(([k, v]: any) => (
-            <p key={k}>{k}: R{v}</p>
-          ))}
-        </>
-      )}
-
-      {/* Wash & Cut */}
-      {Object.keys(combined.washCut).length > 0 && (
-        <>
-          <p className="font-medium mt-2">Wash & Cut</p>
-          {Object.entries(combined.washCut).map(([k, v]: any) => (
-            <p key={k}>{k}: R{v}</p>
-          ))}
-        </>
+                updateMutation.mutate({
+                  id: s.id,
+                  data: { pricingJson: updated },
+                });
+              }}
+              className="border px-2"
+            />
+          </div>
+        ))
       )}
     </div>
-  );
-})()}
+  ))}
 
           <button onClick={() => setEditingService(null)}>
             Close
