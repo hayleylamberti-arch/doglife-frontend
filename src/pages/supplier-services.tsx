@@ -338,7 +338,41 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {/* (rest unchanged – already correct) */}
+        {serviceType === "GROOMING" && (
+  <>
+    <p>Wash & Brush</p>
+    {["small", "medium", "large", "xl"].map((size) => (
+      <input
+        key={size}
+        placeholder={size}
+        value={(washBrush as any)[size]}
+        onChange={(e) =>
+          setWashBrush((prev) => ({
+            ...prev,
+            [size]: e.target.value,
+          }))
+        }
+        className="border px-2 block"
+      />
+    ))}
+
+    <p>Wash & Cut</p>
+    {["small", "medium", "large", "xl"].map((size) => (
+      <input
+        key={size}
+        placeholder={size}
+        value={(washCut as any)[size]}
+        onChange={(e) =>
+          setWashCut((prev) => ({
+            ...prev,
+            [size]: e.target.value,
+          }))
+        }
+        className="border px-2 block"
+      />
+    ))}
+  </>
+)}
 
         {serviceType && (
           <button onClick={() => createMutation.mutate()}>
