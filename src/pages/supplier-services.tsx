@@ -278,13 +278,13 @@ export default function SupplierServicesPage() {
             ))}
 
           {/* GROOMING */}
-          {type === "GROOMING" && (() => {
-  const combined = {
-    washBrush: {},
-    washCut: {}
-  };
+          {editingService.type === "GROOMING" && (() => {
+  const combined: any = {
+  washBrush: {},
+  washCut: {}
+};
 
-  group.forEach((s: any) => {
+  editingService.group.forEach((s: any) => {
     Object.entries(s.pricingJson?.washBrush || {}).forEach(([k, v]: any) => {
       if (v > 0) combined.washBrush[k] = v;
     });
