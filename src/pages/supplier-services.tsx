@@ -116,7 +116,10 @@ export default function SupplierServicesPage() {
           Object.values(washBrush).some(v => v) ||
           Object.values(washCut).some(v => v);
 
-        if (!hasAny) throw new Error("Enter at least one grooming price");
+        if (!hasAny) {
+  alert("Please enter at least one grooming price");
+  return;
+}
 
         return api.post("/api/supplier/services", {
           service: "GROOMING",
@@ -299,7 +302,7 @@ export default function SupplierServicesPage() {
       {/* Wash & Brush */}
       {Object.keys(combined.washBrush).length > 0 && (
         <>
-          <p className="text-xs text-gray-400">Wash & Brush</p>
+          <p className="font-medium">Wash & Brush (required)</p>
           {Object.entries(combined.washBrush).map(([k, v]: any) => (
             <p key={k}>{k}: R{v}</p>
           ))}
@@ -309,7 +312,7 @@ export default function SupplierServicesPage() {
       {/* Wash & Cut */}
       {Object.keys(combined.washCut).length > 0 && (
         <>
-          <p className="text-xs text-gray-400 mt-2">Wash & Cut</p>
+          <p className="font-medium mt-2">Wash & Cut</p>
           {Object.entries(combined.washCut).map(([k, v]: any) => (
             <p key={k}>{k}: R{v}</p>
           ))}
