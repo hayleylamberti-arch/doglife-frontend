@@ -46,6 +46,40 @@ function getServiceUnit(service: string, s: any) {
   }
 }
 
+type DogSize = "SMALL" | "MEDIUM" | "LARGE" | "XL";
+
+type PricingTier = {
+  category: string;
+  dogSize: DogSize;
+  priceCents: number;
+};
+
+function calculateGroomingPrice({
+  tiers,
+  selectedCategory,
+  dogs,
+}: {
+  tiers: PricingTier[];
+  selectedCategory: string;
+  dogs: { size: DogSize }[];
+}) {
+  let total = 0;
+
+  dogs.forEach((dog) => {
+    const match = tiers.find(
+      (t) =>
+        t.category === selectedCategory &&
+        t.dogSize === dog.size
+    );
+
+    if (!match) return;
+
+    total += match.priceCents;
+  });
+
+  return total;
+}
+
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
@@ -71,97 +105,34 @@ export default function SupplierServicesPage() {
 
   const [editingService, setEditingService] = useState<any>(null);
 
-  /* ================================
-     CREATE
-  ================================ */
-
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!serviceType) throw new Error("Select a service");
 
-      if (serviceType === "WALKING" || serviceType === "TRAINING") {
-        return api.post("/api/supplier/services", {
-          service: serviceType,
-          baseRate: Number(price),
-          durationMinutes: Number(duration),
-        });
-      }
-
-      if (["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType)) {
-        return api.post("/api/supplier/services", {
-          service: serviceType,
-          baseRate: Number(price),
-          concurrentCapacityDogs: Number(capacity),
-          additionalDogPrice: Number(additionalDogPrice),
-        });
-      }
-
-      if (serviceType === "PET_TRANSPORT") {
-        return api.post("/api/supplier/services", {
-          service: "PET_TRANSPORT",
-          baseRate: Number(price),
-          pricePerKm: Number(pricePerKm),
-        });
-      }
-
-      if (serviceType === "MOBILE_VET") {
-        return api.post("/api/supplier/services", {
-          service: "MOBILE_VET",
-          baseRate: Number(price),
-        });
-      }
-
       if (serviceType === "GROOMING") {
-        const hasAny =
-          Object.values(washBrush).some(v => v) ||
-          Object.values(washCut).some(v => v);
-
-        if (!hasAny) {
-  alert("Please enter at least one grooming price");
-  return;
-}
-
         return api.post("/api/supplier/services", {
           service: "GROOMING",
           baseRate: 0,
           groomingOptions: {
-            washBrush: {
-              small: Number(washBrush.small || 0),
-              medium: Number(washBrush.medium || 0),
-              large: Number(washBrush.large || 0),
-              xl: Number(washBrush.xl || 0),
-            },
-            washCut: {
-              small: Number(washCut.small || 0),
-              medium: Number(washCut.medium || 0),
-              large: Number(washCut.large || 0),
-              xl: Number(washCut.xl || 0),
-            },
+            washBrush,
+            washCut,
           },
         });
       }
 
-      // ✅ critical safety fallback
-      throw new Error("Invalid service type");
+      return api.post("/api/supplier/services", {
+        service: serviceType,
+        baseRate: Number(price),
+        durationMinutes: Number(duration),
+        concurrentCapacityDogs: Number(capacity),
+        additionalDogPrice: Number(additionalDogPrice),
+        pricePerKm: Number(pricePerKm),
+      });
     },
-
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-
-      setServiceType("");
-      setPrice("");
-      setDuration("30");
-      setCapacity("");
-      setAdditionalDogPrice("");
-      setPricePerKm("");
-      setWashBrush({ small: "", medium: "", large: "", xl: "" });
-      setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
   });
-
-  /* ================================
-     DELETE
-  ================================ */
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) =>
@@ -171,165 +142,22 @@ export default function SupplierServicesPage() {
     },
   });
 
-  /* ================================
-     UPDATE
-  ================================ */
-
-  const updateMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      return api.patch(`/api/supplier/services/${payload.id}`, payload.data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-    },
-  });
-
-  /* ================================
-     GROUPING
-  ================================ */
-
   const groupedServices = services.reduce((acc: any, service: any) => {
     if (!acc[service.service]) acc[service.service] = [];
     acc[service.service].push(service);
     return acc;
   }, {});
 
-  /* ================================
-     UI
-  ================================ */
-
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
-      {/* EDIT PANEL */}
-      {editingService && (
-        <div className="border rounded-xl p-6 bg-yellow-50 space-y-4">
-
-          <h2 className="font-semibold">
-            Edit {formatService(editingService.type)}
-          </h2>
-
-          {/* WALKING / TRAINING */}
-          {["WALKING", "TRAINING"].includes(editingService.type) &&
-            editingService.group.map((s: any) => (
-              <div key={s.id} className="flex gap-2">
-                <span>{s.durationMinutes} mins</span>
-                <input
-                  defaultValue={(s.baseRateCents / 100).toFixed(0)}
-                  onBlur={(e) =>
-                    updateMutation.mutate({
-                      id: s.id,
-                      data: {
-                        baseRateCents: Math.round(Number(e.target.value) * 100),
-                      },
-                    })
-                  }
-                  className="border px-2"
-                />
-              </div>
-            ))}
-
-          {/* BOARDING / DAYCARE / SITTING */}
-          {["BOARDING", "DAYCARE", "PET_SITTING"].includes(editingService.type) &&
-            editingService.group.map((s: any) => (
-              <div key={s.id} className="space-y-2">
-                <input
-                  defaultValue={(s.baseRateCents / 100).toFixed(0)}
-                  onBlur={(e) =>
-                    updateMutation.mutate({
-                      id: s.id,
-                      data: {
-                        baseRateCents: Math.round(Number(e.target.value) * 100),
-                      },
-                    })
-                  }
-                  className="border px-2"
-                />
-
-                <input
-                  defaultValue={s.concurrentCapacityDogs || ""}
-                  placeholder="Capacity"
-                  onBlur={(e) =>
-                    updateMutation.mutate({
-                      id: s.id,
-                      data: {
-                        concurrentCapacityDogs: Number(e.target.value),
-                      },
-                    })
-                  }
-                  className="border px-2"
-                />
-
-                <input
-                  defaultValue={(s.additionalDogPriceCents || 0) / 100}
-                  placeholder="Extra dog price"
-                  onBlur={(e) =>
-                    updateMutation.mutate({
-                      id: s.id,
-                      data: {
-                        additionalDogPriceCents: Math.round(
-                          Number(e.target.value) * 100
-                        ),
-                      },
-                    })
-                  }
-                  className="border px-2"
-                />
-              </div>
-            ))}
-
-          {/* GROOMING */}
-{editingService.type === "GROOMING" &&
-  editingService.group.map((s: any) => (
-    <div key={s.id} className="space-y-2">
-      <p className="text-sm font-medium">Edit grooming</p>
-
-      {["washBrush", "washCut"].map((type: any) =>
-        Object.entries(s.pricingJson?.[type] || {}).map(([size, value]: any) => (
-          <div key={size} className="flex gap-2">
-            <span>{type} {size}</span>
-            <input
-              defaultValue={value}
-              onBlur={(e) => {
-                const updated = {
-                  ...s.pricingJson,
-                  [type]: {
-                    ...s.pricingJson[type],
-                    [size]: Number(e.target.value),
-                  },
-                };
-
-                updateMutation.mutate({
-                  id: s.id,
-                  data: { pricingJson: updated },
-                });
-              }}
-              className="border px-2"
-            />
-          </div>
-        ))
-      )}
-    </div>
-  ))}
-
-          <button onClick={() => setEditingService(null)}>
-            Close
-          </button>
-
-        </div>
-      )}
-
-      {/* ADD SERVICE (unchanged) */}
       <div className="border rounded-xl p-6 bg-white space-y-4">
 
         <h2>Add New Service</h2>
 
-        <select
-          value={serviceType}
-          onChange={(e) => setServiceType(e.target.value)}
-        >
+        <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
           <option value="">Select service</option>
           {SERVICE_TYPES.map((s) => (
             <option key={s} value={s}>
@@ -339,40 +167,34 @@ export default function SupplierServicesPage() {
         </select>
 
         {serviceType === "GROOMING" && (
-  <>
-    <p>Wash & Brush</p>
-    {["small", "medium", "large", "xl"].map((size) => (
-      <input
-        key={size}
-        placeholder={size}
-        value={(washBrush as any)[size]}
-        onChange={(e) =>
-          setWashBrush((prev) => ({
-            ...prev,
-            [size]: e.target.value,
-          }))
-        }
-        className="border px-2 block"
-      />
-    ))}
+          <>
+            <p>Wash & Brush</p>
+            {["small", "medium", "large", "xl"].map((size) => (
+              <input
+                key={size}
+                placeholder={size}
+                value={(washBrush as any)[size]}
+                onChange={(e) =>
+                  setWashBrush((prev) => ({ ...prev, [size]: e.target.value }))
+                }
+                className="border px-2 block"
+              />
+            ))}
 
-    <p>Wash & Cut</p>
-    {["small", "medium", "large", "xl"].map((size) => (
-      <input
-        key={size}
-        placeholder={size}
-        value={(washCut as any)[size]}
-        onChange={(e) =>
-          setWashCut((prev) => ({
-            ...prev,
-            [size]: e.target.value,
-          }))
-        }
-        className="border px-2 block"
-      />
-    ))}
-  </>
-)}
+            <p>Wash & Cut</p>
+            {["small", "medium", "large", "xl"].map((size) => (
+              <input
+                key={size}
+                placeholder={size}
+                value={(washCut as any)[size]}
+                onChange={(e) =>
+                  setWashCut((prev) => ({ ...prev, [size]: e.target.value }))
+                }
+                className="border px-2 block"
+              />
+            ))}
+          </>
+        )}
 
         {serviceType && (
           <button onClick={() => createMutation.mutate()}>
@@ -381,60 +203,69 @@ export default function SupplierServicesPage() {
         )}
       </div>
 
-      {/* LIST */}
       <div>
         <h2>Your Services</h2>
 
         {Object.entries(groupedServices).map(([type, group]: any) => (
           <div key={type} className="border rounded-lg p-4 mb-4">
 
-            <div className="flex justify-between">
+            <p className="font-medium">{formatService(type)}</p>
 
-              <div>
-                <p className="font-medium">{formatService(type)}</p>
+            <div className="text-sm text-gray-500 mt-2 space-y-1">
 
-                <div className="text-sm text-gray-500 mt-2 space-y-1">
+              {type === "GROOMING" &&
+                group.map((s: any) => {
+                  const brush = s.pricingTiers?.filter((t: any) => t.category === "WASH_BRUSH") || [];
+                  const cut = s.pricingTiers?.filter((t: any) => t.category === "WASH_CUT") || [];
 
-                  {type === "GROOMING" &&
-                    group.map((s: any) => (
-                      <div key={s.id}>
-                        {Object.entries(s.pricingJson?.washBrush || {}).map(
-                          ([k, v]: any) =>
-                            v > 0 && <p key={k}>Brush {k}: R{v}</p>
-                        )}
-                        {Object.entries(s.pricingJson?.washCut || {}).map(
-                          ([k, v]: any) =>
-                            v > 0 && <p key={k}>Cut {k}: R{v}</p>
-                        )}
-                      </div>
-                    ))}
+                  const exampleTotal = calculateGroomingPrice({
+                    tiers: s.pricingTiers || [],
+                    selectedCategory: "WASH_BRUSH",
+                    dogs: [
+                      { size: "SMALL" },
+                      { size: "MEDIUM" },
+                    ],
+                  });
 
-                  {type !== "GROOMING" &&
-                    group.map((s: any) => (
-                      <p key={s.id}>
-                        R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                        {getServiceUnit(type, s)}
+                  return (
+                    <div key={s.id}>
+                      <p className="text-green-600 font-semibold">
+                        Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
                       </p>
-                    ))}
 
-                </div>
-              </div>
+                      {brush.map((t: any) => (
+                        <p key={t.id}>
+                          Brush {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+                        </p>
+                      ))}
 
-              <div className="flex gap-2">
-                <button onClick={() => setEditingService({ type, group })}>
-                  Edit
-                </button>
+                      {cut.map((t: any) => (
+                        <p key={t.id}>
+                          Cut {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })}
 
-                <button
-                  onClick={() =>
-                    group.forEach((s: any) => deleteMutation.mutate(s.id))
-                  }
-                >
-                  Delete
-                </button>
-              </div>
-
+              {type !== "GROOMING" &&
+                group.map((s: any) => (
+                  <p key={s.id}>
+                    R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
+                  </p>
+                ))}
             </div>
+
+            <div className="flex gap-2 mt-2">
+              <button onClick={() => setEditingService({ type, group })}>
+                Edit
+              </button>
+
+              <button onClick={() => group.forEach((s: any) => deleteMutation.mutate(s.id))}>
+                Delete
+              </button>
+            </div>
+
           </div>
         ))}
       </div>
