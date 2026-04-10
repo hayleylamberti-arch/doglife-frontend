@@ -100,14 +100,59 @@ export default function SupplierServicesPage() {
   const [additionalDogPrice, setAdditionalDogPrice] = useState("");
   const [pricePerKm, setPricePerKm] = useState("");
 
-  const [washBrush, setWashBrush] = useState({ small: "", medium: "", large: "", xl: "" });
-  const [washCut, setWashCut] = useState({ small: "", medium: "", large: "", xl: "" });
+  const [washBrush, setWashBrush] = useState({
+    small: "",
+    medium: "",
+    large: "",
+    xl: "",
+  });
 
-  const [editingService, setEditingService] = useState<any>(null);
+  const [washCut, setWashCut] = useState({
+    small: "",
+    medium: "",
+    large: "",
+    xl: "",
+  });
+
+  /* ================================
+     CREATE (FIXED)
+  ================================ */
 
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!serviceType) throw new Error("Select a service");
+
+      if (serviceType === "WALKING" || serviceType === "TRAINING") {
+        return api.post("/api/supplier/services", {
+          service: serviceType,
+          baseRate: Number(price),
+          durationMinutes: Number(duration),
+        });
+      }
+
+      if (["BOARDING", "DAYCARE", "PET_SITTING"].includes(serviceType)) {
+        return api.post("/api/supplier/services", {
+          service: serviceType,
+          baseRate: Number(price),
+          concurrentCapacityDogs: Number(capacity),
+          additionalDogPrice: Number(additionalDogPrice),
+        });
+      }
+
+      if (serviceType === "PET_TRANSPORT") {
+        return api.post("/api/supplier/services", {
+          service: "PET_TRANSPORT",
+          baseRate: Number(price),
+          pricePerKm: Number(pricePerKm),
+        });
+      }
+
+      if (serviceType === "MOBILE_VET") {
+        return api.post("/api/supplier/services", {
+          service: "MOBILE_VET",
+          baseRate: Number(price),
+        });
+      }
 
       if (serviceType === "GROOMING") {
         return api.post("/api/supplier/services", {
@@ -120,17 +165,20 @@ export default function SupplierServicesPage() {
         });
       }
 
-      return api.post("/api/supplier/services", {
-        service: serviceType,
-        baseRate: Number(price),
-        durationMinutes: Number(duration),
-        concurrentCapacityDogs: Number(capacity),
-        additionalDogPrice: Number(additionalDogPrice),
-        pricePerKm: Number(pricePerKm),
-      });
+      throw new Error("Invalid service type");
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+
+      setServiceType("");
+      setPrice("");
+      setDuration("30");
+      setCapacity("");
+      setAdditionalDogPrice("");
+      setPricePerKm("");
+      setWashBrush({ small: "", medium: "", large: "", xl: "" });
+      setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
   });
 
@@ -153,11 +201,15 @@ export default function SupplierServicesPage() {
 
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
+      {/* ADD SERVICE */}
       <div className="border rounded-xl p-6 bg-white space-y-4">
 
         <h2>Add New Service</h2>
 
-        <select value={serviceType} onChange={(e) => setServiceType(e.target.value)}>
+        <select
+          value={serviceType}
+          onChange={(e) => setServiceType(e.target.value)}
+        >
           <option value="">Select service</option>
           {SERVICE_TYPES.map((s) => (
             <option key={s} value={s}>
@@ -166,6 +218,7 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
+        {/* GROOMING INPUT */}
         {serviceType === "GROOMING" && (
           <>
             <p>Wash & Brush</p>
@@ -175,7 +228,10 @@ export default function SupplierServicesPage() {
                 placeholder={size}
                 value={(washBrush as any)[size]}
                 onChange={(e) =>
-                  setWashBrush((prev) => ({ ...prev, [size]: e.target.value }))
+                  setWashBrush((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
                 }
                 className="border px-2 block"
               />
@@ -188,7 +244,10 @@ export default function SupplierServicesPage() {
                 placeholder={size}
                 value={(washCut as any)[size]}
                 onChange={(e) =>
-                  setWashCut((prev) => ({ ...prev, [size]: e.target.value }))
+                  setWashCut((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
                 }
                 className="border px-2 block"
               />
@@ -203,6 +262,7 @@ export default function SupplierServicesPage() {
         )}
       </div>
 
+      {/* SERVICES LIST */}
       <div>
         <h2>Your Services</h2>
 
@@ -215,35 +275,59 @@ export default function SupplierServicesPage() {
 
               {type === "GROOMING" &&
                 group.map((s: any) => {
-                  const brush = s.pricingTiers?.filter((t: any) => t.category === "WASH_BRUSH") || [];
-                  const cut = s.pricingTiers?.filter((t: any) => t.category === "WASH_CUT") || [];
+                  const brush =
+                    s.pricingTiers?.filter(
+                      (t: any) => t.category === "WASH_BRUSH"
+                    ) || [];
 
-                  const exampleTotal = calculateGroomingPrice({
-                    tiers: s.pricingTiers || [],
-                    selectedCategory: "WASH_BRUSH",
-                    dogs: [
-                      { size: "SMALL" },
-                      { size: "MEDIUM" },
-                    ],
-                  });
+                  const cut =
+                    s.pricingTiers?.filter(
+                      (t: any) => t.category === "WASH_CUT"
+                    ) || [];
+
+                  const exampleTotal =
+                    brush.length > 0
+                      ? calculateGroomingPrice({
+                          tiers: s.pricingTiers || [],
+                          selectedCategory: "WASH_BRUSH",
+                          dogs: [
+                            { size: "SMALL" },
+                            { size: "MEDIUM" },
+                          ],
+                        })
+                      : null;
 
                   return (
                     <div key={s.id}>
-                      <p className="text-green-600 font-semibold">
-                        Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
-                      </p>
 
-                      {brush.map((t: any) => (
-                        <p key={t.id}>
-                          Brush {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+                      {exampleTotal && (
+                        <p className="text-green-600 font-semibold">
+                          Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
                         </p>
-                      ))}
+                      )}
 
-                      {cut.map((t: any) => (
-                        <p key={t.id}>
-                          Cut {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
-                        </p>
-                      ))}
+                      {brush.length > 0 && (
+                        <>
+                          <p className="font-medium">Wash & Brush</p>
+                          {brush.map((t: any) => (
+                            <p key={t.id}>
+                              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+                            </p>
+                          ))}
+                        </>
+                      )}
+
+                      {cut.length > 0 && (
+                        <>
+                          <p className="font-medium mt-2">Wash & Cut</p>
+                          {cut.map((t: any) => (
+                            <p key={t.id}>
+                              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+                            </p>
+                          ))}
+                        </>
+                      )}
+
                     </div>
                   );
                 })}
@@ -251,17 +335,24 @@ export default function SupplierServicesPage() {
               {type !== "GROOMING" &&
                 group.map((s: any) => (
                   <p key={s.id}>
-                    R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
+                    R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                    {getServiceUnit(type, s)}
                   </p>
                 ))}
             </div>
 
             <div className="flex gap-2 mt-2">
-              <button onClick={() => setEditingService({ type, group })}>
+              <button onClick={() => alert("Edit coming next 🚀")}>
                 Edit
               </button>
 
-              <button onClick={() => group.forEach((s: any) => deleteMutation.mutate(s.id))}>
+              <button
+                onClick={() =>
+                  group.forEach((s: any) =>
+                    deleteMutation.mutate(s.id)
+                  )
+                }
+              >
                 Delete
               </button>
             </div>
