@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { api } from "@/lib/api";
 
 import DogCard from "@/components/dogs/DogCard";
 import DogForm from "@/components/dogs/DogForm";
@@ -23,26 +23,20 @@ export default function MyDogsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["owner-dogs"], // ✅ cleaner key
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["owner-dogs"],
     queryFn: async () => {
-      const res = await apiRequest("/api/owner/dogs");
-      return res.json();
+      const res = await api.get("/api/owner/dogs");
+      return res.data;
     },
   });
 
   const deleteDogMutation = useMutation({
     mutationFn: async (dogId: string) => {
-      await apiRequest(`/api/owner/dogs/${dogId}`, {
-        method: "DELETE",
-      });
+      await api.delete(`/api/owner/dogs/${dogId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["owner-dogs"] }); // ✅ FIX
+      queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
     },
   });
 
@@ -72,10 +66,12 @@ export default function MyDogsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">My Dogs</h1>
 
-        <Button onClick={() => {
-          setEditingDog(null);
-          setShowForm(true);
-        }}>
+        <Button
+          onClick={() => {
+            setEditingDog(null);
+            setShowForm(true);
+          }}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Dog
         </Button>
@@ -88,8 +84,6 @@ export default function MyDogsPage() {
           onClose={() => {
             setShowForm(false);
             setEditingDog(null);
-
-            // ✅ Force refresh after add/edit
             queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
           }}
         />
