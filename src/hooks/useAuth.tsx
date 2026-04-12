@@ -137,16 +137,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = useCallback(
-    async (data: LoginCredentials) => {
-      const response = await loginMutation.mutateAsync(data);
-      persistSession(response.token, response.user.role);
-      setToken(response.token);
-      setRole(response.user.role);
-      setUser(response.user);
-      return response;
-    },
-    [loginMutation],
-  );
+  async (data: LoginCredentials) => {
+    const response = await loginMutation.mutateAsync(data);
+
+    console.log("LOGIN RESPONSE:", response); // 👈 ADD
+    console.log("TOKEN BEING SAVED:", response.token); // 👈 ADD
+
+    persistSession(response.token, response.user.role);
+
+    console.log("TOKEN AFTER SAVE:", localStorage.getItem("authToken")); // 👈 ADD
+
+    setToken(response.token);
+    setRole(response.user.role);
+    setUser(response.user);
+
+    return response;
+  },
+  [loginMutation],
+);
 
   const register = useCallback(
     async (data: RegisterData) => {

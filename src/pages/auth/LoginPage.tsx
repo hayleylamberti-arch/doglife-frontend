@@ -30,10 +30,10 @@ export default function LoginPage() {
 
       // ✅ ROLE-BASED REDIRECT (FIX)
       if (result.user.role === "SUPPLIER") {
-        navigate("/supplier/dashboard", { replace: true });
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
+  window.location.href = "/supplier/dashboard";
+} else {
+  window.location.href = "/dashboard";
+}
 
     } catch (loginError: any) {
       setError(loginError?.response?.data?.message ?? "Unable to sign in.");
