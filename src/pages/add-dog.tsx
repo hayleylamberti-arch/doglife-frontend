@@ -55,16 +55,28 @@ export default function AddDogPage() {
   ================================ */
 
   const addDogMutation = useMutation({
-    mutationFn: async (data: AddDogFormData) => {
-      const res = await api.post("/api/owner/dogs", {
+  mutationFn: async (data: AddDogFormData) => {
+    const token = localStorage.getItem("authToken");
+
+    console.log("MANUAL TOKEN:", token); // 👈 DEBUG
+
+    const res = await api.post(
+      "/api/owner/dogs",
+      {
         ...data,
         dateOfBirth: data.dateOfBirth
           ? new Date(data.dateOfBirth).toISOString()
           : null,
-      });
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
-      return res.data;
-    },
+    return res.data;
+  },
 
     onSuccess: () => {
       toast({
