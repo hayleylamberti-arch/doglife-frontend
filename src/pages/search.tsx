@@ -27,8 +27,8 @@ export default function SearchPage() {
       const searchValue = query ?? searchTerm;
 
       const res = await api.get(
-        `/api/suppliers?location=${encodeURIComponent(searchValue)}`
-      );
+  `/api/suppliers/location?suburb=${encodeURIComponent(searchValue)}`
+);
 
       const data = res.data?.suppliers ?? res.data ?? [];
 
