@@ -71,7 +71,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = "token";
+const TOKEN_KEY = "authToken";
 const ROLE_KEY = "role";
 
 function persistSession(token: string, role: UserRole) {

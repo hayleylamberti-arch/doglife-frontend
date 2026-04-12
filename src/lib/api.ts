@@ -17,8 +17,7 @@ console.log("API BASE:", import.meta.env.VITE_API_BASE);
 
 api.interceptors.request.use((config) => {
   const token =
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("token");
+    localStorage.getItem("authToken");
 
   if (token) {
     config.headers = config.headers || {};
