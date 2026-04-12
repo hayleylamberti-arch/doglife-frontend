@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,24 @@ import { Input } from "@/components/ui/input";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import ImageUpload from "@/components/ImageUpload";
 
+const BREEDS = [
+  "Labrador Retriever",
+  "Golden Retriever",
+  "German Shepherd",
+  "Bulldog",
+  "Poodle",
+  "Beagle",
+  "Rottweiler",
+  "Yorkshire Terrier",
+  "Boxer",
+  "Dachshund",
+  "Springer Spaniel",
+  "Other",
+];
+
 export default function DogForm({ dog, onClose }: any) {
-  const [imageUrl, setImageUrl] = useState("");
+
+  const [imageUrl, setImageUrl] = useState<string>(dog?.profileImageUrl || "");
 
   const form = useForm({
     defaultValues: {
@@ -15,6 +31,13 @@ export default function DogForm({ dog, onClose }: any) {
       breed: dog?.breed || "",
     },
   });
+
+  // 🔥 Keep image when editing
+  useEffect(() => {
+    if (dog?.profileImageUrl) {
+      setImageUrl(dog.profileImageUrl);
+    }
+  }, [dog]);
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
@@ -33,46 +56,34 @@ export default function DogForm({ dog, onClose }: any) {
       }
     },
 
-    // 🔥 OPTIMISTIC UPDATE (instant UI)
-    onSuccess: (result, variables) => {
+    onSuccess: (response) => {
+      const newDog = response?.dog;
+
+      // 🔥 INSTANT UI UPDATE
       queryClient.setQueryData(["owner-dogs"], (old: any) => {
         if (!old) return old;
 
-        // ✏️ EDIT EXISTING DOG
         if (dog?.id) {
+          // UPDATE
           return {
             ...old,
             dogs: old.dogs.map((d: any) =>
-              d.id === dog.id
-                ? {
-                    ...d,
-                    ...variables,
-                    profileImageUrl: imageUrl || d.profileImageUrl,
-                  }
-                : d
+              d.id === dog.id ? newDog : d
             ),
           };
+        } else {
+          // CREATE
+          return {
+            ...old,
+            dogs: [newDog, ...old.dogs],
+          };
         }
-
-        // ➕ ADD NEW DOG
-        return {
-          ...old,
-          dogs: [
-            {
-              ...result.dog,
-              profileImageUrl: imageUrl,
-            },
-            ...old.dogs,
-          ],
-        };
       });
 
-      onClose();
-    },
-
-    // 🔄 Ensure backend + UI stay aligned
-    onSettled: () => {
+      // 🔥 BACKGROUND SYNC
       queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+
+      onClose();
     },
   });
 
@@ -84,16 +95,29 @@ export default function DogForm({ dog, onClose }: any) {
           profileImageUrl: imageUrl,
         })
       )}
-      className="mb-6 space-y-3"
+      className="mb-6 space-y-4"
     >
-      <ImageUpload onUpload={setImageUrl} />
+      {/* IMAGE */}
+      <ImageUpload onUpload={setImageUrl} initialImage={imageUrl} />
 
+      {/* NAME */}
       <Input placeholder="Dog name" {...form.register("name")} />
 
-      <Input placeholder="Breed" {...form.register("breed")} />
+      {/* BREED DROPDOWN */}
+      <select
+        {...form.register("breed")}
+        className="w-full border rounded px-3 py-2"
+      >
+        <option value="">Select breed</option>
+        {BREEDS.map((breed) => (
+          <option key={breed} value={breed}>
+            {breed}
+          </option>
+        ))}
+      </select>
 
       <Button type="submit">
-        {dog ? "Update Dog" : "Save Dog"}
+        {dog?.id ? "Update Dog" : "Save Dog"}
       </Button>
     </form>
   );
