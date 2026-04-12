@@ -9,6 +9,8 @@ export const api = axios.create({
   withCredentials: true, // 🔥 CRITICAL
 });
 
+console.log("API BASE:", import.meta.env.VITE_API_BASE);
+
 /* ================================
    REQUEST INTERCEPTOR (TOKEN)
 ================================ */
