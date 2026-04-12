@@ -20,20 +20,22 @@ export default function DogForm({ dog, onClose }: any) {
   const mutation = useMutation({
   mutationFn: async (data: any) => {
     if (dog?.id) {
-      return apiRequest(`/api/owner/dogs/${dog.id}`, {
+      return await apiRequest(`/api/owner/dogs/${dog.id}`, {
         method: "PATCH",
         body: JSON.stringify(data),
       });
     } else {
-      return apiRequest("/api/owner/dogs", {
+      return await apiRequest("/api/owner/dogs", {
         method: "POST",
         body: JSON.stringify(data),
       });
     }
   },
 
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["owner-dogs"] }); // ✅ FIXED
+  onSuccess: async () => {
+    // 🔥 THIS IS THE FIX
+    await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+
     onClose();
   },
 });

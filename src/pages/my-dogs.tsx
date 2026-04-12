@@ -28,21 +28,28 @@ export default function MyDogsPage() {
   const [undoTimeout, setUndoTimeout] = useState<any>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["owner-dogs"],
-    queryFn: async () => {
-      const res = await api.get("/api/owner/dogs");
-      return res.data;
-    },
-  });
+  queryKey: ["owner-dogs"],
+  queryFn: async () => {
+    const res = await api.get("/api/owner/dogs");
+    return res.data;
+  },
+
+  // 🔥 IMPORTANT SETTINGS
+  staleTime: 0,
+  refetchOnMount: true,
+  refetchOnWindowFocus: true,
+});
 
   const deleteDogMutation = useMutation({
-    mutationFn: async (dogId: string) => {
-      await api.delete(`/api/owner/dogs/${dogId}`);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-    },
-  });
+  mutationFn: async (dogId: string) => {
+    await api.delete(`/api/owner/dogs/${dogId}`);
+  },
+
+  // ✅ Only ensure backend sync
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+  },
+});
 
   const dogs: Dog[] = data?.dogs || [];
 
