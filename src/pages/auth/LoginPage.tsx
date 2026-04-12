@@ -28,11 +28,11 @@ export default function LoginPage() {
         return;
       }
 
-      // ✅ ROLE-BASED REDIRECT (FIX)
-      if (result.user.role === "SUPPLIER") {
-  window.location.href = "/supplier/dashboard";
+      // ✅ ROLE-BASED REDIRECT (FINAL FIX)
+if (result.user.role === "SUPPLIER") {
+  navigate("/supplier/dashboard", { replace: true });
 } else {
-  window.location.href = "/dashboard";
+  navigate("/owner/dashboard", { replace: true });
 }
 
     } catch (loginError: any) {
