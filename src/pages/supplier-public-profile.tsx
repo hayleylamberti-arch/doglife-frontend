@@ -40,30 +40,59 @@ export default function SupplierPublicProfile() {
   const supplier = data;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+  <div className="max-w-6xl mx-auto p-6 space-y-8">
+
+    {/* ✅ TOP BAR (ADD HERE) */}
+    <div className="flex justify-between items-center">
+      <button
+        onClick={() => window.history.back()}
+        className="text-sm text-gray-500 hover:underline"
+      >
+        ← Back to search
+      </button>
+
+      <div className="flex gap-4 text-sm">
+        <button>♡ Save</button>
+        <button>Share</button>
+      </div>
+    </div>
 
       {/* =========================
          HERO
       ========================= */}
       <div className="bg-white rounded-2xl shadow p-6 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {supplier.businessName}
-          </h1>
 
-          <p className="text-gray-500 mt-1">
-            {supplier.suburb}
-          </p>
+  <div className="flex items-center gap-4">
 
-          <p className="text-sm text-gray-400 mt-1">
-            ⭐⭐⭐⭐⭐ (Coming soon)
-          </p>
-        </div>
+    {/* ✅ LOGO */}
+    {supplier.logoUrl && (
+      <img
+        src={supplier.logoUrl}
+        className="w-16 h-16 rounded-xl object-cover border"
+      />
+    )}
 
-        <Button size="lg">
-          Book Now
-        </Button>
-      </div>
+    <div>
+      <h1 className="text-3xl font-bold">
+        {supplier.businessName}
+      </h1>
+
+      <p className="text-gray-500 mt-1">
+        {supplier.suburb}
+      </p>
+
+      <p className="text-sm text-gray-400 mt-1">
+        ⭐⭐⭐⭐⭐ (Coming soon)
+      </p>
+    </div>
+
+  </div>
+
+  <Button size="lg">
+    Book Now
+  </Button>
+
+</div>
 
       {/* =========================
          GALLERY
