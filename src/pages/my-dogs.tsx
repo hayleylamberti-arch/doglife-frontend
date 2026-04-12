@@ -23,6 +23,10 @@ export default function MyDogsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
 
+  // 🔥 Undo state
+  const [pendingDelete, setPendingDelete] = useState<Dog | null>(null);
+  const [undoTimeout, setUndoTimeout] = useState<any>(null);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["owner-dogs"],
     queryFn: async () => {
@@ -35,7 +39,7 @@ export default function MyDogsPage() {
     mutationFn: async (dogId: string) => {
       await api.delete(`/api/owner/dogs/${dogId}`);
     },
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
     },
   });
@@ -55,8 +59,59 @@ export default function MyDogsPage() {
     setShowForm(true);
   };
 
+  /* =========================================
+     DELETE WITH CONFIRM + UNDO
+  ========================================= */
   const handleDeleteDog = (dogId: string) => {
-    deleteDogMutation.mutate(dogId);
+    const dogToDelete = dogs.find((d) => d.id === dogId);
+    if (!dogToDelete) return;
+
+    // ✅ Confirm first
+    const confirmed = window.confirm(`Delete ${dogToDelete.name}?`);
+    if (!confirmed) return;
+
+    // ✅ Remove instantly from UI
+    queryClient.setQueryData(["owner-dogs"], (old: any) => {
+      if (!old) return old;
+
+      return {
+        ...old,
+        dogs: old.dogs.filter((d: any) => d.id !== dogId),
+      };
+    });
+
+    // ✅ Store for undo
+    setPendingDelete(dogToDelete);
+
+    // ✅ Start timer (5 seconds)
+    const timeout = setTimeout(() => {
+      deleteDogMutation.mutate(dogId);
+      setPendingDelete(null);
+    }, 5000);
+
+    setUndoTimeout(timeout);
+  };
+
+  /* =========================================
+     UNDO DELETE
+  ========================================= */
+  const handleUndo = () => {
+    if (!pendingDelete) return;
+
+    // Cancel API delete
+    clearTimeout(undoTimeout);
+
+    // Restore dog in UI
+    queryClient.setQueryData(["owner-dogs"], (old: any) => {
+      if (!old) return old;
+
+      return {
+        ...old,
+        dogs: [pendingDelete, ...old.dogs],
+      };
+    });
+
+    setPendingDelete(null);
   };
 
   return (
@@ -76,6 +131,16 @@ export default function MyDogsPage() {
           Add Dog
         </Button>
       </div>
+
+      {/* 🔥 UNDO BAR */}
+      {pendingDelete && (
+        <div className="mb-4 p-4 bg-yellow-100 border rounded flex justify-between items-center">
+          <span>{pendingDelete.name} deleted</span>
+          <Button size="sm" onClick={handleUndo}>
+            Undo
+          </Button>
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
