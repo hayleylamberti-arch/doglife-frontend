@@ -1,4 +1,6 @@
 import { useParams } from "react-router-dom";
+import { useState } from "react"; // ✅ ADD
+import BookingModal from "@/components/booking-modal"; // ✅ ADD
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +20,9 @@ function formatPrice(cents?: number | null) {
 ========================= */
 
 export default function SupplierPublicProfile() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+ const [selectedService, setSelectedService] = useState<any | null>(null);
+const [modalOpen, setModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["publicSupplier", id],
@@ -174,9 +178,15 @@ export default function SupplierPublicProfile() {
                 )}
 
                 {/* CTA */}
-                <Button size="sm">
-                  Book Service
-                </Button>
+                <Button
+  size="sm"
+  onClick={() => {
+    setSelectedService(service);   // ✅ PASS SERVICE
+    setModalOpen(true);            // ✅ OPEN MODAL
+  }}
+>
+  Book Service
+</Button>
 
               </CardContent>
             </Card>
@@ -187,6 +197,14 @@ export default function SupplierPublicProfile() {
           </p>
         )}
       </div>
+
+      {modalOpen && selectedService && (
+  <BookingModal
+    supplierId={supplier.id}
+    service={selectedService}
+    onClose={() => setModalOpen(false)}
+  />
+)}
 
     </div>
   );
