@@ -17,6 +17,7 @@ import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
 import SupplierServices from "@/pages/supplier-services";
 import SupplierAvailability from "@/pages/supplier-availability";
+import SupplierPublicProfile from "@/pages/supplier-public-profile";
 
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
@@ -34,8 +35,12 @@ export default function AppRoutes() {
       {/* ========================= */}
       <Route element={<GuestLayout />}>
         <Route index element={<Landing />} />
-        <Route path="search" element={<Search />} /> {/* ✅ ONLY HERE */}
-        <Route path="supplier/:id" element={<SupplierProfile />} />
+        <Route path="search" element={<Search />} />
+
+        {/* ✅ PUBLIC SUPPLIER PROFILE */}
+        <Route path="supplier/:id" element={<SupplierPublicProfile />} />
+
+        {/* AUTH */}
         <Route path="auth/login" element={<LoginPage />} />
         <Route path="auth/register" element={<RegisterPage />} />
         <Route path="auth/forgot-password" element={<ForgotPasswordPage />} />
@@ -49,41 +54,39 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<RoleDashboardRedirect />} />
       </Route>
 
-{/* ========================= */}
-{/* OWNER ROUTES */}
-{/* ========================= */}
-<Route element={<RequireAuth allowRoles={["OWNER"]} />}>
-  <Route element={<OwnerLayout />}>
+      {/* ========================= */}
+      {/* OWNER ROUTES */}
+      {/* ========================= */}
+      <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
+        <Route element={<OwnerLayout />}>
 
-    <Route path="owner/dashboard" element={<Dashboard />} />
-    <Route path="owner/profile" element={<Profile />} />
-    <Route path="owner/my-dogs" element={<MyDogs />} />
+          <Route path="owner/dashboard" element={<Dashboard />} />
+          <Route path="owner/profile" element={<Profile />} />
+          <Route path="owner/my-dogs" element={<MyDogs />} />
 
-  </Route>
-</Route>
+        </Route>
+      </Route>
 
-/* ========================= */
-/* SUPPLIER ROUTES */
-/* ========================= */
-<Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
-  <Route element={<SupplierLayout />}>
+      {/* ========================= */}
+      {/* SUPPLIER ROUTES */}
+      {/* ========================= */}
+      <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
+        <Route element={<SupplierLayout />}>
 
-    <Route path="supplier/dashboard" element={<SupplierDashboard />} />
-    <Route path="supplier/profile" element={<SupplierProfile />} />
+          <Route path="supplier/dashboard" element={<SupplierDashboard />} />
+          <Route path="supplier/profile" element={<SupplierProfile />} />
+          <Route path="supplier/services" element={<SupplierServices />} />
+          <Route path="supplier/availability" element={<SupplierAvailability />} />
 
-    {/* ✅ ADD THESE */}
-    <Route path="supplier/services" element={<SupplierServices />} />
-    <Route path="supplier/availability" element={<SupplierAvailability />} />
+        </Route>
+      </Route>
 
-  </Route>
-</Route>
-
-{/* ========================= */}
-{/* ADMIN ROUTE */}
-{/* ========================= */}
-<Route element={<RequireAuth />}>
-  <Route path="admin" element={<AdminDashboard />} />
-</Route>
+      {/* ========================= */}
+      {/* ADMIN ROUTE */}
+      {/* ========================= */}
+      <Route element={<RequireAuth />}>
+        <Route path="admin" element={<AdminDashboard />} />
+      </Route>
 
       {/* ========================= */}
       {/* FALLBACK */}
