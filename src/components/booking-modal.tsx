@@ -9,6 +9,12 @@ interface Props {
 
 type KennelType = "SOCIAL" | "PRIVATE";
 
+interface Dog {
+  id: string;
+  name: string;
+  breed?: string | null;
+}
+
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
   const isBoarding = serviceType === "BOARDING";
@@ -23,14 +29,36 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
   const [notes, setNotes] = useState("");
 
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(false);
+  const [dogsLoading, setDogsLoading] = useState(false);
 
   const title = useMemo(() => {
     return `Book ${String(serviceType).replace(/_/g, " ")}`;
   }, [serviceType]);
 
   useEffect(() => {
+    async function fetchDogs() {
+      setDogsLoading(true);
+      try {
+        const res = await api.get("/api/owner/dogs");
+        setDogs(res.data?.dogs || []);
+      } catch (err) {
+        console.error("Failed to load dogs", err);
+        setDogs([]);
+      } finally {
+        setDogsLoading(false);
+      }
+    }
+
+    fetchDogs();
+  }, []);
+
+  useEffect(() => {
     if (isBoarding) return;
+
     if (!date) {
       setSlots([]);
       setSelectedSlot(null);
@@ -42,8 +70,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         const res = await api.get(
           `/api/suppliers/${supplierId}/availability?date=${date}`
         );
-
-        setSlots(res.data.slots || []);
+        setSlots(res.data?.slots || []);
       } catch (err) {
         console.error("Failed to load availability", err);
         setSlots([]);
@@ -53,8 +80,27 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     fetchAvailability();
   }, [supplierId, date, isBoarding]);
 
+  useEffect(() => {
+    if (isBoarding) {
+      setDogCount(selectedDogIds.length || 1);
+    }
+  }, [selectedDogIds, isBoarding]);
+
+  function toggleDog(dogId: string) {
+    setSelectedDogIds((prev) =>
+      prev.includes(dogId)
+        ? prev.filter((id) => id !== dogId)
+        : [...prev, dogId]
+    );
+  }
+
   async function handleAppointmentBooking() {
     if (!selectedSlot) return;
+
+    if (selectedDogIds.length === 0) {
+      alert("Please select at least one dog");
+      return;
+    }
 
     setLoading(true);
 
@@ -67,6 +113,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         serviceType,
         startAt: start,
         endAt: end,
+        dogIds: selectedDogIds,
         notes: notes || undefined,
       });
 
@@ -83,6 +130,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   async function handleBoardingBooking() {
     if (!arrivalDate || !departureDate) return;
 
+    if (selectedDogIds.length === 0) {
+      alert("Please select at least one dog");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -94,8 +146,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         serviceType: "BOARDING",
         startAt: start,
         endAt: end,
+        dogIds: selectedDogIds,
         notes,
-        dogCount,
+        dogCount: selectedDogIds.length,
         kennelType,
       });
 
@@ -113,6 +166,41 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
         <h2 className="text-xl font-semibold">{title}</h2>
+
+        <div className="space-y-2">
+          <label className="text-sm text-gray-600">Select dog(s)</label>
+
+          {dogsLoading ? (
+            <p className="text-sm text-gray-500">Loading dogs...</p>
+          ) : dogs.length === 0 ? (
+            <p className="text-sm text-red-500">
+              No dogs found. Please add a dog before making a booking.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {dogs.map((dog) => {
+                const checked = selectedDogIds.includes(dog.id);
+
+                return (
+                  <label
+                    key={dog.id}
+                    className="flex items-center gap-3 border rounded px-3 py-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleDog(dog.id)}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">{dog.name}</span>
+                      {dog.breed ? ` • ${dog.breed}` : ""}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {isBoarding ? (
           <>
@@ -141,9 +229,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               <input
                 type="number"
                 min={1}
-                className="w-full border rounded px-3 py-2"
-                value={dogCount}
-                onChange={(e) => setDogCount(Number(e.target.value) || 1)}
+                className="w-full border rounded px-3 py-2 bg-gray-50"
+                value={selectedDogIds.length || 1}
+                readOnly
               />
             </div>
 
@@ -171,8 +259,14 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
             <button
               onClick={handleBoardingBooking}
-              disabled={!arrivalDate || !departureDate || loading}
-              className="w-full bg-blue-600 text-white py-2 rounded"
+              disabled={
+                !arrivalDate ||
+                !departureDate ||
+                loading ||
+                dogsLoading ||
+                dogs.length === 0
+              }
+              className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
               {loading ? "Booking..." : "Confirm Boarding"}
             </button>
@@ -233,8 +327,13 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
             <button
               onClick={handleAppointmentBooking}
-              disabled={!selectedSlot || loading}
-              className="w-full bg-blue-600 text-white py-2 rounded"
+              disabled={
+                !selectedSlot ||
+                loading ||
+                dogsLoading ||
+                dogs.length === 0
+              }
+              className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
               {loading ? "Booking..." : "Confirm Booking"}
             </button>
