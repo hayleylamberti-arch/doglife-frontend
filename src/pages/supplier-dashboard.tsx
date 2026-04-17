@@ -1,323 +1,256 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useEffect, useRef, useState } from "react";
 
-/* =========================
-   CLOUDINARY UPLOAD
-========================= */
-async function uploadToCloudinary(file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "doglife_upload");
+type BookingStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "IN_PROGRESS"
+  | "COMPLETED_UNBILLED"
+  | "COMPLETED"
+  | "CANCELLED";
 
-  const res = await fetch(
-    "https://api.cloudinary.com/v1_1/djv39c4ta/image/upload",
-    {
-      method: "POST",
-      body: formData,
-    }
-  );
+type BookingDog = {
+  dog?: {
+    id: string;
+    name: string;
+    breed?: string | null;
+  };
+};
 
-  const data = await res.json();
-  return data.secure_url;
-}
+type SupplierBooking = {
+  id: string;
+  status: BookingStatus;
+  startAt: string;
+  endAt: string;
+  totalCents?: number | null;
+  serviceType?: string | null;
+  notes?: string | null;
+  owner?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  };
+  dogs?: BookingDog[];
+};
 
-/* =========================
-   HELPERS
-========================= */
+function formatDateTime(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString("en-ZA", {
-    weekday: "short",
-    day: "numeric",
+  return date.toLocaleString("en-ZA", {
+    day: "2-digit",
     month: "short",
-  });
-}
-
-function formatTime(date: string) {
-  return new Date(date).toLocaleTimeString("en-ZA", {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-function formatPrice(cents?: number | null) {
-  if (!cents) return "—";
-  return `R${(cents / 100).toFixed(0)}`;
+function formatMoney(cents?: number | null) {
+  const amount = Number(cents || 0) / 100;
+  return `R${amount.toFixed(0)}`;
 }
 
-function getStatusColor(status: string) {
-  switch (status) {
-    case "CONFIRMED":
-      return "bg-green-100 text-green-700";
-    case "PENDING":
-      return "bg-yellow-100 text-yellow-700";
-    case "CANCELLED":
-      return "bg-red-100 text-red-700";
-    default:
-      return "bg-gray-100 text-gray-600";
-  }
+function formatOwnerName(booking: SupplierBooking) {
+  const first = booking.owner?.firstName || "";
+  const last = booking.owner?.lastName || "";
+  const full = `${first} ${last}`.trim();
+  return full || booking.owner?.email || "Owner";
 }
 
-export default function SupplierDashboard() {
-  const queryClient = useQueryClient();
+function formatDogNames(booking: SupplierBooking) {
+  const names =
+    booking.dogs
+      ?.map((item) => item?.dog?.name)
+      .filter(Boolean)
+      .join(", ") || "";
 
-  const prevBookingCount = useRef(0);
-  const [activeAlert, setActiveAlert] = useState<any | null>(null);
-  const [countdown, setCountdown] = useState(15);
+  return names || "No dogs linked";
+}
 
-  /* =========================
-     MEDIA STATE
-  ========================= */
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [galleryUploading, setGalleryUploading] = useState(false);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [gallery, setGallery] = useState<string[]>([]);
+function sortBookingsByStart(bookings: SupplierBooking[]) {
+  return [...bookings].sort(
+    (a, b) =>
+      new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+  );
+}
 
-  /* =========================
-     FETCH PROFILE
-  ========================= */
+function BookingCard({ booking }: { booking: SupplierBooking }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="font-semibold text-gray-900">
+            {String(booking.serviceType || "Booking").replace(/_/g, " ")}
+          </div>
+          <div className="text-sm text-gray-500">
+            {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
+          </div>
+        </div>
 
-  const { data: profileData } = useQuery({
-    queryKey: ["supplierProfile"],
-    queryFn: async () => {
-      const res = await api.get("/api/supplier/profile");
-      return res.data.profile;
-    },
-  });
+        <div className="text-right">
+          <div className="text-xs text-gray-500">{booking.status}</div>
+          <div className="font-semibold text-gray-900">
+            {formatMoney(booking.totalCents)}
+          </div>
+        </div>
+      </div>
 
-  const profile = profileData;
+      <div className="text-sm text-gray-700">
+        <span className="font-medium">Owner:</span> {formatOwnerName(booking)}
+      </div>
 
-  /* =========================
-     LOAD MEDIA FROM BACKEND
-  ========================= */
+      <div className="text-sm text-gray-700">
+        <span className="font-medium">Dogs:</span> {formatDogNames(booking)}
+      </div>
 
-  useEffect(() => {
-    if (profile?.logoUrl) {
-      setLogoUrl(profile.logoUrl);
-    }
+      {booking.notes ? (
+        <div className="text-sm text-gray-600">
+          <span className="font-medium">Notes:</span> {booking.notes}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-    if (profile?.galleryUrls) {
-      setGallery(profile.galleryUrls);
-    }
-  }, [profile]);
-
-  /* =========================
-     SAVE PROFILE (LOGO)
-  ========================= */
-
-  const saveProfileMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      await api.patch("/api/supplier/profile", payload);
-    },
-  });
-
-  /* =========================
-     SAVE GALLERY
-  ========================= */
-
-  const saveGalleryMutation = useMutation({
-    mutationFn: async (images: string[]) => {
-      await api.post("/api/supplier/gallery", { images });
-    },
-  });
-
-  /* =========================
-     FETCH BOOKINGS
-  ========================= */
-
-  const { data = [], isLoading } = useQuery({
-    queryKey: ["supplierBookings"],
+export default function SupplierDashboardPage() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["supplier-dashboard-bookings"],
     queryFn: async () => {
       const res = await api.get("/api/supplier/bookings");
-      return res.data.bookings;
+      return res.data;
     },
-    refetchInterval: 5000,
   });
 
-  /* =========================
-     ALERT SYSTEM
-  ========================= */
+  const rawBookings: SupplierBooking[] =
+    data?.bookings || data?.data || data || [];
 
-  useEffect(() => {
-    const pending = data.filter((b: any) => b.status === "PENDING");
+  const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
-    if (pending.length > prevBookingCount.current) {
-      const newest = pending[0];
+  const pendingBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "PENDING")
+  );
 
-      setActiveAlert(newest);
-      setCountdown(15);
+  const upcomingBookings = sortBookingsByStart(
+    bookings.filter(
+      (b) =>
+        b.status === "CONFIRMED" ||
+        b.status === "IN_PROGRESS" ||
+        b.status === "COMPLETED_UNBILLED"
+    )
+  );
 
-      const audio = new Audio("/notification.mp3");
-      audio.play().catch(() => {});
-
-      if (navigator.vibrate) {
-        navigator.vibrate([300, 150, 300]);
-      }
-    }
-
-    prevBookingCount.current = pending.length;
-  }, [data]);
-
-  useEffect(() => {
-    if (!activeAlert) return;
-
-    if (countdown <= 0) {
-      setActiveAlert(null);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setCountdown((c) => c - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown, activeAlert]);
-
-  /* =========================
-     UI
-  ========================= */
+  const totalActive = bookings.filter(
+    (b) => b.status !== "CANCELLED" && b.status !== "COMPLETED"
+  ).length;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-
-      {/* HERO */}
-      <div className="bg-white rounded-2xl shadow p-6 flex justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">
-            {profile?.businessName || "Complete your profile"}
-          </h2>
-          <p className="text-gray-500">
-            {profile?.businessAddress}
+          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 mt-2">
+            Manage bookings and keep your business profile updated.
           </p>
         </div>
 
-        <div>
-          <p className="text-sm text-gray-500">Status</p>
-          <p className="font-semibold text-green-600">
-            {profile?.approvalStatus}
-          </p>
+        <div className="flex flex-wrap gap-3">
+          <Link
+            to="/supplier/business-profile"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Edit Business Profile
+          </Link>
+          <Link
+            to="/supplier/availability"
+            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          >
+            Update Availability
+          </Link>
         </div>
       </div>
 
-      {/* MEDIA SECTION */}
-      <div className="bg-white p-6 rounded-2xl shadow border space-y-6">
-        <h2 className="text-xl font-semibold">Business Media</h2>
-
-        {/* LOGO */}
-        <div>
-          <p className="text-sm text-gray-500 mb-2">Logo</p>
-
-          <div className="flex items-center gap-4">
-
-            {logoUrl && (
-              <img src={logoUrl} className="w-20 h-20 rounded-xl object-cover border" />
-            )}
-
-            <label className="cursor-pointer bg-black text-white px-4 py-2 rounded-lg text-sm">
-              {logoUploading ? "Uploading..." : "Upload Logo"}
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  setLogoUploading(true);
-
-                  const url = await uploadToCloudinary(file);
-                  setLogoUrl(url);
-
-                  await saveProfileMutation.mutateAsync({ logoUrl: url });
-
-                  setLogoUploading(false);
-                }}
-              />
-            </label>
-
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="text-sm text-gray-500">Pending bookings</div>
+          <div className="mt-2 text-3xl font-bold text-amber-600">
+            {pendingBookings.length}
           </div>
         </div>
 
-        {/* GALLERY */}
-<div>
-  <p className="text-sm text-gray-500 mb-2">Gallery</p>
-
-  <div className="flex flex-wrap gap-3">
-
-    {gallery.map((img, i) => (
-      <div key={i} className="relative group">
-
-        <img
-          src={img}
-          className="w-24 h-24 rounded-xl object-cover border"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = "none";
-          }}
-        />
-
-        {/* DELETE BUTTON */}
-        <button
-         onClick={async () => {
-  if (!confirm("Delete this image?")) return;
-
-  const updated = gallery.filter((_, index) => index !== i);
-  setGallery(updated);
-
-  await saveGalleryMutation.mutateAsync(updated);
-
-  alert("🗑️ Image removed");
-}} 
-          className="absolute top-1 right-1 bg-black/70 text-white text-xs px-1 rounded"
-        >
-          ✕
-        </button>
-
-      </div>
-    ))}
-
-    {/* ADD IMAGE */}
-    <label className="w-24 h-24 border rounded-xl flex items-center justify-center cursor-pointer">
-      {galleryUploading ? "..." : "+"}
-      <input
-        type="file"
-        hidden
-        accept="image/*"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-
-          setGalleryUploading(true);
-
-          const url = await uploadToCloudinary(file);
-
-          const updatedGallery = [...gallery, url];
-
-          setGallery(updatedGallery);
-          await saveGalleryMutation.mutateAsync(updatedGallery);
-          alert("✅ Image saved");
-
-          setGalleryUploading(false);
-        }}
-      />
-    </label>
-
-  </div>
-</div>
-
-      </div>
-
-      {/* BOOKINGS */}
-      <div className="space-y-4">
-        {data.map((b: any) => (
-          <div key={b.id} className="p-5 rounded-xl border bg-white shadow-sm">
-            <p className="font-semibold">
-              {b.owner?.firstName} {b.owner?.lastName}
-            </p>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="text-sm text-gray-500">Upcoming active bookings</div>
+          <div className="mt-2 text-3xl font-bold text-blue-600">
+            {upcomingBookings.length}
           </div>
-        ))}
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="text-sm text-gray-500">Total active bookings</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">
+            {totalActive}
+          </div>
+        </div>
       </div>
 
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Pending Bookings
+            </h2>
+          </div>
+
+          {isLoading ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+              Loading bookings...
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              Failed to load supplier bookings.
+            </div>
+          ) : pendingBookings.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+              No pending bookings.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingBookings.map((booking) => (
+                <BookingCard key={booking.id} booking={booking} />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-semibold text-gray-900">
+              Upcoming Bookings
+            </h2>
+          </div>
+
+          {isLoading ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+              Loading bookings...
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              Failed to load supplier bookings.
+            </div>
+          ) : upcomingBookings.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+              No upcoming bookings.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {upcomingBookings.map((booking) => (
+                <BookingCard key={booking.id} booking={booking} />
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
