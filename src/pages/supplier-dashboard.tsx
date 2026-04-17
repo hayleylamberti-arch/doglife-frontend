@@ -76,6 +76,76 @@ function sortBookingsByStart(bookings: SupplierBooking[]) {
   );
 }
 
+function DeclineModal({
+  booking,
+  message,
+  setMessage,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  booking: SupplierBooking;
+  message: string;
+  setMessage: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 space-y-4">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900">Decline booking</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            You can add an optional note or suggest another time.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+          <div className="font-medium text-gray-900">
+            {String(booking.serviceType || "Booking").replace(/_/g, " ")}
+          </div>
+          <div>{formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}</div>
+          <div className="mt-2">Owner: {formatOwnerName(booking)}</div>
+          <div>Dogs: {formatDogNames(booking)}</div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-700">
+            Optional message / suggested alternative
+          </label>
+          <textarea
+            className="w-full min-h-[120px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Example: I’m not available then, but I could do Friday at 10:00."
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={loading}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {loading ? "Declining..." : "Confirm Decline"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAccept,
@@ -84,7 +154,7 @@ function BookingCard({
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
-  onDecline: (bookingId: string) => void;
+  onDecline: (booking: SupplierBooking) => void;
   actionLoading: boolean;
 }) {
   const isPending = booking.status === "PENDING";
@@ -136,7 +206,7 @@ function BookingCard({
 
           <button
             type="button"
-            onClick={() => onDecline(booking.id)}
+            onClick={() => onDecline(booking)}
             disabled={actionLoading}
             className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 disabled:opacity-50"
           >
@@ -151,6 +221,8 @@ function BookingCard({
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [declineBooking, setDeclineBooking] = useState<SupplierBooking | null>(null);
+  const [declineMessage, setDeclineMessage] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier-dashboard-bookings"],
@@ -180,14 +252,24 @@ export default function SupplierDashboardPage() {
   });
 
   const declineMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`);
+    mutationFn: async ({
+      bookingId,
+      message,
+    }: {
+      bookingId: string;
+      message?: string;
+    }) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
+        message: message || undefined,
+      });
     },
-    onMutate: (bookingId) => {
+    onMutate: ({ bookingId }) => {
       setActiveBookingId(bookingId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+      setDeclineBooking(null);
+      setDeclineMessage("");
     },
     onError: (error) => {
       console.error(error);
@@ -296,7 +378,10 @@ export default function SupplierDashboardPage() {
                   key={booking.id}
                   booking={booking}
                   onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-                  onDecline={(bookingId) => declineMutation.mutate(bookingId)}
+                  onDecline={(booking) => {
+                    setDeclineBooking(booking);
+                    setDeclineMessage("");
+                  }}
                   actionLoading={activeBookingId === booking.id}
                 />
               ))}
@@ -338,6 +423,27 @@ export default function SupplierDashboardPage() {
           )}
         </section>
       </div>
+
+      {declineBooking ? (
+        <DeclineModal
+          booking={declineBooking}
+          message={declineMessage}
+          setMessage={setDeclineMessage}
+          onClose={() => {
+            if (!declineMutation.isPending) {
+              setDeclineBooking(null);
+              setDeclineMessage("");
+            }
+          }}
+          onSubmit={() => {
+            declineMutation.mutate({
+              bookingId: declineBooking.id,
+              message: declineMessage.trim(),
+            });
+          }}
+          loading={declineMutation.isPending}
+        />
+      ) : null}
     </div>
   );
 }
