@@ -38,9 +38,14 @@ function getStatusColor(status: string) {
 }
 
 function getSupplierMessage(booking: any) {
-  if (!booking?.bookingEvents?.length) return null;
+  if (!booking?.events?.length) return null;
 
-  const supplierDeclineEvent = booking.bookingEvents.find(
+  const sortedEvents = [...booking.events].sort(
+    (a: any, b: any) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const supplierDeclineEvent = sortedEvents.find(
     (event: any) =>
       event.type === "SUPPLIER_DECLINED" &&
       typeof event.message === "string" &&
