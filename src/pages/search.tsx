@@ -197,17 +197,16 @@ export default function SearchPage() {
                       type="button"
                       onClick={() => togglePreferredSupplier(supplier)}
                       disabled={savingSupplierId === supplier.id}
-                      className={`text-xs px-3 py-1 rounded border ${
+                      className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded border transition ${
                         supplier.isPreferred
-                          ? "bg-blue-100 text-blue-700 border-blue-200"
-                          : "bg-white text-gray-600 border-gray-300"
+                          ? "bg-green-100 text-green-700 border-green-200"
+                          : "bg-white text-gray-500 border-gray-300"
                       } disabled:opacity-50`}
                     >
-                      {savingSupplierId === supplier.id
-                        ? "Saving..."
-                        : supplier.isPreferred
-                        ? "Preferred"
-                        : "Save"}
+                      <span>{supplier.isPreferred ? "♥" : "♡"}</span>
+                      <span>
+                        {savingSupplierId === supplier.id ? "Saving..." : "Preferred"}
+                      </span>
                     </button>
 
                     {supplier.isVerified ? (
