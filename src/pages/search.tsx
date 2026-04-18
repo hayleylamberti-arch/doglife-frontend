@@ -257,7 +257,11 @@ export default function SearchPage() {
 
                   <Button
                     size="sm"
-                    onClick={() => navigate(`/supplier/${supplier.id}`)}
+                    onClick={() =>
+  navigate(`/supplier/${supplier.id}`, {
+    state: { isPreferred: supplier.isPreferred },
+  })
+}
                   >
                     View Provider
                   </Button>
