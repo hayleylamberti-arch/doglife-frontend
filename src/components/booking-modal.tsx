@@ -8,6 +8,9 @@ interface Props {
 }
 
 type KennelType = "SOCIAL" | "PRIVATE";
+type DaycareType = "FULL_DAY" | "HALF_DAY";
+type HalfDayPeriod = "MORNING" | "AFTERNOON";
+type PetSittingLocation = "OWNER_HOME" | "SITTER_HOME";
 
 interface Dog {
   id: string;
@@ -29,10 +32,26 @@ function formatDogSize(value?: string | null) {
   return value.toLowerCase().replace(/^xl$/, "x large");
 }
 
+function formatLabel(value?: string | null) {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
+
   const isBoarding = serviceType === "BOARDING";
   const isGrooming = serviceType === "GROOMING";
+  const isDaycare = serviceType === "DAYCARE";
+  const isPetSitting = serviceType === "PET_SITTING";
+  const isMobileVet = serviceType === "MOBILE_VET";
+
+  const isStayService = isBoarding || isPetSitting;
+  const isAppointmentService = !isStayService;
+
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
 
   const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
@@ -47,10 +66,27 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     )
   );
 
+  const mobileVetOfferingOptions: string[] = Array.isArray(
+    service?.pricingJson?.offerings
+  )
+    ? service.pricingJson.offerings
+    : ["CHECK_UP", "INOCULATIONS", "EUTHANASIA", "FOLLOW_UP", "OTHER"];
+
   const [selectedGroomingCategory, setSelectedGroomingCategory] =
     useState<string>("");
   const [selectedGroomingSize, setSelectedGroomingSize] =
     useState<string>("");
+
+  const [daycareType, setDaycareType] = useState<DaycareType>("FULL_DAY");
+  const [halfDayPeriod, setHalfDayPeriod] =
+    useState<HalfDayPeriod>("MORNING");
+
+  const [petSittingLocation, setPetSittingLocation] =
+    useState<PetSittingLocation>("OWNER_HOME");
+
+  const [mobileVetOffering, setMobileVetOffering] = useState<string>(
+    mobileVetOfferingOptions[0] || "CHECK_UP"
+  );
 
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -86,6 +122,14 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     );
   }, [groomingTiers, selectedGroomingCategory, selectedGroomingSize]);
 
+  const displayPrice = useMemo(() => {
+    if (isGrooming && selectedGroomingTier?.priceCents) {
+      return selectedGroomingTier.priceCents;
+    }
+
+    return service?.baseRateCents;
+  }, [isGrooming, selectedGroomingTier, service?.baseRateCents]);
+
   const title = useMemo(() => {
     return `Book ${formatServiceName(serviceType)}`;
   }, [serviceType]);
@@ -109,7 +153,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    if (isBoarding) return;
+    if (!isAppointmentService) return;
 
     if (!date) {
       setSlots([]);
@@ -130,7 +174,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
 
     fetchAvailability();
-  }, [supplierId, date, isBoarding]);
+  }, [supplierId, date, isAppointmentService]);
 
   useEffect(() => {
     if (
@@ -154,12 +198,69 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
   }, [isGrooming, availableSizesForCategory, selectedGroomingSize]);
 
+  useEffect(() => {
+    if (isMobileVet && mobileVetOfferingOptions.length > 0) {
+      setMobileVetOffering((current) =>
+        mobileVetOfferingOptions.includes(current)
+          ? current
+          : mobileVetOfferingOptions[0]
+      );
+    }
+  }, [isMobileVet, mobileVetOfferingOptions]);
+
   function toggleDog(dogId: string) {
     setSelectedDogIds((prev) =>
       prev.includes(dogId)
         ? prev.filter((id) => id !== dogId)
         : [...prev, dogId]
     );
+  }
+
+  function buildAppointmentNotes() {
+    const extraLines: string[] = [];
+
+    if (isGrooming && selectedGroomingTier) {
+      extraLines.push(
+        `Grooming option: ${selectedGroomingCategory}. Size: ${selectedGroomingSize}.`
+      );
+    }
+
+    if (isDaycare) {
+      extraLines.push(`Daycare type: ${formatLabel(daycareType)}.`);
+      if (daycareType === "HALF_DAY") {
+        extraLines.push(`Half day period: ${formatLabel(halfDayPeriod)}.`);
+      }
+    }
+
+    if (isMobileVet && mobileVetOffering) {
+      extraLines.push(`Mobile vet service: ${formatLabel(mobileVetOffering)}.`);
+    }
+
+    if (notes.trim()) {
+      extraLines.push(notes.trim());
+    }
+
+    return extraLines.join(" ");
+  }
+
+  function buildStayNotes() {
+    const extraLines: string[] = [];
+
+    if (isBoarding && kennelType) {
+      extraLines.push(`Kennel type: ${formatLabel(kennelType)}.`);
+    }
+
+    if (isPetSitting && petSittingLocation) {
+      extraLines.push(
+        `Pet sitting location: ${formatLabel(petSittingLocation)}.`
+      );
+    }
+
+    if (notes.trim()) {
+      extraLines.push(notes.trim());
+    }
+
+    return extraLines.join(" ");
   }
 
   async function handleAppointmentBooking() {
@@ -175,6 +276,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return;
     }
 
+    if (isMobileVet && !mobileVetOffering) {
+      alert("Please select a mobile vet service");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -183,11 +289,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         start.getTime() + appointmentDurationMinutes * 60 * 1000
       );
 
-      const groomingNotes =
-        isGrooming && selectedGroomingTier
-          ? `Grooming option: ${selectedGroomingCategory}. Size: ${selectedGroomingSize}.${notes ? ` ${notes}` : ""}`
-          : notes || undefined;
-
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
@@ -195,7 +296,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         startAt: start,
         endAt: end,
         dogIds: selectedDogIds,
-        notes: groomingNotes,
+        notes: buildAppointmentNotes() || undefined,
         groomingCategory: isGrooming ? selectedGroomingCategory : undefined,
         groomingSize: isGrooming ? selectedGroomingSize : undefined,
       });
@@ -215,7 +316,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
   }
 
-  async function handleBoardingBooking() {
+  async function handleStayBooking() {
     if (!arrivalDate || !departureDate) return;
 
     if (selectedDogIds.length === 0) {
@@ -232,19 +333,19 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
-        serviceType: "BOARDING",
+        serviceType,
         startAt: start,
         endAt: end,
         dogIds: selectedDogIds,
-        notes: notes || undefined,
+        notes: buildStayNotes() || undefined,
         dogCount: selectedDogIds.length,
-        kennelType,
+        kennelType: isBoarding ? kennelType : undefined,
       });
 
-      alert("✅ Boarding request sent!");
+      alert("✅ Booking request sent!");
       onClose();
     } catch (err: any) {
-      console.error("BOARDING BOOKING ERROR:", err);
+      console.error("STAY BOOKING ERROR:", err);
 
       const message =
         err?.response?.data?.error ||
@@ -263,10 +364,20 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
         <div className="text-sm text-gray-600">
           {isBoarding ? (
-            <p>{formatPrice(service?.baseRateCents)} per night</p>
+            <p>{formatPrice(displayPrice)} per night</p>
+          ) : isPetSitting ? (
+            <p>{formatPrice(displayPrice)} per stay</p>
+          ) : service?.unit ? (
+            <p>
+              {formatPrice(displayPrice)} per{" "}
+              {String(service.unit).toLowerCase().replace(/^per_/, "")}
+              {service?.durationMinutes
+                ? ` • ${service.durationMinutes} mins`
+                : ""}
+            </p>
           ) : (
             <p>
-              {formatPrice(service?.baseRateCents)}
+              {formatPrice(displayPrice)}
               {service?.durationMinutes
                 ? ` • ${service.durationMinutes} mins`
                 : ""}
@@ -309,7 +420,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
           )}
         </div>
 
-        {isBoarding ? (
+        {isStayService ? (
           <>
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Arrival date</label>
@@ -331,17 +442,37 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm text-gray-600">Kennel type</label>
-              <select
-                className="w-full border rounded px-3 py-2"
-                value={kennelType}
-                onChange={(e) => setKennelType(e.target.value as KennelType)}
-              >
-                <option value="SOCIAL">Social kennel</option>
-                <option value="PRIVATE">Private kennel</option>
-              </select>
-            </div>
+            {isBoarding ? (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-600">Kennel type</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={kennelType}
+                  onChange={(e) => setKennelType(e.target.value as KennelType)}
+                >
+                  <option value="SOCIAL">Social kennel</option>
+                  <option value="PRIVATE">Private kennel</option>
+                </select>
+              </div>
+            ) : null}
+
+            {isPetSitting ? (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-600">Stay location</label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={petSittingLocation}
+                  onChange={(e) =>
+                    setPetSittingLocation(
+                      e.target.value as PetSittingLocation
+                    )
+                  }
+                >
+                  <option value="OWNER_HOME">At owner's home</option>
+                  <option value="SITTER_HOME">At sitter's home</option>
+                </select>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Notes</label>
@@ -354,17 +485,18 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             </div>
 
             <button
-              onClick={handleBoardingBooking}
+              onClick={handleStayBooking}
               disabled={
                 !arrivalDate ||
                 !departureDate ||
                 loading ||
                 dogsLoading ||
-                dogs.length === 0
+                dogs.length === 0 ||
+                selectedDogIds.length === 0
               }
               className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
-              {loading ? "Booking..." : "Confirm Boarding"}
+              {loading ? "Booking..." : "Confirm Booking"}
             </button>
           </>
         ) : (
@@ -408,6 +540,61 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     ))}
                   </select>
                 </div>
+              </div>
+            ) : null}
+
+            {isDaycare ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Daycare type</label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={daycareType}
+                    onChange={(e) =>
+                      setDaycareType(e.target.value as DaycareType)
+                    }
+                  >
+                    <option value="FULL_DAY">Full day</option>
+                    <option value="HALF_DAY">Half day</option>
+                  </select>
+                </div>
+
+                {daycareType === "HALF_DAY" ? (
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-600">
+                      Half day period
+                    </label>
+                    <select
+                      className="w-full border rounded px-3 py-2"
+                      value={halfDayPeriod}
+                      onChange={(e) =>
+                        setHalfDayPeriod(e.target.value as HalfDayPeriod)
+                      }
+                    >
+                      <option value="MORNING">Morning</option>
+                      <option value="AFTERNOON">Afternoon</option>
+                    </select>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {isMobileVet ? (
+              <div className="space-y-2">
+                <label className="text-sm text-gray-600">
+                  Vet service needed
+                </label>
+                <select
+                  className="w-full border rounded px-3 py-2"
+                  value={mobileVetOffering}
+                  onChange={(e) => setMobileVetOffering(e.target.value)}
+                >
+                  {mobileVetOfferingOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {formatLabel(option)}
+                    </option>
+                  ))}
+                </select>
               </div>
             ) : null}
 
@@ -475,7 +662,8 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 dogs.length === 0 ||
                 selectedDogIds.length === 0 ||
                 (isGrooming &&
-                  (!selectedGroomingCategory || !selectedGroomingSize))
+                  (!selectedGroomingCategory || !selectedGroomingSize)) ||
+                (isMobileVet && !mobileVetOffering)
               }
               className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
