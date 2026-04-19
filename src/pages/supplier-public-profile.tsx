@@ -6,22 +6,42 @@ import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-/* =========================
-   HELPERS
-========================= */
-
 function formatPrice(cents?: number | null) {
   if (!cents) return "—";
   return `R${(cents / 100).toFixed(0)}`;
 }
 
+function formatServiceName(value?: string) {
+  return String(value || "SERVICE").replace(/_/g, " ");
+}
+
+function formatUnit(unit?: string | null) {
+  switch (unit) {
+    case "PER_NIGHT":
+      return "per night";
+    case "PER_SESSION":
+      return "per session";
+    case "PER_VISIT":
+      return "per visit";
+    case "PER_TRIP":
+      return "per trip";
+    case "PER_DAY":
+      return "per day";
+    case "PER_WALK":
+      return "per walk";
+    default:
+      return "";
+  }
+}
+
+function formatDogSize(value?: string | null) {
+  if (!value) return "";
+  return value.toLowerCase().replace(/^xl$/, "x large");
+}
+
 type LocationState = {
   isPreferred?: boolean;
 };
-
-/* =========================
-   COMPONENT
-========================= */
 
 export default function SupplierPublicProfile() {
   const { id } = useParams<{ id: string }>();
@@ -120,9 +140,7 @@ export default function SupplierPublicProfile() {
 
           <div>
             <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
-
             <p className="text-gray-500 mt-1">{supplier.suburb}</p>
-
             <p className="text-sm text-gray-400 mt-1">⭐⭐⭐⭐⭐ (Coming soon)</p>
           </div>
         </div>
@@ -156,59 +174,69 @@ export default function SupplierPublicProfile() {
         <h2 className="text-xl font-semibold">Services</h2>
 
         {supplier.services?.length > 0 ? (
-          supplier.services.map((service: any) => (
-            <Card key={service.id}>
-              <CardContent className="p-6 space-y-3">
-                <h3 className="text-lg font-semibold">
-                  {service.service.replace(/_/g, " ")}
-                </h3>
+          supplier.services.map((service: any) => {
+            const hasGroomingTiers = Array.isArray(service.pricingTiers) && service.pricingTiers.length > 0;
 
-                {service.baseRateCents > 0 && (
-                  <p className="text-gray-700">
-                    From {formatPrice(service.baseRateCents)}
-                  </p>
-                )}
+            return (
+              <Card key={service.id}>
+                <CardContent className="p-6 space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-semibold">
+                      {formatServiceName(service.service)}
+                    </h3>
 
-                {service.pricingTiers?.length > 0 && (
-                  <div className="space-y-2 text-sm text-gray-600">
-                    {["WASH_BRUSH", "WASH_CUT"].map((category) => {
-                      const tiers = service.pricingTiers.filter(
-                        (t: any) => t.category === category
-                      );
-
-                      if (tiers.length === 0) return null;
-
-                      return (
-                        <div key={category}>
-                          <p className="font-medium">
-                            {category === "WASH_BRUSH"
-                              ? "Wash & Brush"
-                              : "Wash & Cut"}
-                          </p>
-
-                          {tiers.map((t: any) => (
-                            <p key={t.id}>
-                              {t.dogSize?.toLowerCase()} — R{t.priceCents / 100}
-                            </p>
-                          ))}
-                        </div>
-                      );
-                    })}
+                    <div className="text-gray-700">
+                      {service.baseRateCents > 0 ? (
+                        <p>
+                          From {formatPrice(service.baseRateCents)}
+                          {formatUnit(service.unit) ? ` ${formatUnit(service.unit)}` : ""}
+                          {service.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
+                        </p>
+                      ) : service.durationMinutes ? (
+                        <p>{service.durationMinutes} mins</p>
+                      ) : null}
+                    </div>
                   </div>
-                )}
 
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSelectedService(service);
-                    setModalOpen(true);
-                  }}
-                >
-                  Book Service
-                </Button>
-              </CardContent>
-            </Card>
-          ))
+                  {hasGroomingTiers ? (
+                    <div className="space-y-3 text-sm text-gray-700">
+                      {["WASH_BRUSH", "WASH_CUT"].map((category) => {
+                        const tiers = service.pricingTiers.filter(
+                          (tier: any) => tier.category === category
+                        );
+
+                        if (tiers.length === 0) return null;
+
+                        return (
+                          <div key={category} className="space-y-1">
+                            <p className="font-medium">
+                              {category === "WASH_BRUSH" ? "Wash & Brush" : "Wash & Cut"}
+                            </p>
+
+                            {tiers.map((tier: any) => (
+                              <p key={tier.id}>
+                                {formatDogSize(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                              </p>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSelectedService(service);
+                      setModalOpen(true);
+                    }}
+                  >
+                    Book Service
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })
         ) : (
           <p className="text-gray-400 text-sm">No services listed yet</p>
         )}

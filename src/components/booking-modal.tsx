@@ -15,9 +15,40 @@ interface Dog {
   breed?: string | null;
 }
 
+function formatServiceName(value?: string) {
+  return String(value || "SERVICE").replace(/_/g, " ");
+}
+
+function formatPrice(cents?: number | null) {
+  if (!cents) return "—";
+  return `R${(cents / 100).toFixed(0)}`;
+}
+
+function formatDogSize(value?: string | null) {
+  if (!value) return "";
+  return value.toLowerCase().replace(/^xl$/, "x large");
+}
+
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
   const isBoarding = serviceType === "BOARDING";
+  const isGrooming = serviceType === "GROOMING";
+  const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
+
+  const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
+  ? service.pricingTiers
+  : [];
+
+const groomingCategories: string[] = Array.from(
+  new Set(
+    groomingTiers
+      .map((tier: any) => String(tier.category || ""))
+      .filter((category: string) => category.length > 0)
+  )
+);
+
+  const [selectedGroomingCategory, setSelectedGroomingCategory] = useState<string>("");
+  const [selectedGroomingSize, setSelectedGroomingSize] = useState<string>("");
 
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -25,7 +56,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
-  const [dogCount, setDogCount] = useState(1);
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
   const [notes, setNotes] = useState("");
 
@@ -35,8 +65,26 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [dogsLoading, setDogsLoading] = useState(false);
 
+  const availableSizesForCategory = useMemo(() => {
+    if (!selectedGroomingCategory) return [];
+    return groomingTiers.filter(
+      (tier: any) => tier.category === selectedGroomingCategory
+    );
+  }, [groomingTiers, selectedGroomingCategory]);
+
+  const selectedGroomingTier = useMemo(() => {
+    if (!selectedGroomingCategory || !selectedGroomingSize) return null;
+    return (
+      groomingTiers.find(
+        (tier: any) =>
+          tier.category === selectedGroomingCategory &&
+          tier.dogSize === selectedGroomingSize
+      ) || null
+    );
+  }, [groomingTiers, selectedGroomingCategory, selectedGroomingSize]);
+
   const title = useMemo(() => {
-    return `Book ${String(serviceType).replace(/_/g, " ")}`;
+    return `Book ${formatServiceName(serviceType)}`;
   }, [serviceType]);
 
   useEffect(() => {
@@ -81,10 +129,22 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [supplierId, date, isBoarding]);
 
   useEffect(() => {
-    if (isBoarding) {
-      setDogCount(selectedDogIds.length || 1);
+    if (isGrooming && groomingCategories.length > 0 && !selectedGroomingCategory) {
+      setSelectedGroomingCategory(groomingCategories[0] || "");
     }
-  }, [selectedDogIds, isBoarding]);
+  }, [isGrooming, groomingCategories, selectedGroomingCategory]);
+
+  useEffect(() => {
+    if (
+      isGrooming &&
+      availableSizesForCategory.length > 0 &&
+      !availableSizesForCategory.some(
+        (tier: any) => tier.dogSize === selectedGroomingSize
+      )
+    ) {
+      setSelectedGroomingSize(availableSizesForCategory[0].dogSize);
+    }
+  }, [isGrooming, availableSizesForCategory, selectedGroomingSize]);
 
   function toggleDog(dogId: string) {
     setSelectedDogIds((prev) =>
@@ -102,19 +162,32 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return;
     }
 
+    if (isGrooming && (!selectedGroomingCategory || !selectedGroomingSize)) {
+      alert("Please select a grooming option and dog size");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const start = new Date(selectedSlot);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      const end = new Date(
+        start.getTime() + appointmentDurationMinutes * 60 * 1000
+      );
+
+      const groomingNotes =
+        isGrooming && selectedGroomingTier
+          ? `Grooming option: ${selectedGroomingCategory}. Size: ${selectedGroomingSize}.${notes ? ` ${notes}` : ""}`
+          : notes || undefined;
 
       await api.post("/api/bookings", {
         supplierId,
+        supplierServiceId: service.id,
         serviceType,
         startAt: start,
         endAt: end,
         dogIds: selectedDogIds,
-        notes: notes || undefined,
+        notes: groomingNotes,
       });
 
       alert("✅ Booking request sent!");
@@ -143,11 +216,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
       await api.post("/api/bookings", {
         supplierId,
+        supplierServiceId: service.id,
         serviceType: "BOARDING",
         startAt: start,
         endAt: end,
         dogIds: selectedDogIds,
-        notes,
+        notes: notes || undefined,
         dogCount: selectedDogIds.length,
         kennelType,
       });
@@ -166,6 +240,19 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
         <h2 className="text-xl font-semibold">{title}</h2>
+
+        <div className="text-sm text-gray-600">
+          {isBoarding ? (
+            <p>
+              {formatPrice(service?.baseRateCents)} per night
+            </p>
+          ) : (
+            <p>
+              {formatPrice(service?.baseRateCents)}
+              {service?.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
+            </p>
+          )}
+        </div>
 
         <div className="space-y-2">
           <label className="text-sm text-gray-600">Select dog(s)</label>
@@ -225,17 +312,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm text-gray-600">Number of dogs</label>
-              <input
-                type="number"
-                min={1}
-                className="w-full border rounded px-3 py-2 bg-gray-50"
-                value={selectedDogIds.length || 1}
-                readOnly
-              />
-            </div>
-
-            <div className="space-y-2">
               <label className="text-sm text-gray-600">Kennel type</label>
               <select
                 className="w-full border rounded px-3 py-2"
@@ -273,15 +349,55 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
           </>
         ) : (
           <>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2"
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-                setSelectedSlot(null);
-              }}
-            />
+            {isGrooming && groomingCategories.length > 0 ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Grooming option</label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={selectedGroomingCategory}
+                    onChange={(e) => {
+                      setSelectedGroomingCategory(e.target.value);
+                      setSelectedGroomingSize("");
+                    }}
+                  >
+                    {groomingCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category === "WASH_BRUSH" ? "Wash & Brush" : "Wash & Cut"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Dog size</label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={selectedGroomingSize}
+                    onChange={(e) => setSelectedGroomingSize(e.target.value)}
+                  >
+                    {availableSizesForCategory.map((tier: any) => (
+                      <option key={tier.id} value={tier.dogSize}>
+                        {formatDogSize(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <label className="text-sm text-gray-600">Select date</label>
+              <input
+                type="date"
+                className="w-full border rounded px-3 py-2"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  setSelectedSlot(null);
+                }}
+              />
+            </div>
 
             {slots.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
@@ -331,7 +447,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 !selectedSlot ||
                 loading ||
                 dogsLoading ||
-                dogs.length === 0
+                dogs.length === 0 ||
+                selectedDogIds.length === 0 ||
+                (isGrooming && (!selectedGroomingCategory || !selectedGroomingSize))
               }
               className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
