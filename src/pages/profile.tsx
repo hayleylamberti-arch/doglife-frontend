@@ -1,17 +1,13 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,35 +19,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  User,
-  Heart,
-  Settings,
-  Plus,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  MapPin,
-} from "lucide-react";
+import { User, Settings, Mail, Phone, MapPin } from "lucide-react";
 
 const profileSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  phoneNumber: z
+  mobilePhone: z
     .string()
-    .regex(
-      /^[\+]?[0-9\s\-\(\)]{10,}$/,
-      "Please enter a valid phone number"
-    )
+    .regex(/^[\+]?[0-9\s\-\(\)]{10,}$/, "Please enter a valid phone number")
     .optional()
     .or(z.literal("")),
   address: z
@@ -61,188 +38,79 @@ const profileSchema = z.object({
     .or(z.literal("")),
 });
 
-const dogSchema = z.object({
-  name: z.string().min(2, "Dog name must be at least 2 characters"),
-  breed: z.string().optional(),
-  age: z.number().min(0).max(30),
-  behavioralNotes: z.string().optional(),
-  medicalHistory: z.string().optional(),
-  specialCareNotes: z.string().optional(),
-});
-
 type ProfileFormData = z.infer<typeof profileSchema>;
-type DogFormData = z.infer<typeof dogSchema>;
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [editingDog, setEditingDog] = useState<any>(null);
-  const [showDogDialog, setShowDogDialog] = useState(false);
-
-  const profileForm = useForm<ProfileFormData>({
+  const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      phoneNumber: user?.phoneNumber || "",
-      address: user?.address || "",
+      firstName: "",
+      lastName: "",
+      mobilePhone: "",
+      address: "",
     },
   });
 
-  const dogForm = useForm<DogFormData>({
-    resolver: zodResolver(dogSchema),
-    defaultValues: {
-      name: "",
-      breed: "",
-      age: 0,
-      behavioralNotes: "",
-      medicalHistory: "",
-      specialCareNotes: "",
+  const { data: ownerProfile, isLoading: ownerProfileLoading } = useQuery({
+    queryKey: ["owner-profile"],
+    queryFn: async () => {
+      const res = await api.get("/api/owner/profile");
+      return res.data?.profile || null;
     },
-  });
-
-  const { data: dogs = [] } = useQuery<
-    {
-      id: string;
-      name: string;
-      breed?: string;
-      age?: number;
-      behavioralNotes?: string;
-      medicalHistory?: string;
-      specialCareNotes?: string;
-    }[]
-  >({
-    queryKey: ["/api/dogs"],
     enabled: !!user,
+    retry: false,
   });
+
+  useEffect(() => {
+    if (!user) return;
+
+    form.reset({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      mobilePhone: (user as any).mobilePhone || "",
+      address: ownerProfile?.address || "",
+    });
+  }, [user, ownerProfile, form]);
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: ProfileFormData) =>
-      apiRequest("/api/user", {
+    mutationFn: async (data: ProfileFormData) => {
+      await apiRequest("/api/user", {
         method: "PATCH",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
+        body: JSON.stringify({
+          firstName: data.firstName,
+          lastName: data.lastName,
+          mobilePhone: data.mobilePhone || null,
+        }),
+      });
+
+      await api.post("/api/owner/profile", {
+        address: data.address || null,
+      });
+    },
+    onSuccess: async () => {
       toast({ title: "Profile updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await queryClient.invalidateQueries({ queryKey: ["owner-profile"] });
     },
     onError: (error: any) => {
       toast({
         title: "Error updating profile",
-        description: error.message || "An unexpected error occurred",
+        description: error?.message || "Failed to save profile",
         variant: "destructive",
       });
     },
   });
 
-  const createDogMutation = useMutation({
-    mutationFn: (data: DogFormData) =>
-      apiRequest("/api/dogs", {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      toast({ title: "Dog added successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/dogs"] });
-      setShowDogDialog(false);
-      dogForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error adding dog",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateDogMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: string } & DogFormData) =>
-      apiRequest(`/api/dogs/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      }),
-    onSuccess: () => {
-      toast({ title: "Dog updated successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/dogs"] });
-      setShowDogDialog(false);
-      setEditingDog(null);
-      dogForm.reset();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error updating dog",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteDogMutation = useMutation({
-    mutationFn: (dogId: string) =>
-      apiRequest(`/api/dogs/${dogId}`, {
-        method: "DELETE",
-      }),
-    onSuccess: () => {
-      toast({ title: "Dog removed successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/dogs"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error removing dog",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onProfileSubmit = (data: ProfileFormData) => {
+  const onSubmit = (data: ProfileFormData) => {
     updateProfileMutation.mutate(data);
   };
 
-  const onDogSubmit = (data: DogFormData) => {
-    if (editingDog) {
-      updateDogMutation.mutate({ id: editingDog.id, ...data });
-    } else {
-      createDogMutation.mutate(data);
-    }
-  };
-
-  const handleAddDog = () => {
-    setEditingDog(null);
-    dogForm.reset({
-      name: "",
-      breed: "",
-      age: 0,
-      behavioralNotes: "",
-      medicalHistory: "",
-      specialCareNotes: "",
-    });
-    setShowDogDialog(true);
-  };
-
-  const handleEditDog = (dog: any) => {
-    setEditingDog(dog);
-    dogForm.reset({
-      name: dog.name || "",
-      breed: dog.breed || "",
-      age: dog.age || 0,
-      behavioralNotes: dog.behavioralNotes || "",
-      medicalHistory: dog.medicalHistory || "",
-      specialCareNotes: dog.specialCareNotes || "",
-    });
-    setShowDogDialog(true);
-  };
-
-  const handleDeleteDog = (dogId: string) => {
-    if (window.confirm("Are you sure you want to remove this dog?")) {
-      deleteDogMutation.mutate(dogId);
-    }
-  };
-
-  if (isLoading || !user) {
+  if (isLoading || ownerProfileLoading || !user) {
     return (
       <div className="min-h-screen bg-doglife-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -259,7 +127,7 @@ export default function Profile() {
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
             <AvatarImage
-              src={user.profileImageUrl || ""}
+              src={(user as any).profileImageUrl || ""}
               alt={user.firstName || ""}
             />
             <AvatarFallback className="bg-doglife-primary text-white text-2xl">
@@ -274,11 +142,6 @@ export default function Profile() {
             <p className="text-doglife-neutral">{user.email}</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline">Dog Owner</Badge>
-              {user.isSubscribed ? (
-                <Badge className="bg-doglife-accent text-white">
-                  Premium Member
-                </Badge>
-              ) : null}
             </div>
           </div>
         </div>
@@ -290,15 +153,13 @@ export default function Profile() {
               Personal Details
             </CardTitle>
           </CardHeader>
+
           <CardContent>
-            <Form {...profileForm}>
-              <form
-                onSubmit={profileForm.handleSubmit(onProfileSubmit)}
-                className="space-y-4"
-              >
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={profileForm.control}
+                    control={form.control}
                     name="firstName"
                     render={({ field }) => (
                       <FormItem>
@@ -312,7 +173,7 @@ export default function Profile() {
                   />
 
                   <FormField
-                    control={profileForm.control}
+                    control={form.control}
                     name="lastName"
                     render={({ field }) => (
                       <FormItem>
@@ -328,13 +189,13 @@ export default function Profile() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
-                    control={profileForm.control}
-                    name="phoneNumber"
+                    control={form.control}
+                    name="mobilePhone"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Phone number</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -348,7 +209,7 @@ export default function Profile() {
                 </div>
 
                 <FormField
-                  control={profileForm.control}
+                  control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
@@ -356,7 +217,8 @@ export default function Profile() {
                       <FormControl>
                         <Textarea
                           {...field}
-                          rows={3}
+                          value={field.value || ""}
+                          rows={4}
                           placeholder="Enter your address for home-based services like walking, training or mobile visits"
                         />
                       </FormControl>
@@ -376,102 +238,10 @@ export default function Profile() {
                   disabled={updateProfileMutation.isPending}
                   className="bg-doglife-primary hover:bg-blue-700"
                 >
-                  {updateProfileMutation.isPending
-                    ? "Saving..."
-                    : "Save Profile"}
+                  {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
               </form>
             </Form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Heart className="h-5 w-5" />
-                My Dogs
-              </div>
-              <Button
-                onClick={handleAddDog}
-                className="bg-doglife-primary hover:bg-blue-700"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Dog
-              </Button>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent>
-            {dogs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dogs.map((dog: any) => (
-                  <Card key={dog.id} className="border">
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-doglife-dark">
-                          {dog.name}
-                        </h3>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditDog(dog)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteDog(dog.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-2 space-y-2 text-sm text-doglife-neutral">
-                      <p>
-                        <strong>Breed:</strong> {dog.breed || "Not specified"}
-                      </p>
-                      <p>
-                        <strong>Age:</strong> {dog.age ?? "Not specified"}
-                      </p>
-                      {dog.behavioralNotes ? (
-                        <p>
-                          <strong>Behaviour:</strong> {dog.behavioralNotes}
-                        </p>
-                      ) : null}
-                      {dog.medicalHistory ? (
-                        <p>
-                          <strong>Medical:</strong> {dog.medicalHistory}
-                        </p>
-                      ) : null}
-                      {dog.specialCareNotes ? (
-                        <p>
-                          <strong>Special care:</strong> {dog.specialCareNotes}
-                        </p>
-                      ) : null}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <Heart className="h-12 w-12 mx-auto mb-4 text-doglife-neutral opacity-50" />
-                <p className="text-doglife-neutral mb-4">No dogs added yet</p>
-                <Button
-                  onClick={handleAddDog}
-                  className="bg-doglife-primary hover:bg-blue-700"
-                >
-                  Add Your First Dog
-                </Button>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -482,6 +252,7 @@ export default function Profile() {
               Account Settings
             </CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-4">
             <div className="flex items-start gap-3 p-4 border rounded-lg">
               <Mail className="h-5 w-5 mt-0.5 text-doglife-neutral" />
@@ -496,7 +267,7 @@ export default function Profile() {
               <div>
                 <p className="font-medium">Phone number</p>
                 <p className="text-sm text-doglife-neutral">
-                  {profileForm.watch("phoneNumber") || "Not added yet"}
+                  {form.watch("mobilePhone") || "Not added yet"}
                 </p>
               </div>
             </div>
@@ -505,153 +276,14 @@ export default function Profile() {
               <MapPin className="h-5 w-5 mt-0.5 text-doglife-neutral" />
               <div>
                 <p className="font-medium">Home address</p>
-                <p className="text-sm text-doglife-neutral">
-                  {profileForm.watch("address") || "Not added yet"}
+                <p className="text-sm text-doglife-neutral whitespace-pre-line">
+                  {form.watch("address") || "Not added yet"}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Dialog open={showDogDialog} onOpenChange={setShowDogDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingDog ? "Edit Dog" : "Add New Dog"}
-            </DialogTitle>
-          </DialogHeader>
-
-          <Form {...dogForm}>
-            <form
-              onSubmit={dogForm.handleSubmit(onDogSubmit)}
-              className="space-y-4"
-            >
-              <FormField
-                control={dogForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dog's name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dogForm.control}
-                name="breed"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Breed</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dogForm.control}
-                name="age"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Age (years)</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="number"
-                        min="0"
-                        max="30"
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value ? parseInt(e.target.value, 10) : 0
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dogForm.control}
-                name="behavioralNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Behaviour notes</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dogForm.control}
-                name="medicalHistory"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Medical history</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dogForm.control}
-                name="specialCareNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Special care notes</FormLabel>
-                    <FormControl>
-                      <Textarea {...field} rows={2} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDogDialog(false)}
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={
-                    editingDog
-                      ? updateDogMutation.isPending
-                      : createDogMutation.isPending
-                  }
-                  className="bg-doglife-primary hover:bg-blue-700"
-                >
-                  {editingDog
-                    ? updateDogMutation.isPending
-                      ? "Updating..."
-                      : "Update Dog"
-                    : createDogMutation.isPending
-                    ? "Adding..."
-                    : "Add Dog"}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
