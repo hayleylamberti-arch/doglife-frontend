@@ -11,6 +11,7 @@ type KennelType = "SOCIAL" | "PRIVATE";
 type DaycareType = "FULL_DAY" | "HALF_DAY";
 type HalfDayPeriod = "MORNING" | "AFTERNOON";
 type PetSittingLocation = "OWNER_HOME" | "SITTER_HOME";
+type PetTransportJourneyType = "ONE_WAY" | "RETURN";
 
 interface Dog {
   id: string;
@@ -52,6 +53,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isDaycare = serviceType === "DAYCARE";
   const isPetSitting = serviceType === "PET_SITTING";
   const isMobileVet = serviceType === "MOBILE_VET";
+  const isPetTransport = serviceType === "PET_TRANSPORT";
 
   const isStayService = isBoarding || isPetSitting;
   const usesSlotSelection = !isStayService && !isDaycare;
@@ -91,6 +93,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [mobileVetOffering, setMobileVetOffering] = useState<string>(
     mobileVetOfferingOptions[0] || "CHECK_UP"
   );
+
+  const [petTransportJourneyType, setPetTransportJourneyType] =
+    useState<PetTransportJourneyType>("ONE_WAY");
+  const [pickupPoint, setPickupPoint] = useState("");
+  const [dropoffPoint, setDropoffPoint] = useState("");
 
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
@@ -240,6 +247,14 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       extraLines.push(`Mobile vet service: ${formatLabel(mobileVetOffering)}.`);
     }
 
+    if (isPetTransport) {
+      extraLines.push(
+        `Journey type: ${formatLabel(petTransportJourneyType)}.`
+      );
+      extraLines.push(`Pickup point: ${pickupPoint.trim()}.`);
+      extraLines.push(`Drop-off point: ${dropoffPoint.trim()}.`);
+    }
+
     if (notes.trim()) {
       extraLines.push(notes.trim());
     }
@@ -308,6 +323,18 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return;
     }
 
+    if (isPetTransport) {
+      if (!pickupPoint.trim()) {
+        alert("Please enter a pickup point");
+        return;
+      }
+
+      if (!dropoffPoint.trim()) {
+        alert("Please enter a drop-off point");
+        return;
+      }
+    }
+
     let start: Date | null = null;
     let end: Date | null = null;
 
@@ -327,7 +354,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       start = daycareWindow.start;
       end = daycareWindow.end;
     } else {
-      if (!selectedSlot) return;
+      if (!selectedSlot) {
+        alert("Please select a time");
+        return;
+      }
 
       start = new Date(selectedSlot);
       end = new Date(
@@ -372,7 +402,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }
 
   async function handleStayBooking() {
-    if (!arrivalDate || !departureDate) return;
+    if (!arrivalDate || !departureDate) {
+      alert("Please select arrival and departure dates");
+      return;
+    }
 
     if (selectedDogIds.length === 0) {
       alert("Please select at least one dog");
@@ -653,6 +686,48 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             ) : null}
 
+            {isPetTransport ? (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Journey type</label>
+                  <select
+                    className="w-full border rounded px-3 py-2"
+                    value={petTransportJourneyType}
+                    onChange={(e) =>
+                      setPetTransportJourneyType(
+                        e.target.value as PetTransportJourneyType
+                      )
+                    }
+                  >
+                    <option value="ONE_WAY">One way</option>
+                    <option value="RETURN">Return journey</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Pickup point</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2"
+                    value={pickupPoint}
+                    onChange={(e) => setPickupPoint(e.target.value)}
+                    placeholder="Enter pickup address or location"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-600">Drop-off point</label>
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2"
+                    value={dropoffPoint}
+                    onChange={(e) => setDropoffPoint(e.target.value)}
+                    placeholder="Enter drop-off address or location"
+                  />
+                </div>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Select date</label>
               <input
@@ -721,7 +796,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 (usesSlotSelection && !selectedSlot) ||
                 (isGrooming &&
                   (!selectedGroomingCategory || !selectedGroomingSize)) ||
-                (isMobileVet && !mobileVetOffering)
+                (isMobileVet && !mobileVetOffering) ||
+                (isPetTransport &&
+                  (!pickupPoint.trim() || !dropoffPoint.trim()))
               }
               className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
