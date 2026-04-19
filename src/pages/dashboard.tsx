@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -19,6 +20,14 @@ function formatTime(date: string) {
 function formatPrice(cents?: number | null) {
   if (!cents) return "—";
   return `R${(cents / 100).toFixed(0)}`;
+}
+
+function formatLabel(value?: string | null) {
+  if (!value) return "";
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function getStatusColor(status: string) {
@@ -55,6 +64,92 @@ function getSupplierMessage(booking: any) {
   return supplierDeclineEvent?.message || null;
 }
 
+function splitNotesIntoParts(notes?: string | null) {
+  if (!notes || typeof notes !== "string") return [];
+
+  return notes
+    .split(".")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function uniqueParts(parts: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const part of parts) {
+    const key = part.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(part);
+    }
+  }
+
+  return result;
+}
+
+function parseBookingNotes(notes?: string | null) {
+  const parts = uniqueParts(splitNotesIntoParts(notes));
+
+  const details: string[] = [];
+  const addresses: string[] = [];
+  const general: string[] = [];
+
+  parts.forEach((part) => {
+    const lower = part.toLowerCase();
+
+    if (
+      lower.startsWith("grooming option:") ||
+      lower.startsWith("size:") ||
+      lower.startsWith("daycare type:") ||
+      lower.startsWith("half day period:") ||
+      lower.startsWith("mobile vet service:") ||
+      lower.startsWith("pet sitting location:") ||
+      lower.startsWith("kennel type:") ||
+      lower.startsWith("journey type:")
+    ) {
+      details.push(part);
+      return;
+    }
+
+    if (
+      lower.startsWith("pickup point:") ||
+      lower.startsWith("drop-off point:") ||
+      lower.startsWith("pickup address:") ||
+      lower.startsWith("drop-off address:") ||
+      lower.startsWith("service address:") ||
+      lower.startsWith("owner address:") ||
+      lower.startsWith("supplier address:")
+    ) {
+      addresses.push(part);
+      return;
+    }
+
+    general.push(part);
+  });
+
+  return {
+    details,
+    addresses,
+    general,
+  };
+}
+
+function BookingMetaPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
+      <span className="font-medium mr-1">{label}:</span>
+      <span>{value}</span>
+    </span>
+  );
+}
+
 export default function Dashboard() {
   const queryClient = useQueryClient();
 
@@ -83,11 +178,17 @@ export default function Dashboard() {
     },
   });
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
 
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  const todayEnd = useMemo(() => {
+    const date = new Date();
+    date.setHours(23, 59, 59, 999);
+    return date;
+  }, []);
 
   const todayBookings = data.filter((b: any) => {
     const date = new Date(b.startAt);
@@ -115,27 +216,45 @@ export default function Dashboard() {
     const supplierMessage =
       booking.status === "CANCELLED" ? getSupplierMessage(booking) : null;
 
+    const parsedNotes = parseBookingNotes(booking.notes);
+
     return (
       <div
         key={booking.id}
-        className={`p-5 rounded-xl border shadow-sm transition hover:shadow-md ${
-          isToday ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200"
+        className={`rounded-xl border p-5 shadow-sm transition hover:shadow-md ${
+          isToday ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-white"
         }`}
       >
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
-            <p className="text-lg font-semibold text-gray-900">
-              {booking.supplier?.businessName || "Service Provider"}
-            </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-3">
+            <div>
+              <p className="text-lg font-semibold text-gray-900">
+                {booking.supplier?.businessName || "Service Provider"}
+              </p>
 
-            <p className="text-sm text-gray-500">
-              {formatDate(booking.startAt)} • {formatTime(booking.startAt)} –{" "}
-              {formatTime(booking.endAt)}
-            </p>
+              <p className="text-sm text-gray-500">
+                {formatDate(booking.startAt)} • {formatTime(booking.startAt)} –{" "}
+                {formatTime(booking.endAt)}
+              </p>
+            </div>
 
-            <span className="inline-block text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 uppercase tracking-wide">
-              {booking.supplierService?.service || booking.serviceType}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs uppercase tracking-wide text-gray-700">
+                {booking.supplierService?.service || booking.serviceType}
+              </span>
+
+              {booking.supplierService?.unit ? (
+                <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                  {formatLabel(String(booking.supplierService.unit).replace(/^PER_/, ""))}
+                </span>
+              ) : null}
+
+              {booking.supplierService?.durationMinutes ? (
+                <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                  {booking.supplierService.durationMinutes} mins
+                </span>
+              ) : null}
+            </div>
 
             <p className="text-sm text-gray-700">
               🐶{" "}
@@ -144,8 +263,51 @@ export default function Dashboard() {
                 : "No dogs selected"}
             </p>
 
+            {parsedNotes.details.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {parsedNotes.details.map((detail) => {
+                  const [rawLabel, ...rest] = detail.split(":");
+                  const value = rest.join(":").trim();
+
+                  return (
+                    <BookingMetaPill
+                      key={detail}
+                      label={rawLabel.trim()}
+                      value={value}
+                    />
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {parsedNotes.addresses.length > 0 ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-800">Location details</p>
+                <div className="mt-2 space-y-1">
+                  {parsedNotes.addresses.map((address) => (
+                    <p key={address} className="text-sm text-gray-700">
+                      {address}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {parsedNotes.general.length > 0 ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-800">Notes</p>
+                <div className="mt-2 space-y-1">
+                  {parsedNotes.general.map((note) => (
+                    <p key={note} className="text-sm text-gray-700">
+                      {note}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             {supplierMessage ? (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
                 <p className="text-sm font-medium text-red-700">
                   Supplier message
                 </p>
@@ -154,9 +316,9 @@ export default function Dashboard() {
             ) : null}
           </div>
 
-          <div className="text-right space-y-3">
+          <div className="space-y-3 text-left md:text-right">
             <span
-              className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+              className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(
                 booking.status
               )}`}
             >
@@ -174,7 +336,7 @@ export default function Dashboard() {
               <button
                 onClick={() => cancelBookingMutation.mutate(booking.id)}
                 disabled={cancelBookingMutation.isPending}
-                className="bg-red-500 hover:bg-red-600 transition text-white px-3 py-1.5 rounded-lg text-sm"
+                className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white transition hover:bg-red-600 disabled:opacity-50"
               >
                 {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
               </button>
@@ -186,15 +348,20 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-10 max-w-5xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+    <div className="mx-auto max-w-5xl space-y-10 p-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          Manage your current and past bookings in one place.
+        </p>
+      </div>
 
       {notifications.length > 0 && (
         <div className="space-y-2">
           {notifications.slice(0, 3).map((n: any) => (
             <div
               key={n.id}
-              className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg"
+              className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
             >
               <p className="font-semibold text-gray-800">{n.title}</p>
               <p className="text-sm text-gray-600">{n.message}</p>
@@ -203,8 +370,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-xl shadow-sm">
-        <h2 className="text-xl font-semibold mb-6 text-gray-800">
+      <div className="rounded-xl bg-white p-6 shadow-sm">
+        <h2 className="mb-6 text-xl font-semibold text-gray-800">
           Your Bookings
         </h2>
 
@@ -219,7 +386,7 @@ export default function Dashboard() {
         <div className="space-y-10">
           {todayBookings.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-4 text-blue-700">Today</h3>
+              <h3 className="mb-4 text-lg font-semibold text-blue-700">Today</h3>
               <div className="space-y-4">
                 {todayBookings.map((b: any) => renderBookingCard(b, true))}
               </div>
@@ -228,7 +395,7 @@ export default function Dashboard() {
 
           {upcoming.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Upcoming</h3>
+              <h3 className="mb-4 text-lg font-semibold">Upcoming</h3>
               <div className="space-y-4">
                 {upcoming.map((b: any) => renderBookingCard(b))}
               </div>
@@ -237,7 +404,7 @@ export default function Dashboard() {
 
           {completed.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Completed</h3>
+              <h3 className="mb-4 text-lg font-semibold">Completed</h3>
               <div className="space-y-4">
                 {completed.map((b: any) => renderBookingCard(b))}
               </div>
@@ -246,7 +413,7 @@ export default function Dashboard() {
 
           {cancelled.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-4">Cancelled</h3>
+              <h3 className="mb-4 text-lg font-semibold">Cancelled</h3>
               <div className="space-y-4">
                 {cancelled.map((b: any) => renderBookingCard(b))}
               </div>
