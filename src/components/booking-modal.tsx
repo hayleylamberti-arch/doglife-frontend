@@ -188,6 +188,8 @@ const groomingCategories: string[] = Array.from(
         endAt: end,
         dogIds: selectedDogIds,
         notes: groomingNotes,
+        groomingCategory: isGrooming ? selectedGroomingCategory : undefined,
+        groomingSize: isGrooming ? selectedGroomingSize : undefined,
       });
 
       alert("✅ Booking request sent!");
