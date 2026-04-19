@@ -40,6 +40,10 @@ function formatLabel(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function buildLocalDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`);
+}
+
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
 
@@ -50,7 +54,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isMobileVet = serviceType === "MOBILE_VET";
 
   const isStayService = isBoarding || isPetSitting;
-  const isAppointmentService = !isStayService;
+  const usesSlotSelection = !isStayService && !isDaycare;
 
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
 
@@ -153,7 +157,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!isAppointmentService) return;
+    if (!usesSlotSelection) return;
 
     if (!date) {
       setSlots([]);
@@ -174,7 +178,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
 
     fetchAvailability();
-  }, [supplierId, date, isAppointmentService]);
+  }, [supplierId, date, usesSlotSelection]);
 
   useEffect(() => {
     if (
@@ -263,9 +267,32 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     return extraLines.join(" ");
   }
 
-  async function handleAppointmentBooking() {
-    if (!selectedSlot) return;
+  function getDaycareWindow() {
+    if (!date) {
+      return null;
+    }
 
+    if (daycareType === "FULL_DAY") {
+      return {
+        start: buildLocalDateTime(date, "08:00"),
+        end: buildLocalDateTime(date, "17:00"),
+      };
+    }
+
+    if (halfDayPeriod === "MORNING") {
+      return {
+        start: buildLocalDateTime(date, "08:00"),
+        end: buildLocalDateTime(date, "12:00"),
+      };
+    }
+
+    return {
+      start: buildLocalDateTime(date, "13:00"),
+      end: buildLocalDateTime(date, "17:00"),
+    };
+  }
+
+  async function handleAppointmentBooking() {
     if (selectedDogIds.length === 0) {
       alert("Please select at least one dog");
       return;
@@ -281,14 +308,36 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return;
     }
 
+    let start: Date | null = null;
+    let end: Date | null = null;
+
+    if (isDaycare) {
+      if (!date) {
+        alert("Please select a date");
+        return;
+      }
+
+      const daycareWindow = getDaycareWindow();
+
+      if (!daycareWindow) {
+        alert("Please select a valid daycare date");
+        return;
+      }
+
+      start = daycareWindow.start;
+      end = daycareWindow.end;
+    } else {
+      if (!selectedSlot) return;
+
+      start = new Date(selectedSlot);
+      end = new Date(
+        start.getTime() + appointmentDurationMinutes * 60 * 1000
+      );
+    }
+
     setLoading(true);
 
     try {
-      const start = new Date(selectedSlot);
-      const end = new Date(
-        start.getTime() + appointmentDurationMinutes * 60 * 1000
-      );
-
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
@@ -299,6 +348,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         notes: buildAppointmentNotes() || undefined,
         groomingCategory: isGrooming ? selectedGroomingCategory : undefined,
         groomingSize: isGrooming ? selectedGroomingSize : undefined,
+        daycareType: isDaycare ? daycareType : undefined,
+        halfDayPeriod:
+          isDaycare && daycareType === "HALF_DAY"
+            ? halfDayPeriod
+            : undefined,
+        mobileVetOffering: isMobileVet ? mobileVetOffering : undefined,
       });
 
       alert("✅ Booking request sent!");
@@ -611,37 +666,39 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               />
             </div>
 
-            {slots.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot, i) => {
-                  const time = new Date(slot).toLocaleTimeString("en-ZA", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+            {usesSlotSelection ? (
+              slots.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {slots.map((slot, i) => {
+                    const time = new Date(slot).toLocaleTimeString("en-ZA", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
 
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setSelectedSlot(slot)}
-                      className={`border rounded p-2 text-sm ${
-                        selectedSlot === slot
-                          ? "bg-blue-600 text-white"
-                          : "bg-white"
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              date && (
-                <p className="text-sm text-gray-500">
-                  No availability for this date
-                </p>
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`border rounded p-2 text-sm ${
+                          selectedSlot === slot
+                            ? "bg-blue-600 text-white"
+                            : "bg-white"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                date && (
+                  <p className="text-sm text-gray-500">
+                    No availability for this date
+                  </p>
+                )
               )
-            )}
+            ) : null}
 
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Notes</label>
@@ -656,11 +713,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             <button
               onClick={handleAppointmentBooking}
               disabled={
-                !selectedSlot ||
                 loading ||
                 dogsLoading ||
                 dogs.length === 0 ||
                 selectedDogIds.length === 0 ||
+                !date ||
+                (usesSlotSelection && !selectedSlot) ||
                 (isGrooming &&
                   (!selectedGroomingCategory || !selectedGroomingSize)) ||
                 (isMobileVet && !mobileVetOffering)
