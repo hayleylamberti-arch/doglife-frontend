@@ -1,77 +1,69 @@
+Yes — here is the full updated file with the better error handling added.
+
+Why: this keeps your current grooming and booking logic, but shows the real backend error message to the client instead of only saying “Booking failed”.
+
+File path: src/components/booking-modal.tsx
+
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
-
 interface Props {
   supplierId: string;
   service: any;
   onClose: () => void;
 }
-
 type KennelType = "SOCIAL" | "PRIVATE";
-
 interface Dog {
   id: string;
   name: string;
   breed?: string | null;
 }
-
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
-
 function formatPrice(cents?: number | null) {
   if (!cents) return "—";
   return `R${(cents / 100).toFixed(0)}`;
 }
-
 function formatDogSize(value?: string | null) {
   if (!value) return "";
   return value.toLowerCase().replace(/^xl$/, "x large");
 }
-
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
   const isBoarding = serviceType === "BOARDING";
   const isGrooming = serviceType === "GROOMING";
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
-
   const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
-  ? service.pricingTiers
-  : [];
-
-const groomingCategories: string[] = Array.from(
-  new Set(
-    groomingTiers
-      .map((tier: any) => String(tier.category || ""))
-      .filter((category: string) => category.length > 0)
-  )
-);
-
-  const [selectedGroomingCategory, setSelectedGroomingCategory] = useState<string>("");
-  const [selectedGroomingSize, setSelectedGroomingSize] = useState<string>("");
-
+    ? service.pricingTiers
+    : [];
+  const groomingCategories: string[] = Array.from(
+    new Set(
+      groomingTiers
+        .map((tier: any) => String(tier.category || ""))
+        .filter((category: string) => category.length > 0)
+    )
+  );
+  const [selectedGroomingCategory, setSelectedGroomingCategory] =
+    useState<string>("");
+  const [selectedGroomingSize, setSelectedGroomingSize] =
+    useState<string>("");
   const [date, setDate] = useState("");
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
   const [notes, setNotes] = useState("");
-
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
-
   const [loading, setLoading] = useState(false);
   const [dogsLoading, setDogsLoading] = useState(false);
-
   const availableSizesForCategory = useMemo(() => {
     if (!selectedGroomingCategory) return [];
     return groomingTiers.filter(
       (tier: any) => tier.category === selectedGroomingCategory
     );
   }, [groomingTiers, selectedGroomingCategory]);
-
   const selectedGroomingTier = useMemo(() => {
     if (!selectedGroomingCategory || !selectedGroomingSize) return null;
     return (
@@ -82,11 +74,9 @@ const groomingCategories: string[] = Array.from(
       ) || null
     );
   }, [groomingTiers, selectedGroomingCategory, selectedGroomingSize]);
-
   const title = useMemo(() => {
     return `Book ${formatServiceName(serviceType)}`;
   }, [serviceType]);
-
   useEffect(() => {
     async function fetchDogs() {
       setDogsLoading(true);
@@ -100,19 +90,15 @@ const groomingCategories: string[] = Array.from(
         setDogsLoading(false);
       }
     }
-
     fetchDogs();
   }, []);
-
   useEffect(() => {
     if (isBoarding) return;
-
     if (!date) {
       setSlots([]);
       setSelectedSlot(null);
       return;
     }
-
     async function fetchAvailability() {
       try {
         const res = await api.get(
@@ -124,16 +110,17 @@ const groomingCategories: string[] = Array.from(
         setSlots([]);
       }
     }
-
     fetchAvailability();
   }, [supplierId, date, isBoarding]);
-
   useEffect(() => {
-    if (isGrooming && groomingCategories.length > 0 && !selectedGroomingCategory) {
+    if (
+      isGrooming &&
+      groomingCategories.length > 0 &&
+      !selectedGroomingCategory
+    ) {
       setSelectedGroomingCategory(groomingCategories[0] || "");
     }
   }, [isGrooming, groomingCategories, selectedGroomingCategory]);
-
   useEffect(() => {
     if (
       isGrooming &&
@@ -145,7 +132,6 @@ const groomingCategories: string[] = Array.from(
       setSelectedGroomingSize(availableSizesForCategory[0].dogSize);
     }
   }, [isGrooming, availableSizesForCategory, selectedGroomingSize]);
-
   function toggleDog(dogId: string) {
     setSelectedDogIds((prev) =>
       prev.includes(dogId)
@@ -153,33 +139,26 @@ const groomingCategories: string[] = Array.from(
         : [...prev, dogId]
     );
   }
-
   async function handleAppointmentBooking() {
     if (!selectedSlot) return;
-
     if (selectedDogIds.length === 0) {
       alert("Please select at least one dog");
       return;
     }
-
     if (isGrooming && (!selectedGroomingCategory || !selectedGroomingSize)) {
       alert("Please select a grooming option and dog size");
       return;
     }
-
     setLoading(true);
-
     try {
       const start = new Date(selectedSlot);
       const end = new Date(
         start.getTime() + appointmentDurationMinutes * 60 * 1000
       );
-
       const groomingNotes =
         isGrooming && selectedGroomingTier
           ? `Grooming option: ${selectedGroomingCategory}. Size: ${selectedGroomingSize}.${notes ? ` ${notes}` : ""}`
           : notes || undefined;
-
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
@@ -191,31 +170,28 @@ const groomingCategories: string[] = Array.from(
         groomingCategory: isGrooming ? selectedGroomingCategory : undefined,
         groomingSize: isGrooming ? selectedGroomingSize : undefined,
       });
-
       alert("✅ Booking request sent!");
       onClose();
-    } catch (err) {
-      console.error(err);
-      alert("❌ Booking failed");
+    } catch (err: any) {
+      console.error("APPOINTMENT BOOKING ERROR:", err);
+      const message =
+        err?.response?.data?.error ||
+        "Booking failed. Please try another time.";
+      alert(`❌ ${message}`);
     } finally {
       setLoading(false);
     }
   }
-
   async function handleBoardingBooking() {
     if (!arrivalDate || !departureDate) return;
-
     if (selectedDogIds.length === 0) {
       alert("Please select at least one dog");
       return;
     }
-
     setLoading(true);
-
     try {
       const start = new Date(`${arrivalDate}T09:00:00`);
       const end = new Date(`${departureDate}T09:00:00`);
-
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
@@ -227,38 +203,36 @@ const groomingCategories: string[] = Array.from(
         dogCount: selectedDogIds.length,
         kennelType,
       });
-
       alert("✅ Boarding request sent!");
       onClose();
-    } catch (err) {
-      console.error(err);
-      alert("❌ Booking failed");
+    } catch (err: any) {
+      console.error("BOARDING BOOKING ERROR:", err);
+      const message =
+        err?.response?.data?.error ||
+        "Booking failed. Please try another time.";
+      alert(`❌ ${message}`);
     } finally {
       setLoading(false);
     }
   }
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
       <div className="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
         <h2 className="text-xl font-semibold">{title}</h2>
-
         <div className="text-sm text-gray-600">
           {isBoarding ? (
-            <p>
-              {formatPrice(service?.baseRateCents)} per night
-            </p>
+            <p>{formatPrice(service?.baseRateCents)} per night</p>
           ) : (
             <p>
               {formatPrice(service?.baseRateCents)}
-              {service?.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
+              {service?.durationMinutes
+                ? ` • ${service.durationMinutes} mins`
+                : ""}
             </p>
           )}
         </div>
-
         <div className="space-y-2">
           <label className="text-sm text-gray-600">Select dog(s)</label>
-
           {dogsLoading ? (
             <p className="text-sm text-gray-500">Loading dogs...</p>
           ) : dogs.length === 0 ? (
@@ -269,7 +243,6 @@ const groomingCategories: string[] = Array.from(
             <div className="space-y-2">
               {dogs.map((dog) => {
                 const checked = selectedDogIds.includes(dog.id);
-
                 return (
                   <label
                     key={dog.id}
@@ -290,7 +263,6 @@ const groomingCategories: string[] = Array.from(
             </div>
           )}
         </div>
-
         {isBoarding ? (
           <>
             <div className="space-y-2">
@@ -302,7 +274,6 @@ const groomingCategories: string[] = Array.from(
                 onChange={(e) => setArrivalDate(e.target.value)}
               />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Departure date</label>
               <input
@@ -312,7 +283,6 @@ const groomingCategories: string[] = Array.from(
                 onChange={(e) => setDepartureDate(e.target.value)}
               />
             </div>
-
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Kennel type</label>
               <select
@@ -324,7 +294,6 @@ const groomingCategories: string[] = Array.from(
                 <option value="PRIVATE">Private kennel</option>
               </select>
             </div>
-
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Notes</label>
               <textarea
@@ -334,7 +303,6 @@ const groomingCategories: string[] = Array.from(
                 placeholder="Anything the supplier should know"
               />
             </div>
-
             <button
               onClick={handleBoardingBooking}
               disabled={
@@ -354,7 +322,9 @@ const groomingCategories: string[] = Array.from(
             {isGrooming && groomingCategories.length > 0 ? (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <label className="text-sm text-gray-600">Grooming option</label>
+                  <label className="text-sm text-gray-600">
+                    Grooming option
+                  </label>
                   <select
                     className="w-full border rounded px-3 py-2"
                     value={selectedGroomingCategory}
@@ -365,12 +335,13 @@ const groomingCategories: string[] = Array.from(
                   >
                     {groomingCategories.map((category) => (
                       <option key={category} value={category}>
-                        {category === "WASH_BRUSH" ? "Wash & Brush" : "Wash & Cut"}
+                        {category === "WASH_BRUSH"
+                          ? "Wash & Brush"
+                          : "Wash & Cut"}
                       </option>
                     ))}
                   </select>
                 </div>
-
                 <div className="space-y-2">
                   <label className="text-sm text-gray-600">Dog size</label>
                   <select
@@ -380,14 +351,14 @@ const groomingCategories: string[] = Array.from(
                   >
                     {availableSizesForCategory.map((tier: any) => (
                       <option key={tier.id} value={tier.dogSize}>
-                        {formatDogSize(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                        {formatDogSize(tier.dogSize)} —{" "}
+                        {formatPrice(tier.priceCents)}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
             ) : null}
-
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Select date</label>
               <input
@@ -400,7 +371,6 @@ const groomingCategories: string[] = Array.from(
                 }}
               />
             </div>
-
             {slots.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot, i) => {
@@ -408,7 +378,6 @@ const groomingCategories: string[] = Array.from(
                     hour: "2-digit",
                     minute: "2-digit",
                   });
-
                   return (
                     <button
                       key={i}
@@ -432,7 +401,6 @@ const groomingCategories: string[] = Array.from(
                 </p>
               )
             )}
-
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Notes</label>
               <textarea
@@ -442,7 +410,6 @@ const groomingCategories: string[] = Array.from(
                 placeholder="Anything the supplier should know"
               />
             </div>
-
             <button
               onClick={handleAppointmentBooking}
               disabled={
@@ -451,7 +418,8 @@ const groomingCategories: string[] = Array.from(
                 dogsLoading ||
                 dogs.length === 0 ||
                 selectedDogIds.length === 0 ||
-                (isGrooming && (!selectedGroomingCategory || !selectedGroomingSize))
+                (isGrooming &&
+                  (!selectedGroomingCategory || !selectedGroomingSize))
               }
               className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
             >
@@ -459,7 +427,6 @@ const groomingCategories: string[] = Array.from(
             </button>
           </>
         )}
-
         <button onClick={onClose} className="text-sm text-gray-500">
           Cancel
         </button>
