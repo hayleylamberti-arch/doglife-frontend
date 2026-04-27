@@ -19,6 +19,13 @@ type BookingDog = {
   };
 };
 
+type BookingEvent = {
+  id: string;
+  type: string;
+  message?: string | null;
+  createdAt?: string;
+};
+
 type SupplierBooking = {
   id: string;
   status: BookingStatus;
@@ -27,6 +34,7 @@ type SupplierBooking = {
   totalCents?: number | null;
   serviceType?: string | null;
   notes?: string | null;
+  completedAt?: string | null;
   owner?: {
     id: string;
     firstName?: string | null;
@@ -34,6 +42,7 @@ type SupplierBooking = {
     email?: string | null;
   };
   dogs?: BookingDog[];
+  events?: BookingEvent[];
 };
 
 function formatDateTime(value?: string) {
@@ -70,6 +79,47 @@ function formatDogNames(booking: SupplierBooking) {
   return names || "No dogs linked";
 }
 
+function formatServiceName(value?: string | null) {
+  return String(value || "Booking").replace(/_/g, " ");
+}
+
+function getStatusBadgeClass(status: BookingStatus) {
+  switch (status) {
+    case "PENDING":
+      return "bg-yellow-100 text-yellow-700";
+    case "CONFIRMED":
+      return "bg-green-100 text-green-700";
+    case "IN_PROGRESS":
+      return "bg-blue-100 text-blue-700";
+    case "COMPLETED_UNBILLED":
+      return "bg-purple-100 text-purple-700";
+    case "COMPLETED":
+      return "bg-gray-100 text-gray-700";
+    case "CANCELLED":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-gray-100 text-gray-700";
+  }
+}
+
+function getLatestDeclineMessage(booking: SupplierBooking) {
+  if (!booking.events?.length) return null;
+
+  const declinedEvent = [...booking.events]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
+    )
+    .find(
+      (event) =>
+        event.type === "SUPPLIER_DECLINED" &&
+        typeof event.message === "string" &&
+        event.message.trim().length > 0
+    );
+
+  return declinedEvent?.message || null;
+}
+
 function sortBookingsByStart(bookings: SupplierBooking[]) {
   return [...bookings].sort(
     (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
@@ -103,9 +153,11 @@ function DeclineModal({
 
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
           <div className="font-medium text-gray-900">
-            {String(booking.serviceType || "Booking").replace(/_/g, " ")}
+            {formatServiceName(booking.serviceType)}
           </div>
-          <div>{formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}</div>
+          <div>
+            {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
+          </div>
           <div className="mt-2">Owner: {formatOwnerName(booking)}</div>
           <div>Dogs: {formatDogNames(booking)}</div>
         </div>
@@ -150,29 +202,41 @@ function BookingCard({
   booking,
   onAccept,
   onDecline,
+  onStart,
+  onComplete,
+  onMarkPaid,
   actionLoading,
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
   onDecline: (booking: SupplierBooking) => void;
+  onStart: (bookingId: string) => void;
+  onComplete: (bookingId: string) => void;
+  onMarkPaid: (bookingId: string) => void;
   actionLoading: boolean;
 }) {
-  const isPending = booking.status === "PENDING";
+  const supplierDeclineMessage = getLatestDeclineMessage(booking);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
-            {String(booking.serviceType || "Booking").replace(/_/g, " ")}
+            {formatServiceName(booking.serviceType)}
           </div>
           <div className="text-sm text-gray-500">
             {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-xs text-gray-500">{booking.status}</div>
+        <div className="text-right space-y-2">
+          <div
+            className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
+              booking.status
+            )}`}
+          >
+            {booking.status}
+          </div>
           <div className="font-semibold text-gray-900">
             {formatMoney(booking.totalCents)}
           </div>
@@ -193,7 +257,21 @@ function BookingCard({
         </div>
       ) : null}
 
-      {isPending ? (
+      {booking.completedAt ? (
+        <div className="text-sm text-gray-600">
+          <span className="font-medium">Completed at:</span>{" "}
+          {formatDateTime(booking.completedAt)}
+        </div>
+      ) : null}
+
+      {supplierDeclineMessage ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="font-medium">Decline message</div>
+          <div className="mt-1">{supplierDeclineMessage}</div>
+        </div>
+      ) : null}
+
+      {booking.status === "PENDING" ? (
         <div className="flex gap-3 pt-2">
           <button
             type="button"
@@ -214,7 +292,107 @@ function BookingCard({
           </button>
         </div>
       ) : null}
+
+      {booking.status === "CONFIRMED" ? (
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => onStart(booking.id)}
+            disabled={actionLoading}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {actionLoading ? "Starting..." : "Start Service"}
+          </button>
+        </div>
+      ) : null}
+
+      {booking.status === "IN_PROGRESS" ? (
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => onComplete(booking.id)}
+            disabled={actionLoading}
+            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {actionLoading ? "Completing..." : "Complete Service"}
+          </button>
+        </div>
+      ) : null}
+
+      {booking.status === "COMPLETED_UNBILLED" ? (
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => onMarkPaid(booking.id)}
+            disabled={actionLoading}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {actionLoading ? "Saving..." : "Mark Paid"}
+          </button>
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function BookingSection({
+  title,
+  emptyText,
+  bookings,
+  isLoading,
+  error,
+  activeBookingId,
+  onAccept,
+  onDecline,
+  onStart,
+  onComplete,
+  onMarkPaid,
+}: {
+  title: string;
+  emptyText: string;
+  bookings: SupplierBooking[];
+  isLoading: boolean;
+  error: unknown;
+  activeBookingId: string | null;
+  onAccept: (bookingId: string) => void;
+  onDecline: (booking: SupplierBooking) => void;
+  onStart: (bookingId: string) => void;
+  onComplete: (bookingId: string) => void;
+  onMarkPaid: (bookingId: string) => void;
+}) {
+  return (
+    <section className="space-y-4">
+      <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+
+      {isLoading ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+          Loading bookings...
+        </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+          Failed to load supplier bookings.
+        </div>
+      ) : bookings.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+          {emptyText}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bookings.map((booking) => (
+            <BookingCard
+              key={booking.id}
+              booking={booking}
+              onAccept={onAccept}
+              onDecline={onDecline}
+              onStart={onStart}
+              onComplete={onComplete}
+              onMarkPaid={onMarkPaid}
+              actionLoading={activeBookingId === booking.id}
+            />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -232,6 +410,10 @@ export default function SupplierDashboardPage() {
     },
   });
 
+  const refreshBookings = () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+  };
+
   const acceptMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       await api.patch(`/api/supplier/bookings/${bookingId}/accept`);
@@ -240,7 +422,7 @@ export default function SupplierDashboardPage() {
       setActiveBookingId(bookingId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+      refreshBookings();
     },
     onError: (error) => {
       console.error(error);
@@ -267,13 +449,70 @@ export default function SupplierDashboardPage() {
       setActiveBookingId(bookingId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+      refreshBookings();
       setDeclineBooking(null);
       setDeclineMessage("");
     },
     onError: (error) => {
       console.error(error);
       alert("Failed to decline booking");
+    },
+    onSettled: () => {
+      setActiveBookingId(null);
+    },
+  });
+
+  const startMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/start`);
+    },
+    onMutate: (bookingId) => {
+      setActiveBookingId(bookingId);
+    },
+    onSuccess: () => {
+      refreshBookings();
+    },
+    onError: (error) => {
+      console.error(error);
+      alert("Failed to start service");
+    },
+    onSettled: () => {
+      setActiveBookingId(null);
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/complete`);
+    },
+    onMutate: (bookingId) => {
+      setActiveBookingId(bookingId);
+    },
+    onSuccess: () => {
+      refreshBookings();
+    },
+    onError: (error) => {
+      console.error(error);
+      alert("Failed to complete service");
+    },
+    onSettled: () => {
+      setActiveBookingId(null);
+    },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`);
+    },
+    onMutate: (bookingId) => {
+      setActiveBookingId(bookingId);
+    },
+    onSuccess: () => {
+      refreshBookings();
+    },
+    onError: (error) => {
+      console.error(error);
+      alert("Failed to mark booking paid");
     },
     onSettled: () => {
       setActiveBookingId(null);
@@ -289,17 +528,32 @@ export default function SupplierDashboardPage() {
     bookings.filter((b) => b.status === "PENDING")
   );
 
-  const upcomingBookings = sortBookingsByStart(
-    bookings.filter(
-      (b) =>
-        b.status === "CONFIRMED" ||
-        b.status === "IN_PROGRESS" ||
-        b.status === "COMPLETED_UNBILLED"
-    )
+  const confirmedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CONFIRMED")
+  );
+
+  const inProgressBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "IN_PROGRESS")
+  );
+
+  const completedUnbilledBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "COMPLETED_UNBILLED")
+  );
+
+  const completedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "COMPLETED")
+  );
+
+  const cancelledBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CANCELLED")
   );
 
   const totalActive = bookings.filter(
-    (b) => b.status !== "CANCELLED" && b.status !== "COMPLETED"
+    (b) =>
+      b.status === "PENDING" ||
+      b.status === "CONFIRMED" ||
+      b.status === "IN_PROGRESS" ||
+      b.status === "COMPLETED_UNBILLED"
   ).length;
 
   return (
@@ -328,7 +582,7 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <div className="text-sm text-gray-500">Pending bookings</div>
           <div className="mt-2 text-3xl font-bold text-amber-600">
@@ -337,9 +591,16 @@ export default function SupplierDashboardPage() {
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">Upcoming active bookings</div>
+          <div className="text-sm text-gray-500">Confirmed bookings</div>
+          <div className="mt-2 text-3xl font-bold text-green-600">
+            {confirmedBookings.length}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="text-sm text-gray-500">In progress</div>
           <div className="mt-2 text-3xl font-bold text-blue-600">
-            {upcomingBookings.length}
+            {inProgressBookings.length}
           </div>
         </div>
 
@@ -352,76 +613,107 @@ export default function SupplierDashboardPage() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Pending Bookings
-            </h2>
-          </div>
+        <BookingSection
+          title="Pending Bookings"
+          emptyText="No pending bookings."
+          bookings={pendingBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
 
-          {isLoading ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-              Loading bookings...
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-              Failed to load supplier bookings.
-            </div>
-          ) : pendingBookings.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-              No pending bookings.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {pendingBookings.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-                  onDecline={(booking) => {
-                    setDeclineBooking(booking);
-                    setDeclineMessage("");
-                  }}
-                  actionLoading={activeBookingId === booking.id}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <BookingSection
+          title="Confirmed Bookings"
+          emptyText="No confirmed bookings."
+          bookings={confirmedBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-gray-900">
-              Upcoming Bookings
-            </h2>
-          </div>
+        <BookingSection
+          title="In Progress"
+          emptyText="No bookings in progress."
+          bookings={inProgressBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
 
-          {isLoading ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-              Loading bookings...
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-              Failed to load supplier bookings.
-            </div>
-          ) : upcomingBookings.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-              No upcoming bookings.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {upcomingBookings.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  onAccept={() => {}}
-                  onDecline={() => {}}
-                  actionLoading={false}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <BookingSection
+          title="Completed - Awaiting Payment"
+          emptyText="No completed unpaid bookings."
+          bookings={completedUnbilledBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
+
+        <BookingSection
+          title="Completed - Paid"
+          emptyText="No completed paid bookings."
+          bookings={completedBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
+
+        <BookingSection
+          title="Cancelled"
+          emptyText="No cancelled bookings."
+          bookings={cancelledBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
+          onDecline={(booking) => {
+            setDeclineBooking(booking);
+            setDeclineMessage("");
+          }}
+          onStart={(bookingId) => startMutation.mutate(bookingId)}
+          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+        />
       </div>
 
       {declineBooking ? (
