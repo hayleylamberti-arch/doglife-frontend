@@ -17,6 +17,16 @@ function formatTime(date: string) {
   });
 }
 
+function formatDateTime(date?: string | null) {
+  if (!date) return "—";
+  return new Date(date).toLocaleString("en-ZA", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatPrice(cents?: number | null) {
   if (!cents) return "—";
   return `R${(cents / 100).toFixed(0)}`;
@@ -32,15 +42,18 @@ function formatLabel(value?: string | null) {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case "CONFIRMED":
-      return "bg-green-100 text-green-700";
     case "PENDING":
       return "bg-yellow-100 text-yellow-700";
+    case "CONFIRMED":
+      return "bg-green-100 text-green-700";
+    case "IN_PROGRESS":
+      return "bg-blue-100 text-blue-700";
+    case "COMPLETED_UNBILLED":
+      return "bg-purple-100 text-purple-700";
+    case "COMPLETED":
+      return "bg-gray-100 text-gray-700";
     case "CANCELLED":
       return "bg-red-100 text-red-700";
-    case "COMPLETED":
-    case "COMPLETED_UNBILLED":
-      return "bg-blue-100 text-blue-700";
     default:
       return "bg-gray-100 text-gray-600";
   }
@@ -144,9 +157,41 @@ function BookingMetaPill({
 }) {
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
-      <span className="font-medium mr-1">{label}:</span>
+      <span className="mr-1 font-medium">{label}:</span>
       <span>{value}</span>
     </span>
+  );
+}
+
+function Section({
+  title,
+  bookings,
+  renderBookingCard,
+  emptyText,
+  titleColor,
+}: {
+  title: string;
+  bookings: any[];
+  renderBookingCard: (booking: any, isToday?: boolean) => React.ReactNode;
+  emptyText: string;
+  titleColor?: string;
+}) {
+  return (
+    <div>
+      <h3 className={`mb-4 text-lg font-semibold ${titleColor || "text-gray-900"}`}>
+        {title}
+      </h3>
+
+      {bookings.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+          {emptyText}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {bookings.map((booking: any) => renderBookingCard(booking))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -190,7 +235,14 @@ export default function Dashboard() {
     return date;
   }, []);
 
-  const todayBookings = data.filter((b: any) => {
+  const sortedBookings = useMemo(() => {
+    return [...data].sort(
+      (a: any, b: any) =>
+        new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    );
+  }, [data]);
+
+  const todayBookings = sortedBookings.filter((b: any) => {
     const date = new Date(b.startAt);
     return (
       date >= todayStart &&
@@ -199,18 +251,33 @@ export default function Dashboard() {
     );
   });
 
-  const upcoming = data.filter(
+  const pendingBookings = sortedBookings.filter(
     (b: any) =>
-      new Date(b.startAt) > todayEnd &&
-      (b.status === "PENDING" || b.status === "CONFIRMED")
+      b.status === "PENDING" &&
+      !todayBookings.some((todayBooking: any) => todayBooking.id === b.id)
   );
 
-  const completed = data.filter(
+  const confirmedBookings = sortedBookings.filter(
     (b: any) =>
-      b.status === "COMPLETED" || b.status === "COMPLETED_UNBILLED"
+      b.status === "CONFIRMED" &&
+      !todayBookings.some((todayBooking: any) => todayBooking.id === b.id)
   );
 
-  const cancelled = data.filter((b: any) => b.status === "CANCELLED");
+  const inProgressBookings = sortedBookings.filter(
+    (b: any) => b.status === "IN_PROGRESS"
+  );
+
+  const completedAwaitingPaymentBookings = sortedBookings.filter(
+    (b: any) => b.status === "COMPLETED_UNBILLED"
+  );
+
+  const completedPaidBookings = sortedBookings.filter(
+    (b: any) => b.status === "COMPLETED"
+  );
+
+  const cancelledBookings = sortedBookings.filter(
+    (b: any) => b.status === "CANCELLED"
+  );
 
   const renderBookingCard = (booking: any, isToday = false) => {
     const supplierMessage =
@@ -245,7 +312,9 @@ export default function Dashboard() {
 
               {booking.supplierService?.unit ? (
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
-                  {formatLabel(String(booking.supplierService.unit).replace(/^PER_/, ""))}
+                  {formatLabel(
+                    String(booking.supplierService.unit).replace(/^PER_/, "")
+                  )}
                 </span>
               ) : null}
 
@@ -282,7 +351,9 @@ export default function Dashboard() {
 
             {parsedNotes.addresses.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-sm font-medium text-gray-800">Location details</p>
+                <p className="text-sm font-medium text-gray-800">
+                  Location details
+                </p>
                 <div className="mt-2 space-y-1">
                   {parsedNotes.addresses.map((address) => (
                     <p key={address} className="text-sm text-gray-700">
@@ -303,6 +374,39 @@ export default function Dashboard() {
                     </p>
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {booking.status === "IN_PROGRESS" ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <p className="text-sm font-medium text-blue-700">
+                  Service in progress
+                </p>
+                <p className="mt-1 text-sm text-blue-700">
+                  Your supplier has started this booking.
+                </p>
+              </div>
+            ) : null}
+
+            {booking.status === "COMPLETED_UNBILLED" ? (
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
+                <p className="text-sm font-medium text-purple-700">
+                  Completed - awaiting payment
+                </p>
+                <p className="mt-1 text-sm text-purple-700">
+                  Completed at: {formatDateTime(booking.completedAt)}
+                </p>
+              </div>
+            ) : null}
+
+            {booking.status === "COMPLETED" ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                <p className="text-sm font-medium text-gray-800">
+                  Completed and paid
+                </p>
+                <p className="mt-1 text-sm text-gray-700">
+                  Completed at: {formatDateTime(booking.completedAt)}
+                </p>
               </div>
             ) : null}
 
@@ -393,32 +497,49 @@ export default function Dashboard() {
             </div>
           )}
 
-          {upcoming.length > 0 && (
-            <div>
-              <h3 className="mb-4 text-lg font-semibold">Upcoming</h3>
-              <div className="space-y-4">
-                {upcoming.map((b: any) => renderBookingCard(b))}
-              </div>
-            </div>
-          )}
+          <Section
+            title="Pending"
+            bookings={pendingBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No pending bookings."
+          />
 
-          {completed.length > 0 && (
-            <div>
-              <h3 className="mb-4 text-lg font-semibold">Completed</h3>
-              <div className="space-y-4">
-                {completed.map((b: any) => renderBookingCard(b))}
-              </div>
-            </div>
-          )}
+          <Section
+            title="Confirmed"
+            bookings={confirmedBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No confirmed bookings."
+          />
 
-          {cancelled.length > 0 && (
-            <div>
-              <h3 className="mb-4 text-lg font-semibold">Cancelled</h3>
-              <div className="space-y-4">
-                {cancelled.map((b: any) => renderBookingCard(b))}
-              </div>
-            </div>
-          )}
+          <Section
+            title="In Progress"
+            bookings={inProgressBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No bookings in progress."
+            titleColor="text-blue-700"
+          />
+
+          <Section
+            title="Completed - Awaiting Payment"
+            bookings={completedAwaitingPaymentBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No completed unpaid bookings."
+            titleColor="text-purple-700"
+          />
+
+          <Section
+            title="Completed - Paid"
+            bookings={completedPaidBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No paid completed bookings."
+          />
+
+          <Section
+            title="Cancelled"
+            bookings={cancelledBookings}
+            renderBookingCard={renderBookingCard}
+            emptyText="No cancelled bookings."
+          />
         </div>
       </div>
     </div>
