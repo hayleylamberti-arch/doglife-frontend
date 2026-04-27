@@ -230,23 +230,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   function buildAppointmentNotes() {
     const extraLines: string[] = [];
 
-    if (isGrooming && selectedGroomingTier) {
-      extraLines.push(
-        `Grooming option: ${selectedGroomingCategory}. Size: ${selectedGroomingSize}.`
-      );
-    }
-
-    if (isDaycare) {
-      extraLines.push(`Daycare type: ${formatLabel(daycareType)}.`);
-      if (daycareType === "HALF_DAY") {
-        extraLines.push(`Half day period: ${formatLabel(halfDayPeriod)}.`);
-      }
-    }
-
-    if (isMobileVet && mobileVetOffering) {
-      extraLines.push(`Mobile vet service: ${formatLabel(mobileVetOffering)}.`);
-    }
-
     if (isPetTransport) {
       extraLines.push(
         `Journey type: ${formatLabel(petTransportJourneyType)}.`
@@ -264,16 +247,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   function buildStayNotes() {
     const extraLines: string[] = [];
-
-    if (isBoarding && kennelType) {
-      extraLines.push(`Kennel type: ${formatLabel(kennelType)}.`);
-    }
-
-    if (isPetSitting && petSittingLocation) {
-      extraLines.push(
-        `Pet sitting location: ${formatLabel(petSittingLocation)}.`
-      );
-    }
 
     if (notes.trim()) {
       extraLines.push(notes.trim());
@@ -428,6 +401,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         notes: buildStayNotes() || undefined,
         dogCount: selectedDogIds.length,
         kennelType: isBoarding ? kennelType : undefined,
+        petSittingLocation: isPetSitting ? petSittingLocation : undefined,
       });
 
       alert("✅ Booking request sent!");
