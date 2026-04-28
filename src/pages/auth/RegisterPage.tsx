@@ -274,13 +274,17 @@ export default function RegisterPage() {
 
         <input
           className="rounded border px-3 py-2 md:col-span-2"
-          placeholder="Mobile phone"
+          placeholder="Mobile phone e.g. 0821234567 or +27821234567"
           required
           value={form.mobilePhone}
           onChange={(e) =>
             setForm((prev) => ({ ...prev, mobilePhone: e.target.value }))
           }
         />
+
+        <p className="text-xs text-gray-500 md:col-span-2">
+  Use a South African mobile number, for example 0821234567 or +27821234567.
+</p>
 
         <select
           className="rounded border px-3 py-2 md:col-span-2"
