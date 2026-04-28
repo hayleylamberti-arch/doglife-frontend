@@ -82,12 +82,27 @@ function persistSession(token: string, role: UserRole) {
 function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
+  localStorage.removeItem("token");
+}
+
+function getAuthErrorMessage(error: any) {
+  const responseData = error?.response?.data;
+
+  if (Array.isArray(responseData?.details) && responseData.details.length > 0) {
+    return responseData.details.join(" ");
+  }
+
+  return (
+    responseData?.message ||
+    responseData?.error ||
+    "Something went wrong. Please try again."
+  );
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(localStorage.getItem(TOKEN_KEY));
   const [role, setRole] = useState<UserRole | null>(
-    (localStorage.getItem(ROLE_KEY) as UserRole | null) ?? null,
+    (localStorage.getItem(ROLE_KEY) as UserRole | null) ?? null
   );
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const response = await api.get<AuthUser>("/api/me"); // ✅ already correct
+      const response = await api.get<AuthUser>("/api/me");
       setUser(response.data);
       setRole(response.data.role);
       localStorage.setItem(ROLE_KEY, response.data.role);
@@ -124,48 +139,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
-      const response = await api.post<AuthResponse>("/api/auth/login", data); // ✅ FIXED
-      return response.data;
+      try {
+        const response = await api.post<AuthResponse>("/api/auth/login", data);
+        return response.data;
+      } catch (error: any) {
+        throw new Error(getAuthErrorMessage(error));
+      }
     },
   });
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
-      const response = await api.post<AuthResponse>("/api/auth/register", data); // ✅ FIXED
-      return response.data;
+      try {
+        const response = await api.post<AuthResponse>("/api/auth/register", data);
+        return response.data;
+      } catch (error: any) {
+        throw new Error(getAuthErrorMessage(error));
+      }
     },
   });
 
   const login = useCallback(
-  async (data: LoginCredentials) => {
-    const response = await loginMutation.mutateAsync(data);
+    async (data: LoginCredentials) => {
+      const response = await loginMutation.mutateAsync(data);
 
-    console.log("LOGIN RESPONSE:", response); // 👈 ADD
-    console.log("TOKEN BEING SAVED:", response.token); // 👈 ADD
-
-    persistSession(response.token, response.user.role);
-
-    console.log("TOKEN AFTER SAVE:", localStorage.getItem("authToken")); // 👈 ADD
-
-    setToken(response.token);
-    setRole(response.user.role);
-    setUser(response.user);
-
-    return response;
-  },
-  [loginMutation],
-);
-
-  const register = useCallback(
-    async (data: RegisterData) => {
-      const response = await registerMutation.mutateAsync(data);
       persistSession(response.token, response.user.role);
       setToken(response.token);
       setRole(response.user.role);
       setUser(response.user);
+
       return response;
     },
-    [registerMutation],
+    [loginMutation]
+  );
+
+  const register = useCallback(
+    async (data: RegisterData) => {
+      const response = await registerMutation.mutateAsync(data);
+
+      persistSession(response.token, response.user.role);
+      setToken(response.token);
+      setRole(response.user.role);
+      setUser(response.user);
+
+      return response;
+    },
+    [registerMutation]
   );
 
   const logout = useCallback(() => {
@@ -188,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshMe,
     }),
-    [isLoading, login, logout, refreshMe, register, registerMutation, role, token, user],
+    [isLoading, login, logout, refreshMe, register, registerMutation, role, token, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -196,6 +215,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
+
   if (!context) {
     throw new Error("useAuth must be used within AuthProvider");
   }
