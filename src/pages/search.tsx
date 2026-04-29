@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,18 +10,6 @@ function formatMoneyFromCents(value?: number | null) {
   return `R${Math.round(Number(value) / 100)}`;
 }
 
-function formatServiceLabel(value?: string) {
-  if (!value) return "Service";
-  return value.replace(/_/g, " ");
-}
-
-type SearchSupplierService = {
-  id: string;
-  service: string;
-  unit?: string | null;
-  baseRateCents?: number | null;
-};
-
 type SearchSupplier = {
   id: string;
   businessName: string;
@@ -30,18 +18,22 @@ type SearchSupplier = {
   logoUrl?: string | null;
   ratingAverage?: number | null;
   ratingCount?: number | null;
-  approvalStatus?: string | null;
-  isVerified?: boolean;
   isPreferred?: boolean;
+  usedBefore?: boolean;
   startingPriceCents?: number | null;
-  services?: SearchSupplierService[];
+  available?: boolean;
 };
 
 export default function SearchPage() {
   const [params] = useSearchParams();
-  const location = params.get("location") || "";
+  const initialLocation = params.get("location") || "";
 
-  const [searchTerm, setSearchTerm] = useState(location);
+  const [suburb, setSuburb] = useState(initialLocation);
+  const [service, setService] = useState("GROOMING");
+  const [groomingCategory, setGroomingCategory] = useState("WASH_BRUSH");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("10:00");
+
   const [suppliers, setSuppliers] = useState<SearchSupplier[]>([]);
   const [savingSupplierId, setSavingSupplierId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,75 +41,40 @@ export default function SearchPage() {
 
   const navigate = useNavigate();
 
-  const fetchSuppliers = async (query?: string) => {
+  const fetchSuppliers = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const searchValue = (query ?? searchTerm).trim();
+      if (!suburb.trim() || !service || !date || !time) {
+        setError("Please choose suburb, service, date and time.");
+        setSuppliers([]);
+        return;
+      }
 
-      const res = await api.get(
-        `/api/suppliers/location?suburb=${encodeURIComponent(searchValue)}`
-      );
+      const query = new URLSearchParams({
+        suburb: suburb.trim(),
+        service,
+        date,
+        time,
+      });
 
+      if (service === "GROOMING") {
+        query.set("groomingCategory", groomingCategory);
+      }
+
+      const res = await api.get(`/api/suppliers/search?${query.toString()}`);
       const data = res.data?.suppliers ?? [];
+
       setSuppliers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("FETCH ERROR:", err);
-      setError("Failed to load suppliers");
+      setError("Failed to load available suppliers");
       setSuppliers([]);
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (location) {
-      setSearchTerm(location);
-      fetchSuppliers(location);
-      return;
-    }
-
-    fetchSuppliers();
-  }, [location]);
-
-  const filteredSuppliers = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-
-    const filtered = suppliers.filter((supplier) => {
-      if (!term) return true;
-
-      const businessName = (supplier.businessName || "").toLowerCase();
-      const aboutServices = (supplier.aboutServices || "").toLowerCase();
-      const suburb = (supplier.suburb || "").toLowerCase();
-      const services = Array.isArray(supplier.services)
-        ? supplier.services
-            .map((service) => String(service.service || ""))
-            .join(" ")
-            .toLowerCase()
-        : "";
-
-      return (
-        businessName.includes(term) ||
-        aboutServices.includes(term) ||
-        suburb.includes(term) ||
-        services.includes(term)
-      );
-    });
-
-    return [...filtered].sort((a, b) => {
-      const aPreferred = a.isPreferred ? 1 : 0;
-      const bPreferred = b.isPreferred ? 1 : 0;
-
-      if (aPreferred !== bPreferred) {
-        return bPreferred - aPreferred;
-      }
-
-      return String(a.businessName || "").localeCompare(
-        String(b.businessName || "")
-      );
-    });
-  }, [suppliers, searchTerm]);
 
   const togglePreferredSupplier = async (supplier: SearchSupplier) => {
     try {
@@ -147,26 +104,66 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-doglife-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold mb-6">
-          {location ? `Dog Services in ${location}` : "Find Dog Services Near You"}
-        </h1>
+        <h1 className="text-3xl font-bold mb-6">Find Available Dog Services</h1>
 
         <Card className="mb-8">
-          <CardContent className="p-6 flex flex-col gap-4 md:flex-row">
+          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
             <Input
-              placeholder="Search suburb or service (e.g. Sandton, grooming)"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Suburb e.g. Fourways"
+              value={suburb}
+              onChange={(e) => setSuburb(e.target.value)}
             />
-            <Button onClick={() => fetchSuppliers()}>Search</Button>
+
+            <select
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+              className="border rounded-md px-3 py-2 bg-white"
+            >
+              <option value="GROOMING">Grooming</option>
+              <option value="BOARDING">Boarding</option>
+              <option value="DAYCARE">Daycare</option>
+              <option value="WALKING">Walking</option>
+              <option value="TRAINING">Training</option>
+              <option value="PET_SITTING">Pet Sitting</option>
+              <option value="PET_TRANSPORT">Pet Transport</option>
+            </select>
+
+            {service === "GROOMING" ? (
+              <select
+                value={groomingCategory}
+                onChange={(e) => setGroomingCategory(e.target.value)}
+                className="border rounded-md px-3 py-2 bg-white"
+              >
+                <option value="WASH_BRUSH">Wash & Brush</option>
+                <option value="WASH_CUT">Wash & Cut</option>
+              </select>
+            ) : (
+              <div />
+            )}
+
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+
+            <Input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+
+            <div className="md:col-span-5">
+              <Button onClick={fetchSuppliers}>Search</Button>
+            </div>
           </CardContent>
         </Card>
 
-        {loading && <p>Loading suppliers...</p>}
+        {loading && <p>Loading available suppliers...</p>}
         {error && <p className="text-red-500">{error}</p>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredSuppliers.map((supplier) => (
+          {suppliers.map((supplier) => (
             <Card key={supplier.id} className="hover:shadow-lg transition">
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-start justify-between gap-3">
@@ -189,60 +186,50 @@ export default function SearchPage() {
                           {supplier.suburb}
                         </p>
                       ) : null}
+
+                      <div className="flex gap-2 mt-2">
+                        {supplier.isPreferred ? (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                            Preferred
+                          </span>
+                        ) : null}
+
+                        {supplier.usedBefore ? (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            Used before
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => togglePreferredSupplier(supplier)}
-                      disabled={savingSupplierId === supplier.id}
-                      className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded border transition ${
-                        supplier.isPreferred
-                          ? "bg-green-100 text-green-700 border-green-200"
-                          : "bg-white text-gray-500 border-gray-300"
-                      } disabled:opacity-50`}
-                    >
-                      <span>{supplier.isPreferred ? "♥" : "♡"}</span>
-                      <span>
-                        {savingSupplierId === supplier.id ? "Saving..." : "Preferred"}
-                      </span>
-                    </button>
-
-                    {supplier.isVerified ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
-                        Verified
-                      </span>
-                    ) : null}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => togglePreferredSupplier(supplier)}
+                    disabled={savingSupplierId === supplier.id}
+                    className={`text-xs px-3 py-1 rounded border ${
+                      supplier.isPreferred
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : "bg-white text-gray-500 border-gray-300"
+                    } disabled:opacity-50`}
+                  >
+                    {savingSupplierId === supplier.id
+                      ? "Saving..."
+                      : supplier.isPreferred
+                      ? "♥ Preferred"
+                      : "♡ Preferred"}
+                  </button>
                 </div>
 
                 <p className="text-sm text-gray-600">
                   {supplier.aboutServices || "No description provided"}
                 </p>
 
-                <div className="flex flex-wrap gap-2">
-                  {Array.isArray(supplier.services) && supplier.services.length > 0 ? (
-                    supplier.services.slice(0, 3).map((service) => (
-                      <span
-                        key={service.id}
-                        className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 uppercase tracking-wide"
-                      >
-                        {formatServiceLabel(service.service)}
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-gray-400 text-xs">No services listed</p>
-                  )}
-                </div>
-
                 <div className="flex justify-between items-end pt-2">
-                  <div className="space-y-1">
+                  <div>
                     <p className="text-sm font-medium text-gray-900">
                       {supplier.startingPriceCents != null
-                        ? `From ${formatMoneyFromCents(
-                            supplier.startingPriceCents
-                          )}`
+                        ? `From ${formatMoneyFromCents(supplier.startingPriceCents)}`
                         : "Price on profile"}
                     </p>
 
@@ -258,10 +245,16 @@ export default function SearchPage() {
                   <Button
                     size="sm"
                     onClick={() =>
-  navigate(`/supplier/${supplier.id}`, {
-    state: { isPreferred: supplier.isPreferred },
-  })
-}
+                      navigate(`/supplier/${supplier.id}`, {
+                        state: {
+                          isPreferred: supplier.isPreferred,
+                          selectedService: service,
+                          groomingCategory,
+                          date,
+                          time,
+                        },
+                      })
+                    }
                   >
                     View Provider
                   </Button>
@@ -271,9 +264,9 @@ export default function SearchPage() {
           ))}
         </div>
 
-        {!loading && filteredSuppliers.length === 0 && (
+        {!loading && suppliers.length === 0 && (
           <div className="text-center text-gray-500 mt-10">
-            No services found in this area yet.
+            No available providers found for this search.
           </div>
         )}
       </div>
