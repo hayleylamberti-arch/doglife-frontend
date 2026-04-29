@@ -10,6 +10,8 @@ function formatMoneyFromCents(value?: number | null) {
   return `R${Math.round(Number(value) / 100)}`;
 }
 
+type SearchMode = "AREA" | "AVAILABLE";
+
 type SearchSupplier = {
   id: string;
   businessName: string;
@@ -18,6 +20,7 @@ type SearchSupplier = {
   logoUrl?: string | null;
   ratingAverage?: number | null;
   ratingCount?: number | null;
+  isVerified?: boolean;
   isPreferred?: boolean;
   usedBefore?: boolean;
   startingPriceCents?: number | null;
@@ -28,6 +31,7 @@ export default function SearchPage() {
   const [params] = useSearchParams();
   const initialLocation = params.get("location") || "";
 
+  const [searchMode, setSearchMode] = useState<SearchMode>("AREA");
   const [suburb, setSuburb] = useState(initialLocation);
   const [service, setService] = useState("GROOMING");
   const [groomingCategory, setGroomingCategory] = useState("WASH_BRUSH");
@@ -46,8 +50,24 @@ export default function SearchPage() {
       setLoading(true);
       setError("");
 
-      if (!suburb.trim() || !service || !date || !time) {
-        setError("Please choose suburb, service, date and time.");
+      if (!suburb.trim()) {
+        setError("Please enter a suburb.");
+        setSuppliers([]);
+        return;
+      }
+
+      if (searchMode === "AREA") {
+        const res = await api.get(
+          `/api/suppliers/location?suburb=${encodeURIComponent(suburb.trim())}`
+        );
+
+        const data = res.data?.suppliers ?? [];
+        setSuppliers(Array.isArray(data) ? data : []);
+        return;
+      }
+
+      if (!service || !date || !time) {
+        setError("Please choose service, date and time.");
         setSuppliers([]);
         return;
       }
@@ -69,7 +89,7 @@ export default function SearchPage() {
       setSuppliers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("FETCH ERROR:", err);
-      setError("Failed to load available suppliers");
+      setError("Failed to load suppliers");
       setSuppliers([]);
     } finally {
       setLoading(false);
@@ -104,54 +124,76 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-doglife-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold mb-6">Find Available Dog Services</h1>
+        <h1 className="text-3xl font-bold mb-6">Find Dog Services</h1>
 
         <Card className="mb-8">
           <CardContent className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="md:col-span-5 flex gap-3">
+              <Button
+                type="button"
+                variant={searchMode === "AREA" ? "default" : "outline"}
+                onClick={() => setSearchMode("AREA")}
+              >
+                Search by suburb
+              </Button>
+
+              <Button
+                type="button"
+                variant={searchMode === "AVAILABLE" ? "default" : "outline"}
+                onClick={() => setSearchMode("AVAILABLE")}
+              >
+                Search availability
+              </Button>
+            </div>
+
             <Input
               placeholder="Suburb e.g. Fourways"
               value={suburb}
               onChange={(e) => setSuburb(e.target.value)}
             />
 
-            <select
-              value={service}
-              onChange={(e) => setService(e.target.value)}
-              className="border rounded-md px-3 py-2 bg-white"
-            >
-              <option value="GROOMING">Grooming</option>
-              <option value="BOARDING">Boarding</option>
-              <option value="DAYCARE">Daycare</option>
-              <option value="WALKING">Walking</option>
-              <option value="TRAINING">Training</option>
-              <option value="PET_SITTING">Pet Sitting</option>
-              <option value="PET_TRANSPORT">Pet Transport</option>
-            </select>
+            {searchMode === "AVAILABLE" ? (
+              <>
+                <select
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  className="border rounded-md px-3 py-2 bg-white"
+                >
+                  <option value="GROOMING">Grooming</option>
+                  <option value="BOARDING">Boarding</option>
+                  <option value="DAYCARE">Daycare</option>
+                  <option value="WALKING">Walking</option>
+                  <option value="TRAINING">Training</option>
+                  <option value="PET_SITTING">Pet Sitting</option>
+                  <option value="PET_TRANSPORT">Pet Transport</option>
+                </select>
 
-            {service === "GROOMING" ? (
-              <select
-                value={groomingCategory}
-                onChange={(e) => setGroomingCategory(e.target.value)}
-                className="border rounded-md px-3 py-2 bg-white"
-              >
-                <option value="WASH_BRUSH">Wash & Brush</option>
-                <option value="WASH_CUT">Wash & Cut</option>
-              </select>
-            ) : (
-              <div />
-            )}
+                {service === "GROOMING" ? (
+                  <select
+                    value={groomingCategory}
+                    onChange={(e) => setGroomingCategory(e.target.value)}
+                    className="border rounded-md px-3 py-2 bg-white"
+                  >
+                    <option value="WASH_BRUSH">Wash & Brush</option>
+                    <option value="WASH_CUT">Wash & Cut</option>
+                  </select>
+                ) : (
+                  <div />
+                )}
 
-            <Input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
 
-            <Input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                />
+              </>
+            ) : null}
 
             <div className="md:col-span-5">
               <Button onClick={fetchSuppliers}>Search</Button>
@@ -159,7 +201,7 @@ export default function SearchPage() {
           </CardContent>
         </Card>
 
-        {loading && <p>Loading available suppliers...</p>}
+        {loading && <p>Loading suppliers...</p>}
         {error && <p className="text-red-500">{error}</p>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -197,6 +239,12 @@ export default function SearchPage() {
                         {supplier.usedBefore ? (
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                             Used before
+                          </span>
+                        ) : null}
+
+                        {searchMode === "AVAILABLE" && supplier.available ? (
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                            Available
                           </span>
                         ) : null}
                       </div>
@@ -248,10 +296,11 @@ export default function SearchPage() {
                       navigate(`/supplier/${supplier.id}`, {
                         state: {
                           isPreferred: supplier.isPreferred,
-                          selectedService: service,
-                          groomingCategory,
-                          date,
-                          time,
+                          selectedService: searchMode === "AVAILABLE" ? service : null,
+                          groomingCategory:
+                            searchMode === "AVAILABLE" ? groomingCategory : null,
+                          date: searchMode === "AVAILABLE" ? date : null,
+                          time: searchMode === "AVAILABLE" ? time : null,
                         },
                       })
                     }
@@ -266,7 +315,9 @@ export default function SearchPage() {
 
         {!loading && suppliers.length === 0 && (
           <div className="text-center text-gray-500 mt-10">
-            No available providers found for this search.
+            {searchMode === "AVAILABLE"
+              ? "No available providers found for this search."
+              : "No suppliers found in this area yet."}
           </div>
         )}
       </div>
