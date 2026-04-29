@@ -12,6 +12,13 @@ function formatMoneyFromCents(value?: number | null) {
 
 type SearchMode = "AREA" | "AVAILABLE";
 
+type SuburbResult = {
+  id: string;
+  suburbName: string;
+  city: string;
+  province: string;
+};
+
 type SearchSupplier = {
   id: string;
   businessName: string;
@@ -33,6 +40,10 @@ export default function SearchPage() {
 
   const [searchMode, setSearchMode] = useState<SearchMode>("AREA");
   const [suburb, setSuburb] = useState(initialLocation);
+  const [suburbQuery, setSuburbQuery] = useState(initialLocation);
+  const [suburbResults, setSuburbResults] = useState<SuburbResult[]>([]);
+  const [showSuburbDropdown, setShowSuburbDropdown] = useState(false);
+
   const [service, setService] = useState("GROOMING");
   const [groomingCategory, setGroomingCategory] = useState("WASH_BRUSH");
   const [date, setDate] = useState("");
@@ -45,10 +56,35 @@ export default function SearchPage() {
 
   const navigate = useNavigate();
 
+  const searchSuburbs = async (value: string) => {
+    setSuburbQuery(value);
+    setSuburb(value);
+
+    if (value.trim().length < 2) {
+      setSuburbResults([]);
+      setShowSuburbDropdown(false);
+      return;
+    }
+
+    try {
+      const res = await api.get(
+        `/api/suburbs/search?q=${encodeURIComponent(value.trim())}`
+      );
+
+      const results = res.data?.suburbs ?? [];
+      setSuburbResults(Array.isArray(results) ? results : []);
+      setShowSuburbDropdown(true);
+    } catch (err) {
+      console.error("SUBURB SEARCH ERROR:", err);
+      setSuburbResults([]);
+    }
+  };
+
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
       setError("");
+      setShowSuburbDropdown(false);
 
       if (!suburb.trim()) {
         setError("Please enter a suburb.");
@@ -146,11 +182,37 @@ export default function SearchPage() {
               </Button>
             </div>
 
-            <Input
-              placeholder="Suburb e.g. Fourways"
-              value={suburb}
-              onChange={(e) => setSuburb(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                placeholder="Suburb e.g. Fourways"
+                value={suburbQuery}
+                onChange={(e) => searchSuburbs(e.target.value)}
+                onFocus={() => {
+                  if (suburbResults.length > 0) setShowSuburbDropdown(true);
+                }}
+              />
+
+              {showSuburbDropdown && suburbResults.length > 0 ? (
+                <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-lg overflow-hidden">
+                  {suburbResults.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                      onClick={() => {
+                        setSuburb(item.suburbName);
+                        setSuburbQuery(item.suburbName);
+                        setSuburbResults([]);
+                        setShowSuburbDropdown(false);
+                      }}
+                    >
+                      <span className="font-medium">{item.suburbName}</span>
+                      <span className="text-gray-500">, {item.city}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             {searchMode === "AVAILABLE" ? (
               <>
