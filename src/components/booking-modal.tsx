@@ -1,3 +1,4 @@
+// src/components/booking-modal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -26,11 +27,14 @@ function formatPrice(cents?: number | null) {
 }
 
 function formatLabel(value?: string | null) {
-  if (!value) return "";
-  return value
+  return String(value || "")
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function buildLocalDateTime(date: string, time: string) {
+  return new Date(`${date}T${time}:00`);
 }
 
 export default function BookingModal({ supplierId, service, onClose }: Props) {
@@ -40,13 +44,17 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isPetSitting = serviceType === "PET_SITTING";
   const isMobileVet = serviceType === "MOBILE_VET";
   const isPetTransport = serviceType === "PET_TRANSPORT";
+  const isGrooming = serviceType === "GROOMING";
   const isWalking = serviceType === "WALKING";
   const isTraining = serviceType === "TRAINING";
-  const isGrooming = serviceType === "GROOMING";
+  const isDaycare = serviceType === "DAYCARE";
 
   const isStayService = isBoarding || isPetSitting;
-  const durationMinutes = Number(service?.durationMinutes || 60);
+  const usesSlotSelection = !isStayService && !isDaycare;
 
+  const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
+
+  const [ownerAddress, setOwnerAddress] = useState("");
   const [date, setDate] = useState("");
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
@@ -56,10 +64,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
-
-  const [ownerAddress, setOwnerAddress] = useState("");
-  const [useSavedAddress, setUseSavedAddress] = useState(true);
-  const [bookingAddress, setBookingAddress] = useState("");
 
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,6 +76,30 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
 
+  const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
+    ? service.pricingTiers
+    : [];
+
+  const groomingCategories = Array.from(
+    new Set(groomingTiers.map((tier) => tier.category).filter(Boolean))
+  );
+
+  const [groomingCategory, setGroomingCategory] = useState("");
+  const [groomingSize, setGroomingSize] = useState("");
+
+  const availableGroomingSizes = useMemo(() => {
+    return groomingTiers.filter((tier) => tier.category === groomingCategory);
+  }, [groomingTiers, groomingCategory]);
+
+  const selectedGroomingTier = useMemo(() => {
+    return (
+      groomingTiers.find(
+        (tier) =>
+          tier.category === groomingCategory && tier.dogSize === groomingSize
+      ) || null
+    );
+  }, [groomingTiers, groomingCategory, groomingSize]);
+
   const mobileOptions: string[] = Array.isArray(service?.pricingJson?.offerings)
     ? service.pricingJson.offerings
     : ["CHECK_UP", "INOCULATIONS", "FOLLOW_UP", "OTHER"];
@@ -80,101 +108,60 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     mobileOptions[0] || "CHECK_UP"
   );
 
-  const shouldUseOwnerAddress =
+  const shouldRequireOwnerAddress =
     isWalking ||
     isTraining ||
     isMobileVet ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
 
-  const serviceAddress = useSavedAddress ? ownerAddress : bookingAddress;
-
-  const unitLabel = String(service?.unit || "session")
-    .toLowerCase()
-    .replace(/^per_/, "");
+  const displayPrice =
+    isGrooming && selectedGroomingTier?.priceCents
+      ? selectedGroomingTier.priceCents
+      : service?.baseRateCents;
 
   useEffect(() => {
-    async function fetchOwnerProfile() {
-      try {
-        const res = await api.get("/api/owner/profile");
-        const address = res.data?.profile?.address || "";
+    api.get("/api/owner/profile").then((res) => {
+      const address = res.data?.profile?.address || "";
+      setOwnerAddress(address);
 
-        setOwnerAddress(address);
-
-        if (isPetTransport && address && !pickup) {
-          setPickup(address);
-        }
-      } catch (err) {
-        console.error("Failed to load owner profile", err);
+      if (isPetTransport && address) {
+        setPickup(address);
       }
-    }
+    });
 
-    fetchOwnerProfile();
-  }, [isPetTransport, pickup]);
-
-  useEffect(() => {
-    async function fetchDogs() {
-      try {
-        const res = await api.get("/api/owner/dogs");
-        setDogs(res.data?.dogs || []);
-      } catch (err) {
-        console.error("Failed to load dogs", err);
-        setDogs([]);
-      }
-    }
-
-    fetchDogs();
-  }, []);
+    api.get("/api/owner/dogs").then((res) => {
+      setDogs(res.data?.dogs || []);
+    });
+  }, [isPetTransport]);
 
   useEffect(() => {
-    if (!date || isStayService) {
+    if (!date || !usesSlotSelection) {
       setSlots([]);
       setSelectedSlot(null);
       return;
     }
 
-    async function fetchSlots() {
-      try {
-        const res = await api.get(
-          `/api/suppliers/${supplierId}/availability?date=${date}`
-        );
-        setSlots(res.data?.slots || []);
-      } catch (err) {
-        console.error("Failed to load availability", err);
-        setSlots([]);
-      }
+    api
+      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
+      .then((res) => setSlots(res.data?.slots || []))
+      .catch(() => setSlots([]));
+  }, [date, supplierId, usesSlotSelection]);
+
+  useEffect(() => {
+    if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
+      setGroomingCategory(String(groomingCategories[0]));
     }
+  }, [isGrooming, groomingCategories, groomingCategory]);
 
-    fetchSlots();
-  }, [date, supplierId, isStayService]);
-
-  const canConfirm = useMemo(() => {
-    if (loading || selectedDogIds.length === 0) return false;
-
-    if (shouldUseOwnerAddress && !serviceAddress.trim()) return false;
-
-    if (isStayService) {
-      return Boolean(arrivalDate && departureDate);
+  useEffect(() => {
+    if (
+      isGrooming &&
+      availableGroomingSizes.length > 0 &&
+      !availableGroomingSizes.some((tier) => tier.dogSize === groomingSize)
+    ) {
+      setGroomingSize(availableGroomingSizes[0].dogSize);
     }
-
-    if (isPetTransport) {
-      return Boolean(date && selectedSlot && pickup.trim() && dropoff.trim());
-    }
-
-    return Boolean(date && selectedSlot);
-  }, [
-    loading,
-    selectedDogIds,
-    shouldUseOwnerAddress,
-    serviceAddress,
-    isStayService,
-    arrivalDate,
-    departureDate,
-    isPetTransport,
-    date,
-    selectedSlot,
-    pickup,
-    dropoff,
-  ]);
+  }, [isGrooming, availableGroomingSizes, groomingSize]);
 
   function toggleDog(id: string) {
     setSelectedDogIds((prev) =>
@@ -185,9 +172,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   function buildNotes() {
     const parts: string[] = [];
 
-    if (shouldUseOwnerAddress) {
+    if (shouldRequireOwnerAddress && ownerAddress) {
       parts.push("Service location: OWNER_HOME.");
-      parts.push(`Owner address: ${serviceAddress.trim()}.`);
+      parts.push(`Owner address: ${ownerAddress}.`);
     }
 
     if (isTraining) {
@@ -208,8 +195,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       parts.push(`Mobile vet service: ${mobileVetService}.`);
     }
 
-    if (isGrooming && shouldUseOwnerAddress) {
-      parts.push("Mobile grooming.");
+    if (isGrooming) {
+      parts.push(`Grooming option: ${groomingCategory}.`);
+      parts.push(`Size: ${groomingSize}.`);
     }
 
     if (notes.trim()) {
@@ -220,59 +208,61 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }
 
   async function handleBooking() {
-    if (selectedDogIds.length === 0) {
-      alert("Please select at least one dog");
-      return;
-    }
-
-    if (shouldUseOwnerAddress && !serviceAddress.trim()) {
-      alert("Please add an address for this home-based service");
-      return;
-    }
+    if (selectedDogIds.length === 0) return alert("Select a dog");
 
     if (isStayService && (!arrivalDate || !departureDate)) {
-      alert("Please select arrival and departure dates");
-      return;
+      return alert("Select arrival and departure dates");
     }
 
-    if (!isStayService && (!date || !selectedSlot)) {
-      alert("Please select date and time");
-      return;
+    if (!isStayService && !date) return alert("Select a date");
+
+    if (usesSlotSelection && !selectedSlot) return alert("Select a time");
+
+    if (shouldRequireOwnerAddress && !ownerAddress) {
+      return alert("Please add your home address in your profile first");
     }
 
     if (isPetTransport && (!pickup.trim() || !dropoff.trim())) {
-      alert("Please add pickup and drop-off locations");
-      return;
+      return alert("Enter pickup and drop-off points");
+    }
+
+    if (isGrooming && (!groomingCategory || !groomingSize)) {
+      return alert("Select grooming option and dog size");
     }
 
     setLoading(true);
 
     try {
-      const startAt = isStayService
-        ? new Date(`${arrivalDate}T09:00:00`)
-        : new Date(selectedSlot!);
-
-      const endAt = isStayService
-        ? new Date(`${departureDate}T09:00:00`)
-        : new Date(startAt.getTime() + durationMinutes * 60 * 1000);
-
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
         serviceType,
-        startAt,
-        endAt,
+        startAt: isStayService
+          ? new Date(`${arrivalDate}T09:00`)
+          : isDaycare
+          ? buildLocalDateTime(date, "08:00")
+          : new Date(selectedSlot!),
+        endAt: isStayService
+          ? new Date(`${departureDate}T09:00`)
+          : isDaycare
+          ? buildLocalDateTime(date, "17:00")
+          : new Date(
+              new Date(selectedSlot!).getTime() +
+                appointmentDurationMinutes * 60000
+            ),
         dogIds: selectedDogIds,
-        notes: buildNotes() || undefined,
         dogCount: selectedDogIds.length,
+        notes: buildNotes() || undefined,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
+        groomingCategory: isGrooming ? groomingCategory : undefined,
+        groomingSize: isGrooming ? groomingSize : undefined,
       });
 
-      alert("✅ Booking request sent");
+      alert("✅ Booking sent");
       onClose();
-    } catch (error: any) {
-      alert(error?.response?.data?.error || "Booking failed");
+    } catch (e: any) {
+      alert(e?.response?.data?.error || "Error");
     } finally {
       setLoading(false);
     }
@@ -280,22 +270,23 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-3 py-4">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg items-start">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-md items-start">
         <div className="my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl">
-          <div className="shrink-0 border-b bg-white px-5 py-4">
+          <div className="shrink-0 border-b px-5 py-4">
             <h2 className="text-xl font-semibold">
               Book {formatServiceName(serviceType)}
             </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {formatPrice(service?.baseRateCents)} per {unitLabel}
-              {service?.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
+            <p className="text-sm text-gray-500">
+              {formatPrice(displayPrice)}{" "}
+              {service?.unit
+                ? `per ${String(service.unit).toLowerCase().replace(/^per_/, "")}`
+                : ""}
             </p>
           </div>
 
           <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 pb-6">
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">Select dog(s)</p>
-
+              <p className="text-sm text-gray-600">Select dog(s)</p>
               {dogs.map((dog) => (
                 <label
                   key={dog.id}
@@ -306,7 +297,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     checked={selectedDogIds.includes(dog.id)}
                     onChange={() => toggleDog(dog.id)}
                   />
-                  <span className="text-sm">
+                  <span>
                     {dog.name}
                     {dog.breed ? ` • ${dog.breed}` : ""}
                   </span>
@@ -314,159 +305,177 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               ))}
             </div>
 
-            {shouldUseOwnerAddress ? (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-3">
-                <p className="text-sm font-semibold text-blue-900">
-                  Service address
-                </p>
-
-                {ownerAddress ? (
-                  <label className="flex items-start gap-2 text-sm text-blue-800">
-                    <input
-                      type="checkbox"
-                      checked={useSavedAddress}
-                      onChange={(e) => setUseSavedAddress(e.target.checked)}
-                    />
-                    <span className="whitespace-pre-line">
-                      Use saved home address: {ownerAddress}
-                    </span>
-                  </label>
-                ) : null}
-
-                {!useSavedAddress || !ownerAddress ? (
-                  <textarea
-                    className="min-h-[80px] w-full rounded border px-3 py-2 text-sm"
-                    value={bookingAddress}
-                    onChange={(e) => setBookingAddress(e.target.value)}
-                    placeholder="Enter address for this booking"
-                  />
-                ) : null}
+            {shouldRequireOwnerAddress && ownerAddress ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                <p className="font-medium text-blue-900">Service address</p>
+                <p className="mt-1 whitespace-pre-line">{ownerAddress}</p>
               </div>
             ) : null}
 
-            {isPetSitting ? (
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-900">
-                  Pet sitting location
-                </p>
-                <select
-                  className="w-full rounded border px-3 py-2"
-                  value={petSittingLocation}
-                  onChange={(e) =>
-                    setPetSittingLocation(e.target.value as PetSittingLocation)
-                  }
-                >
-                  <option value="OWNER_HOME">At owner home</option>
-                  <option value="SITTER_HOME">At sitter home</option>
-                </select>
+            {isGrooming ? (
+              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+                <div>
+                  <p className="mb-1 text-sm font-medium">Grooming option</p>
+                  <select
+                    className="w-full rounded border px-3 py-2"
+                    value={groomingCategory}
+                    onChange={(e) => {
+                      setGroomingCategory(e.target.value);
+                      setGroomingSize("");
+                    }}
+                  >
+                    {groomingCategories.map((category) => (
+                      <option key={String(category)} value={String(category)}>
+                        {category === "WASH_BRUSH"
+                          ? "Wash & Brush"
+                          : category === "WASH_CUT"
+                          ? "Wash & Cut"
+                          : formatLabel(String(category))}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <p className="mb-1 text-sm font-medium">Dog size</p>
+                  <select
+                    className="w-full rounded border px-3 py-2"
+                    value={groomingSize}
+                    onChange={(e) => setGroomingSize(e.target.value)}
+                  >
+                    {availableGroomingSizes.map((tier) => (
+                      <option key={tier.id} value={tier.dogSize}>
+                        {formatLabel(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ) : null}
 
             {isStayService ? (
-              <div className="rounded-lg border-2 border-blue-300 bg-white p-3 shadow-sm space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Select arrival and departure dates
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Choose when the stay starts and ends.
-                  </p>
+              <div className="rounded-lg border-2 border-blue-300 p-3">
+                <p className="text-sm font-semibold">
+                  Select arrival and departure dates
+                </p>
+                <p className="mb-3 text-xs text-gray-500">
+                  Choose when the stay starts and ends.
+                </p>
+
+                <div className="space-y-3">
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium">
+                      Arrival date
+                    </span>
+                    <input
+                      type="date"
+                      className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                      value={arrivalDate}
+                      onChange={(e) => setArrivalDate(e.target.value)}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1 block text-sm font-medium">
+                      Departure date
+                    </span>
+                    <input
+                      type="date"
+                      className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                      value={departureDate}
+                      onChange={(e) => setDepartureDate(e.target.value)}
+                    />
+                  </label>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Arrival date
-                  </label>
-                  <input
-                    type="date"
-                    className="block w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
-                    value={arrivalDate}
-                    onChange={(e) => setArrivalDate(e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Departure date
-                  </label>
-                  <input
-                    type="date"
-                    className="block w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
-                    value={departureDate}
-                    onChange={(e) => setDepartureDate(e.target.value)}
-                  />
-                </div>
+                {isPetSitting ? (
+                  <div className="mt-3">
+                    <p className="mb-1 text-sm font-medium">Pet sitting location</p>
+                    <select
+                      className="w-full rounded border px-3 py-2"
+                      value={petSittingLocation}
+                      onChange={(e) =>
+                        setPetSittingLocation(
+                          e.target.value as PetSittingLocation
+                        )
+                      }
+                    >
+                      <option value="OWNER_HOME">Owner home</option>
+                      <option value="SITTER_HOME">Sitter home</option>
+                    </select>
+                  </div>
+                ) : null}
               </div>
             ) : (
-              <>
-                <div className="rounded-lg border-2 border-blue-300 bg-white p-3 shadow-sm">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Select date and time
-                  </p>
-                  <p className="mb-3 text-xs text-gray-500">
-                    Choose a date first, then pick an available time slot.
-                  </p>
+              <div className="rounded-lg border-2 border-blue-300 p-3">
+                <p className="text-sm font-semibold">Select date and time</p>
+                <p className="mb-3 text-xs text-gray-500">
+                  Choose a date first, then pick an available time slot.
+                </p>
 
-                  <input
-                    type="date"
-                    className="block w-full min-w-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
-                      setSelectedSlot(null);
-                    }}
-                  />
-                </div>
-
-                {!date ? (
-                  <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                    Choose a date to see available times.
-                  </p>
-                ) : slots.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setSelectedSlot(slot)}
-                        className={`rounded border p-2 text-sm ${
-                          selectedSlot === slot
-                            ? "bg-blue-600 text-white"
-                            : "bg-white text-gray-900"
-                        }`}
-                      >
-                        {new Date(slot).toLocaleTimeString("en-ZA", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-                    No availability for this date.
-                  </p>
-                )}
-              </>
+                <input
+                  type="date"
+                  className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    setSelectedSlot(null);
+                  }}
+                />
+              </div>
             )}
 
-            {isPetTransport ? (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Journey type
-                  </p>
-                  <select
-                    className="mt-2 w-full rounded border px-3 py-2"
-                    value={journeyType}
-                    onChange={(e) =>
-                      setJourneyType(e.target.value as PetTransportJourneyType)
-                    }
+            {usesSlotSelection && slots.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2">
+                {slots.map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`rounded border p-2 text-sm ${
+                      selectedSlot === slot ? "bg-blue-600 text-white" : "bg-white"
+                    }`}
                   >
-                    <option value="ONE_WAY">One way</option>
-                    <option value="RETURN">Return</option>
-                  </select>
-                </div>
+                    {new Date(slot).toLocaleTimeString("en-ZA", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {isPetTransport ? (
+              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+                <select
+                  className="w-full rounded border px-3 py-2"
+                  value={journeyType}
+                  onChange={(e) =>
+                    setJourneyType(e.target.value as PetTransportJourneyType)
+                  }
+                >
+                  <option value="ONE_WAY">One way</option>
+                  <option value="RETURN">Return</option>
+                </select>
+
+                {ownerAddress ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm"
+                      onClick={() => setPickup(ownerAddress)}
+                    >
+                      Use home as pickup
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded border px-3 py-2 text-sm"
+                      onClick={() => setDropoff(ownerAddress)}
+                    >
+                      Use home as drop-off
+                    </button>
+                  </div>
+                ) : null}
 
                 <input
                   placeholder="Pickup location"
@@ -485,22 +494,17 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             ) : null}
 
             {isMobileVet ? (
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-gray-900">
-                  Mobile vet service
-                </p>
-                <select
-                  className="w-full rounded border px-3 py-2"
-                  value={mobileVetService}
-                  onChange={(e) => setMobileVetService(e.target.value)}
-                >
-                  {mobileOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {formatLabel(option)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <select
+                className="w-full rounded border px-3 py-2"
+                value={mobileVetService}
+                onChange={(e) => setMobileVetService(e.target.value)}
+              >
+                {mobileOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {formatLabel(option)}
+                  </option>
+                ))}
+              </select>
             ) : null}
 
             <textarea
@@ -514,16 +518,13 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
           <div className="shrink-0 border-t bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <button
               onClick={handleBooking}
-              disabled={!canConfirm}
+              disabled={loading}
               className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
             >
               {loading ? "Booking..." : "Confirm Booking"}
             </button>
 
-            <button
-              onClick={onClose}
-              className="mt-3 w-full py-2 text-center text-sm text-gray-500"
-            >
+            <button onClick={onClose} className="mt-3 w-full py-2 text-gray-500">
               Cancel
             </button>
           </div>
