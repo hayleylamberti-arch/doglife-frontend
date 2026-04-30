@@ -19,6 +19,27 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   mobilePhone?: string;
+  phone?: string;
+  phoneNumber?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  profileImageUrl?: string;
+  bio?: string;
+  businessName?: string;
+  serviceTypes?: string[];
+  onboardingCompleted?: boolean;
+  onboardingStep?: number;
+  userType?: "owner" | "provider" | "admin";
+  emailVerified?: boolean;
+  isSubscribed?: boolean;
+  subscriptionType?: "free" | "basic" | "premium" | "enterprise" | "owner_plus";
+  isVerified?: boolean;
+  verificationStatus?: string | null;
+  emergencyContact?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
 }
 
 export interface LoginCredentials {
