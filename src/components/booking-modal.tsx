@@ -489,7 +489,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-3 py-4 sm:px-4">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-md items-start">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg items-start">
         <div className="my-auto flex max-h-[calc(100dvh-2rem)] w-full flex-col overflow-hidden rounded-xl bg-white shadow-xl">
           <div className="shrink-0 border-b bg-white px-5 py-4">
             <h2 className="text-xl font-semibold">{title}</h2>
@@ -562,7 +562,23 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </>
             ) : (
               <>
-                <input type="date" className="w-full cursor-pointer rounded-lg border-2 border-blue-300 bg-white px-3 py-3 text-base font-medium text-gray-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200" value={date} onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); }} />
+                <label className="block cursor-pointer rounded-lg border-2 border-blue-300 bg-white p-3 shadow-sm">
+  <span className="block text-sm font-semibold text-gray-900">
+    Select date and time
+  </span>
+  <span className="block text-xs text-gray-500 mb-2">
+    Choose a date first, then pick an available time slot.
+  </span>
+  <input
+    type="date"
+    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
+    value={date}
+    onChange={(e) => {
+      setDate(e.target.value);
+      setSelectedSlot(null);
+    }}
+  />
+</label>
 
                 {usesSlotSelection && !date ? <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Choose a date to see available times.</p> : usesSlotSelection && slots.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
