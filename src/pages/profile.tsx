@@ -6,7 +6,6 @@ import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
-import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,11 +30,7 @@ const profileSchema = z.object({
     .regex(/^[\+]?[0-9\s\-\(\)]{10,}$/, "Please enter a valid phone number")
     .optional()
     .or(z.literal("")),
-  address: z
-    .string()
-    .min(5, "Please enter a complete address")
-    .optional()
-    .or(z.literal("")),
+  address: z.string().min(5, "Please enter a complete address").optional().or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -65,42 +60,41 @@ export default function Profile() {
     retry: false,
   });
 
+  const profileUser = ownerProfile?.user || user;
+
   useEffect(() => {
-    if (!user) return;
+    if (!profileUser) return;
 
     form.reset({
-      firstName: user.firstName || "",
-      lastName: user.lastName || "",
-      mobilePhone: (user as any).mobilePhone || "",
+      firstName: profileUser.firstName || "",
+      lastName: profileUser.lastName || "",
+      mobilePhone: profileUser.mobilePhone || "",
       address: ownerProfile?.address || "",
     });
-  }, [user, ownerProfile, form]);
+  }, [profileUser, ownerProfile, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      await apiRequest("/api/user", {
-        method: "PATCH",
-        body: JSON.stringify({
-          firstName: data.firstName,
-          lastName: data.lastName,
-          mobilePhone: data.mobilePhone || null,
-        }),
-      });
-
-      await api.post("/api/owner/profile", {
+      const res = await api.post("/api/owner/profile", {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        mobilePhone: data.mobilePhone || null,
         address: data.address || null,
       });
+
+      return res.data;
     },
     onSuccess: async () => {
       toast({ title: "Profile updated successfully" });
 
-      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       await queryClient.invalidateQueries({ queryKey: ["owner-profile"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      await queryClient.invalidateQueries({ queryKey: ["me"] });
     },
     onError: (error: any) => {
       toast({
         title: "Error updating profile",
-        description: error?.message || "Failed to save profile",
+        description: error?.response?.data?.error || error?.message || "Failed to save profile",
         variant: "destructive",
       });
     },
@@ -113,10 +107,7 @@ export default function Profile() {
   if (isLoading || ownerProfileLoading || !user) {
     return (
       <div className="min-h-screen bg-doglife-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-doglife-primary mx-auto mb-4" />
-          <p className="text-doglife-neutral">Loading profile...</p>
-        </div>
+        <p className="text-doglife-neutral">Loading profile...</p>
       </div>
     );
   }
@@ -126,23 +117,18 @@ export default function Profile() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
-            <AvatarImage
-              src={(user as any).profileImageUrl || ""}
-              alt={user.firstName || ""}
-            />
+            <AvatarImage src={(user as any).profileImageUrl || ""} alt={profileUser?.firstName || ""} />
             <AvatarFallback className="bg-doglife-primary text-white text-2xl">
-              {user.firstName?.[0] || user.email?.[0] || "?"}
+              {profileUser?.firstName?.[0] || profileUser?.email?.[0] || "?"}
             </AvatarFallback>
           </Avatar>
 
           <div>
             <h1 className="text-3xl font-bold text-doglife-dark">
-              {user.firstName} {user.lastName}
+              {profileUser?.firstName} {profileUser?.lastName}
             </h1>
-            <p className="text-doglife-neutral">{user.email}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="outline">Dog Owner</Badge>
-            </div>
+            <p className="text-doglife-neutral">{profileUser?.email}</p>
+            <Badge variant="outline">Dog Owner</Badge>
           </div>
         </div>
 
@@ -157,55 +143,45 @@ export default function Profile() {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>First name</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last name</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last name</FormLabel>
+                      <FormControl><Input {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="mobilePhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone number</FormLabel>
-                        <FormControl>
-                          <Input {...field} value={field.value || ""} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="mobilePhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone number</FormLabel>
+                      <FormControl><Input {...field} value={field.value || ""} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Email</label>
-                    <Input value={user.email || ""} disabled />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <Input value={profileUser?.email || ""} disabled />
                 </div>
 
                 <FormField
@@ -219,7 +195,7 @@ export default function Profile() {
                           {...field}
                           value={field.value || ""}
                           rows={4}
-                          placeholder="Enter your address for home-based services like walking, training or mobile visits"
+                          placeholder="Enter your address for home-based services"
                         />
                       </FormControl>
                       <FormMessage />
@@ -228,16 +204,10 @@ export default function Profile() {
                 />
 
                 <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 text-sm text-blue-800">
-                  Your address is used for services that happen at your home,
-                  such as walking, home training, mobile grooming, or mobile vet
-                  bookings.
+                  Your address is used for services that happen at your home, such as walking, home training, mobile grooming, or mobile vet bookings.
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={updateProfileMutation.isPending}
-                  className="bg-doglife-primary hover:bg-blue-700"
-                >
+                <Button type="submit" disabled={updateProfileMutation.isPending}>
                   {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
                 </Button>
               </form>
@@ -258,7 +228,7 @@ export default function Profile() {
               <Mail className="h-5 w-5 mt-0.5 text-doglife-neutral" />
               <div>
                 <p className="font-medium">Email address</p>
-                <p className="text-sm text-doglife-neutral">{user.email}</p>
+                <p className="text-sm text-doglife-neutral">{profileUser?.email}</p>
               </div>
             </div>
 
