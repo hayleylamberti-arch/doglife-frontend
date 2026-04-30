@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -148,13 +149,7 @@ function parseBookingNotes(notes?: string | null) {
   };
 }
 
-function BookingMetaPill({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
+function BookingMetaPill({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
       <span className="mr-1 font-medium">{label}:</span>
@@ -453,11 +448,25 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 p-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Manage your current and past bookings in one place.
-        </p>
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome to DogLife 🐾
+            </h1>
+            <p className="mt-2 text-sm text-gray-600">
+              Manage your bookings, view service updates, and book trusted dog
+              services near you.
+            </p>
+          </div>
+
+          <Link
+            to="/search"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Make a booking
+          </Link>
+        </div>
       </div>
 
       {notifications.length > 0 && (
