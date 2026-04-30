@@ -19,22 +19,6 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   mobilePhone?: string;
-  phone?: string;
-  phoneNumber?: string;
-  address?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  profileImageUrl?: string;
-  bio?: string;
-  businessName?: string;
-  serviceTypes?: string[];
-  onboardingCompleted?: boolean;
-  onboardingStep?: number;
-  userType?: "owner" | "provider" | "admin";
-  emailVerified?: boolean;
-  isSubscribed?: boolean;
-  subscriptionType?: "free" | "basic" | "premium" | "enterprise" | "owner_plus";
 }
 
 export interface LoginCredentials {
@@ -72,35 +56,60 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = "authToken";
+const LEGACY_TOKEN_KEY = "token";
 const ROLE_KEY = "role";
+
+function setApiToken(token: string | null) {
+  if (token) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
+}
 
 function persistSession(token: string, role: UserRole) {
   localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(LEGACY_TOKEN_KEY, token);
   localStorage.setItem(ROLE_KEY, role);
+  setApiToken(token);
 }
 
 function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
   localStorage.removeItem(ROLE_KEY);
-  localStorage.removeItem("token");
+  setApiToken(null);
+}
+
+function extractUser(data: any): AuthUser | null {
+  return data?.user || data?.data?.user || data || null;
+}
+
+function extractAuthResponse(data: any): AuthResponse {
+  const token = data?.token || data?.data?.token;
+  const user = data?.user || data?.data?.user;
+
+  if (!token || !user?.role) {
+    throw new Error("Invalid login response");
+  }
+
+  return { token, user };
 }
 
 function getAuthErrorMessage(error: any) {
-  const responseData = error?.response?.data;
-
-  if (Array.isArray(responseData?.details) && responseData.details.length > 0) {
-    return responseData.details.join(" ");
-  }
-
   return (
-    responseData?.message ||
-    responseData?.error ||
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
     "Something went wrong. Please try again."
   );
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem(TOKEN_KEY));
+  const storedToken =
+    localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+
+  const [token, setToken] = useState<string | null>(storedToken);
   const [role, setRole] = useState<UserRole | null>(
     (localStorage.getItem(ROLE_KEY) as UserRole | null) ?? null
   );
@@ -108,22 +117,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshMe = useCallback(async (): Promise<AuthUser | null> => {
-    const currentToken = localStorage.getItem(TOKEN_KEY);
+    const currentToken =
+      localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
 
     if (!currentToken) {
-      setUser(null);
-      setRole(null);
+      clearSession();
       setToken(null);
+      setRole(null);
+      setUser(null);
       return null;
     }
 
     try {
-      const response = await api.get<AuthUser>("/api/me");
-      setUser(response.data);
-      setRole(response.data.role);
-      localStorage.setItem(ROLE_KEY, response.data.role);
+      setApiToken(currentToken);
+
+      const response = await api.get("/api/me");
+      const me = extractUser(response.data);
+
+      if (!me?.role) {
+        throw new Error("Invalid /api/me response");
+      }
+
+      persistSession(currentToken, me.role);
       setToken(currentToken);
-      return response.data;
+      setRole(me.role);
+      setUser(me);
+
+      return me;
     } catch {
       clearSession();
       setToken(null);
@@ -134,14 +154,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    setApiToken(storedToken);
     refreshMe().finally(() => setIsLoading(false));
   }, [refreshMe]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
       try {
-        const response = await api.post<AuthResponse>("/api/auth/login", data);
-        return response.data;
+        const response = await api.post("/api/auth/login", data);
+        return extractAuthResponse(response.data);
       } catch (error: any) {
         throw new Error(getAuthErrorMessage(error));
       }
@@ -151,8 +172,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterData) => {
       try {
-        const response = await api.post<AuthResponse>("/api/auth/register", data);
-        return response.data;
+        const response = await api.post("/api/auth/register", data);
+        return extractAuthResponse(response.data);
       } catch (error: any) {
         throw new Error(getAuthErrorMessage(error));
       }
@@ -168,9 +189,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(response.user.role);
       setUser(response.user);
 
+      await refreshMe();
+
       return response;
     },
-    [loginMutation]
+    [loginMutation, refreshMe]
   );
 
   const register = useCallback(
@@ -182,9 +205,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRole(response.user.role);
       setUser(response.user);
 
+      await refreshMe();
+
       return response;
     },
-    [registerMutation]
+    [registerMutation, refreshMe]
   );
 
   const logout = useCallback(() => {
@@ -207,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshMe,
     }),
-    [isLoading, login, logout, refreshMe, register, registerMutation, role, token, user]
+    [token, role, user, isLoading, login, register, registerMutation, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
