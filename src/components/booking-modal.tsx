@@ -562,9 +562,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </>
             ) : (
               <>
-                <input type="date" className="w-full rounded border px-3 py-2" value={date} onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); }} />
+                <input type="date" className="w-full cursor-pointer rounded-lg border-2 border-blue-300 bg-white px-3 py-3 text-base font-medium text-gray-900 shadow-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200" value={date} onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); }} />
 
-                {usesSlotSelection && slots.length > 0 ? (
+                {usesSlotSelection && !date ? <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Choose a date to see available times.</p> : usesSlotSelection && slots.length > 0 ? (
                   <div className="grid grid-cols-3 gap-2">
                     {slots.map((slot, i) => (
                       <button
