@@ -91,6 +91,7 @@ function setApiToken(token: string | null) {
 function persistSession(token: string, role: UserRole) {
   localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(LEGACY_TOKEN_KEY, token);
+  localStorage.setItem("token", token);
   localStorage.setItem(ROLE_KEY, role);
   setApiToken(token);
 }
