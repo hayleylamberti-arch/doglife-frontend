@@ -562,16 +562,28 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </>
             ) : (
               <>
-                <label className="block cursor-pointer rounded-lg border-2 border-blue-300 bg-white p-3 shadow-sm">
+                <label className="relative block cursor-pointer overflow-hidden rounded-lg border-2 border-blue-300 bg-white p-3 shadow-sm">
   <span className="block text-sm font-semibold text-gray-900">
     Select date and time
   </span>
-  <span className="block text-xs text-gray-500 mb-2">
+
+  <span className="mb-3 block text-xs text-gray-500">
     Choose a date first, then pick an available time slot.
   </span>
+
+  <div className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-base text-gray-900">
+    {date
+      ? new Date(`${date}T00:00:00`).toLocaleDateString("en-ZA", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : "Tap to choose a date"}
+  </div>
+
   <input
     type="date"
-    className="block w-full max-w-full box-border rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
+    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
     value={date}
     onChange={(e) => {
       setDate(e.target.value);
