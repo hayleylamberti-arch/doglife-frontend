@@ -571,7 +571,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   </span>
   <input
     type="date"
-    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
+    className="block w-full max-w-full box-border rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
     value={date}
     onChange={(e) => {
       setDate(e.target.value);
