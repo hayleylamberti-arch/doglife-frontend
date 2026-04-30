@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getDashboardPath = (role?: string | null) => {
+    if (role === "SUPPLIER") return "/supplier/dashboard";
+    if (role === "OWNER") return "/owner/dashboard";
+    return "/";
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -19,22 +25,18 @@ export default function LoginPage() {
 
     try {
       const result = await login({ email, password });
+      const role = result?.user?.role;
+      const dashboardPath = getDashboardPath(role);
 
-      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
+      const from = (location.state as { from?: { pathname?: string } } | null)
+        ?.from?.pathname;
 
-      // ✅ If user was redirected here from another page
-      if (from && from !== "/") {
+      if (from && from !== "/" && from !== "/auth/login" && from !== "/auth") {
         navigate(from, { replace: true });
         return;
       }
 
-      // ✅ ROLE-BASED REDIRECT (FINAL FIX)
-if (result.user.role === "SUPPLIER") {
-  navigate("/supplier/dashboard", { replace: true });
-} else {
-  navigate("/owner/dashboard", { replace: true });
-}
-
+      navigate(dashboardPath, { replace: true });
     } catch (loginError: any) {
       setError(loginError?.response?.data?.message ?? "Unable to sign in.");
     } finally {
@@ -56,6 +58,7 @@ if (result.user.role === "SUPPLIER") {
           type="email"
           value={email}
         />
+
         <input
           className="w-full rounded border px-3 py-2"
           onChange={(event) => setPassword(event.target.value)}
@@ -65,10 +68,10 @@ if (result.user.role === "SUPPLIER") {
           value={password}
         />
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
         <button
-          className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white"
+          className="w-full rounded bg-orange-500 px-4 py-2 font-medium text-white disabled:opacity-50"
           disabled={isSubmitting}
           type="submit"
         >
@@ -80,6 +83,7 @@ if (result.user.role === "SUPPLIER") {
         <Link className="text-orange-600" to="/auth/register">
           Join DogLife
         </Link>
+
         <Link className="text-orange-600" to="/auth/forgot-password">
           Forgot password?
         </Link>
