@@ -13,6 +13,7 @@ import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
 import Search from "@/pages/search";
 import MyDogs from "@/pages/my-dogs";
+import DogProfilePage from "@/pages/dog-profile";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
@@ -56,6 +57,7 @@ export default function AppRoutes() {
           <Route path="owner/dashboard" element={<Dashboard />} />
           <Route path="owner/profile" element={<Profile />} />
           <Route path="owner/my-dogs" element={<MyDogs />} />
+          <Route path="owner/dogs/:id" element={<DogProfilePage />} />
         </Route>
       </Route>
 
