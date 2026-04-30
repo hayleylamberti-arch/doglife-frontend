@@ -26,6 +26,14 @@ type BookingEvent = {
   createdAt?: string;
 };
 
+type ServiceLocationSummary = {
+  type: "OWNER_HOME" | "SUPPLIER_LOCATION" | "TRANSPORT";
+  label?: string | null;
+  addressLine?: string | null;
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+};
+
 type SupplierBooking = {
   id: string;
   status: BookingStatus;
@@ -35,6 +43,7 @@ type SupplierBooking = {
   serviceType?: string | null;
   notes?: string | null;
   completedAt?: string | null;
+  serviceLocationSummary?: ServiceLocationSummary | null;
   owner?: {
     id: string;
     firstName?: string | null;
@@ -70,13 +79,12 @@ function formatOwnerName(booking: SupplierBooking) {
 }
 
 function formatDogNames(booking: SupplierBooking) {
-  const names =
+  return (
     booking.dogs
       ?.map((item) => item?.dog?.name)
       .filter(Boolean)
-      .join(", ") || "";
-
-  return names || "No dogs linked";
+      .join(", ") || "No dogs linked"
+  );
 }
 
 function formatServiceName(value?: string | null) {
@@ -102,98 +110,33 @@ function getStatusBadgeClass(status: BookingStatus) {
   }
 }
 
-function getLatestDeclineMessage(booking: SupplierBooking) {
-  if (!booking.events?.length) return null;
-
-  const declinedEvent = [...booking.events]
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
-    )
-    .find(
-      (event) =>
-        event.type === "SUPPLIER_DECLINED" &&
-        typeof event.message === "string" &&
-        event.message.trim().length > 0
-    );
-
-  return declinedEvent?.message || null;
-}
-
 function sortBookingsByStart(bookings: SupplierBooking[]) {
   return [...bookings].sort(
     (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
   );
 }
 
-function DeclineModal({
-  booking,
-  message,
-  setMessage,
-  onClose,
-  onSubmit,
-  loading,
-}: {
-  booking: SupplierBooking;
-  message: string;
-  setMessage: (value: string) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-  loading: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 space-y-4">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900">Decline booking</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            You can add an optional note or suggest another time.
-          </p>
-        </div>
+function LocationSummary({ booking }: { booking: SupplierBooking }) {
+  const location = booking.serviceLocationSummary;
 
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-          <div className="font-medium text-gray-900">
-            {formatServiceName(booking.serviceType)}
-          </div>
-          <div>
-            {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
-          </div>
-          <div className="mt-2">Owner: {formatOwnerName(booking)}</div>
-          <div>Dogs: {formatDogNames(booking)}</div>
-        </div>
+  if (!location) return null;
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">
-            Optional message / suggested alternative
-          </label>
-          <textarea
-            className="w-full min-h-[120px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Example: I’m not available then, but I could do Friday at 10:00."
-          />
-        </div>
-
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={loading}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {loading ? "Declining..." : "Confirm Decline"}
-          </button>
-        </div>
+  if (location.type === "TRANSPORT") {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        <div className="font-medium">Pickup and drop-off</div>
+        {location.pickupAddress ? <div>Pickup: {location.pickupAddress}</div> : null}
+        {location.dropoffAddress ? <div>Drop-off: {location.dropoffAddress}</div> : null}
       </div>
+    );
+  }
+
+  if (!location.addressLine) return null;
+
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+      <div className="font-medium">{location.label || "Service location"}</div>
+      <div className="mt-1 whitespace-pre-line">{location.addressLine}</div>
     </div>
   );
 }
@@ -215,8 +158,6 @@ function BookingCard({
   onMarkPaid: (bookingId: string) => void;
   actionLoading: boolean;
 }) {
-  const supplierDeclineMessage = getLatestDeclineMessage(booking);
-
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
       <div className="flex items-start justify-between gap-4">
@@ -251,23 +192,11 @@ function BookingCard({
         <span className="font-medium">Dogs:</span> {formatDogNames(booking)}
       </div>
 
+      <LocationSummary booking={booking} />
+
       {booking.notes ? (
         <div className="text-sm text-gray-600">
           <span className="font-medium">Notes:</span> {booking.notes}
-        </div>
-      ) : null}
-
-      {booking.completedAt ? (
-        <div className="text-sm text-gray-600">
-          <span className="font-medium">Completed at:</span>{" "}
-          {formatDateTime(booking.completedAt)}
-        </div>
-      ) : null}
-
-      {supplierDeclineMessage ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          <div className="font-medium">Decline message</div>
-          <div className="mt-1">{supplierDeclineMessage}</div>
         </div>
       ) : null}
 
@@ -294,42 +223,36 @@ function BookingCard({
       ) : null}
 
       {booking.status === "CONFIRMED" ? (
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onStart(booking.id)}
-            disabled={actionLoading}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {actionLoading ? "Starting..." : "Start Service"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onStart(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Starting..." : "Start Service"}
+        </button>
       ) : null}
 
       {booking.status === "IN_PROGRESS" ? (
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onComplete(booking.id)}
-            disabled={actionLoading}
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {actionLoading ? "Completing..." : "Complete Service"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onComplete(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Completing..." : "Complete Service"}
+        </button>
       ) : null}
 
       {booking.status === "COMPLETED_UNBILLED" ? (
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => onMarkPaid(booking.id)}
-            disabled={actionLoading}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {actionLoading ? "Saving..." : "Mark Paid"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => onMarkPaid(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Saving..." : "Mark Paid"}
+        </button>
       ) : null}
     </div>
   );
@@ -399,8 +322,6 @@ function BookingSection({
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
-  const [declineBooking, setDeclineBooking] = useState<SupplierBooking | null>(null);
-  const [declineMessage, setDeclineMessage] = useState("");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier-dashboard-bookings"],
@@ -418,135 +339,58 @@ export default function SupplierDashboardPage() {
     mutationFn: async (bookingId: string) => {
       await api.patch(`/api/supplier/bookings/${bookingId}/accept`);
     },
-    onMutate: (bookingId) => {
-      setActiveBookingId(bookingId);
-    },
-    onSuccess: () => {
-      refreshBookings();
-    },
-    onError: (error) => {
-      console.error(error);
-      alert("Failed to accept booking");
-    },
-    onSettled: () => {
-      setActiveBookingId(null);
-    },
-  });
-
-  const declineMutation = useMutation({
-    mutationFn: async ({
-      bookingId,
-      message,
-    }: {
-      bookingId: string;
-      message?: string;
-    }) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
-        message: message || undefined,
-      });
-    },
-    onMutate: ({ bookingId }) => {
-      setActiveBookingId(bookingId);
-    },
-    onSuccess: () => {
-      refreshBookings();
-      setDeclineBooking(null);
-      setDeclineMessage("");
-    },
-    onError: (error) => {
-      console.error(error);
-      alert("Failed to decline booking");
-    },
-    onSettled: () => {
-      setActiveBookingId(null);
-    },
+    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onSuccess: refreshBookings,
+    onSettled: () => setActiveBookingId(null),
   });
 
   const startMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       await api.patch(`/api/supplier/bookings/${bookingId}/start`);
     },
-    onMutate: (bookingId) => {
-      setActiveBookingId(bookingId);
-    },
-    onSuccess: () => {
-      refreshBookings();
-    },
-    onError: (error) => {
-      console.error(error);
-      alert("Failed to start service");
-    },
-    onSettled: () => {
-      setActiveBookingId(null);
-    },
+    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onSuccess: refreshBookings,
+    onSettled: () => setActiveBookingId(null),
   });
 
   const completeMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       await api.patch(`/api/supplier/bookings/${bookingId}/complete`);
     },
-    onMutate: (bookingId) => {
-      setActiveBookingId(bookingId);
-    },
-    onSuccess: () => {
-      refreshBookings();
-    },
-    onError: (error) => {
-      console.error(error);
-      alert("Failed to complete service");
-    },
-    onSettled: () => {
-      setActiveBookingId(null);
-    },
+    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onSuccess: refreshBookings,
+    onSettled: () => setActiveBookingId(null),
   });
 
   const markPaidMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       await api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`);
     },
-    onMutate: (bookingId) => {
-      setActiveBookingId(bookingId);
-    },
-    onSuccess: () => {
-      refreshBookings();
-    },
-    onError: (error) => {
-      console.error(error);
-      alert("Failed to mark booking paid");
-    },
-    onSettled: () => {
-      setActiveBookingId(null);
-    },
+    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onSuccess: refreshBookings,
+    onSettled: () => setActiveBookingId(null),
   });
 
-  const rawBookings: SupplierBooking[] =
-    data?.bookings || data?.data || data || [];
+  const declineMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/decline`);
+    },
+    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onSuccess: refreshBookings,
+    onSettled: () => setActiveBookingId(null),
+  });
 
+  const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
   const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
-  const pendingBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "PENDING")
-  );
-
-  const confirmedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CONFIRMED")
-  );
-
-  const inProgressBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "IN_PROGRESS")
-  );
-
+  const pendingBookings = sortBookingsByStart(bookings.filter((b) => b.status === "PENDING"));
+  const confirmedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CONFIRMED"));
+  const inProgressBookings = sortBookingsByStart(bookings.filter((b) => b.status === "IN_PROGRESS"));
   const completedUnbilledBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "COMPLETED_UNBILLED")
   );
-
-  const completedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED")
-  );
-
-  const cancelledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CANCELLED")
-  );
+  const completedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED"));
+  const cancelledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CANCELLED"));
 
   const totalActive = bookings.filter(
     (b) =>
@@ -606,9 +450,7 @@ export default function SupplierDashboardPage() {
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <div className="text-sm text-gray-500">Total active bookings</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">
-            {totalActive}
-          </div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">{totalActive}</div>
         </div>
       </div>
 
@@ -620,14 +462,11 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
 
         <BookingSection
@@ -637,14 +476,11 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
 
         <BookingSection
@@ -654,14 +490,11 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
 
         <BookingSection
@@ -671,14 +504,11 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
 
         <BookingSection
@@ -688,14 +518,11 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
 
         <BookingSection
@@ -705,37 +532,13 @@ export default function SupplierDashboardPage() {
           isLoading={isLoading}
           error={error}
           activeBookingId={activeBookingId}
-          onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
-          onDecline={(booking) => {
-            setDeclineBooking(booking);
-            setDeclineMessage("");
-          }}
-          onStart={(bookingId) => startMutation.mutate(bookingId)}
-          onComplete={(bookingId) => completeMutation.mutate(bookingId)}
-          onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
         />
       </div>
-
-      {declineBooking ? (
-        <DeclineModal
-          booking={declineBooking}
-          message={declineMessage}
-          setMessage={setDeclineMessage}
-          onClose={() => {
-            if (!declineMutation.isPending) {
-              setDeclineBooking(null);
-              setDeclineMessage("");
-            }
-          }}
-          onSubmit={() => {
-            declineMutation.mutate({
-              bookingId: declineBooking.id,
-              message: declineMessage.trim(),
-            });
-          }}
-          loading={declineMutation.isPending}
-        />
-      ) : null}
     </div>
   );
 }
