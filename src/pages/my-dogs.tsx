@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Eye } from "lucide-react";
 import { api } from "@/lib/api";
 
 import DogCard from "@/components/dogs/DogCard";
@@ -22,34 +23,28 @@ type Dog = {
 export default function MyDogsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
-
-  // 🔥 Undo state
   const [pendingDelete, setPendingDelete] = useState<Dog | null>(null);
   const [undoTimeout, setUndoTimeout] = useState<any>(null);
 
   const { data, isLoading, error } = useQuery({
-  queryKey: ["owner-dogs"],
-  queryFn: async () => {
-    const res = await api.get("/api/owner/dogs");
-    return res.data;
-  },
-
-  // 🔥 IMPORTANT SETTINGS
-  staleTime: 0,
-  refetchOnMount: true,
-  refetchOnWindowFocus: true,
-});
+    queryKey: ["owner-dogs"],
+    queryFn: async () => {
+      const res = await api.get("/api/owner/dogs");
+      return res.data;
+    },
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
 
   const deleteDogMutation = useMutation({
-  mutationFn: async (dogId: string) => {
-    await api.delete(`/api/owner/dogs/${dogId}`);
-  },
-
-  // ✅ Only ensure backend sync
-  onSuccess: async () => {
-    await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-  },
-});
+    mutationFn: async (dogId: string) => {
+      await api.delete(`/api/owner/dogs/${dogId}`);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+    },
+  });
 
   const dogs: Dog[] = data?.dogs || [];
 
@@ -66,18 +61,13 @@ export default function MyDogsPage() {
     setShowForm(true);
   };
 
-  /* =========================================
-     DELETE WITH CONFIRM + UNDO
-  ========================================= */
   const handleDeleteDog = (dogId: string) => {
     const dogToDelete = dogs.find((d) => d.id === dogId);
     if (!dogToDelete) return;
 
-    // ✅ Confirm first
     const confirmed = window.confirm(`Delete ${dogToDelete.name}?`);
     if (!confirmed) return;
 
-    // ✅ Remove instantly from UI
     queryClient.setQueryData(["owner-dogs"], (old: any) => {
       if (!old) return old;
 
@@ -87,10 +77,8 @@ export default function MyDogsPage() {
       };
     });
 
-    // ✅ Store for undo
     setPendingDelete(dogToDelete);
 
-    // ✅ Start timer (5 seconds)
     const timeout = setTimeout(() => {
       deleteDogMutation.mutate(dogId);
       setPendingDelete(null);
@@ -99,16 +87,11 @@ export default function MyDogsPage() {
     setUndoTimeout(timeout);
   };
 
-  /* =========================================
-     UNDO DELETE
-  ========================================= */
   const handleUndo = () => {
     if (!pendingDelete) return;
 
-    // Cancel API delete
     clearTimeout(undoTimeout);
 
-    // Restore dog in UI
     queryClient.setQueryData(["owner-dogs"], (old: any) => {
       if (!old) return old;
 
@@ -123,8 +106,6 @@ export default function MyDogsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">My Dogs</h1>
 
@@ -139,7 +120,6 @@ export default function MyDogsPage() {
         </Button>
       </div>
 
-      {/* 🔥 UNDO BAR */}
       {pendingDelete && (
         <div className="mb-4 p-4 bg-yellow-100 border rounded flex justify-between items-center">
           <span>{pendingDelete.name} deleted</span>
@@ -149,7 +129,6 @@ export default function MyDogsPage() {
         </div>
       )}
 
-      {/* Form */}
       {showForm && (
         <DogForm
           dog={editingDog}
@@ -161,7 +140,6 @@ export default function MyDogsPage() {
         />
       )}
 
-      {/* Empty State */}
       {dogs.length === 0 && !showForm && (
         <div className="text-center py-12 text-gray-500">
           <p className="mb-4">No dogs added yet.</p>
@@ -171,20 +149,27 @@ export default function MyDogsPage() {
         </div>
       )}
 
-      {/* Dogs Grid */}
       {dogs.length > 0 && (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {dogs.map((dog) => (
-            <DogCard
-              key={dog.id}
-              dog={dog}
-              onEdit={() => handleEditDog(dog)}
-              onDelete={handleDeleteDog}
-            />
+            <div key={dog.id} className="space-y-3">
+              <DogCard
+                dog={dog}
+                onEdit={() => handleEditDog(dog)}
+                onDelete={handleDeleteDog}
+              />
+
+              <Link
+                to={`/owner/dogs/${dog.id}`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              >
+                <Eye className="h-4 w-4" />
+                View health profile
+              </Link>
+            </div>
           ))}
         </div>
       )}
-
     </div>
   );
 }
