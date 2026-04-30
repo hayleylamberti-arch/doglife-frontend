@@ -57,9 +57,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isTraining = serviceType === "TRAINING";
   const isWalking = serviceType === "WALKING";
 
-  const isOwnerHomeService =
-    isWalking || isTraining || isMobileVet || (isPetSitting && true);
-
   const isStayService = isBoarding || isPetSitting;
   const usesSlotSelection = !isStayService && !isDaycare;
 
@@ -418,11 +415,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       onClose();
     } catch (err: any) {
       console.error("APPOINTMENT BOOKING ERROR:", err);
-
-      const message =
-        err?.response?.data?.error || "Booking failed. Please try another time.";
-
-      alert(`❌ ${message}`);
+      alert(`❌ ${err?.response?.data?.error || "Booking failed. Please try another time."}`);
     } finally {
       setLoading(false);
     }
@@ -467,11 +460,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       onClose();
     } catch (err: any) {
       console.error("STAY BOOKING ERROR:", err);
-
-      const message =
-        err?.response?.data?.error || "Booking failed. Please try another time.";
-
-      alert(`❌ ${message}`);
+      alert(`❌ ${err?.response?.data?.error || "Booking failed. Please try another time."}`);
     } finally {
       setLoading(false);
     }
@@ -506,26 +495,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             <h2 className="text-xl font-semibold">{title}</h2>
 
             <div className="mt-1 text-sm text-gray-600">
-              {isBoarding ? (
-                <p>{formatPrice(displayPrice)} per night</p>
-              ) : isPetSitting ? (
-                <p>{formatPrice(displayPrice)} per stay</p>
-              ) : service?.unit ? (
-                <p>
-                  {formatPrice(displayPrice)} per{" "}
-                  {String(service.unit).toLowerCase().replace(/^per_/, "")}
-                  {service?.durationMinutes
-                    ? ` • ${service.durationMinutes} mins`
-                    : ""}
-                </p>
-              ) : (
-                <p>
-                  {formatPrice(displayPrice)}
-                  {service?.durationMinutes
-                    ? ` • ${service.durationMinutes} mins`
-                    : ""}
-                </p>
-              )}
+              {formatPrice(displayPrice)} per{" "}
+              {String(service?.unit || "session").toLowerCase().replace(/^per_/, "")}
+              {service?.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
             </div>
           </div>
 
@@ -533,43 +505,31 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             <div className="space-y-2">
               <label className="text-sm text-gray-600">Select dog(s)</label>
 
-              {dogsLoading ? (
-                <p className="text-sm text-gray-500">Loading dogs...</p>
-              ) : dogs.length === 0 ? (
-                <p className="text-sm text-red-500">
-                  No dogs found. Please add a dog before making a booking.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {dogs.map((dog) => {
-                    const checked = selectedDogIds.includes(dog.id);
+              {dogs.map((dog) => {
+                const checked = selectedDogIds.includes(dog.id);
 
-                    return (
-                      <label
-                        key={dog.id}
-                        className="flex cursor-pointer items-center gap-3 rounded border px-3 py-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggleDog(dog.id)}
-                        />
-                        <span className="text-sm">
-                          <span className="font-medium">{dog.name}</span>
-                          {dog.breed ? ` • ${dog.breed}` : ""}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
+                return (
+                  <label
+                    key={dog.id}
+                    className="flex cursor-pointer items-center gap-3 rounded border px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleDog(dog.id)}
+                    />
+                    <span className="text-sm">
+                      <span className="font-medium">{dog.name}</span>
+                      {dog.breed ? ` • ${dog.breed}` : ""}
+                    </span>
+                  </label>
+                );
+              })}
             </div>
 
             {shouldRequireOwnerAddress ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-3">
-                <p className="text-sm font-medium text-blue-900">
-                  Service address
-                </p>
+                <p className="text-sm font-medium text-blue-900">Service address</p>
 
                 {ownerAddress ? (
                   <label className="flex items-start gap-2 text-sm text-blue-800">
@@ -582,11 +542,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                       Use saved home address: {ownerAddress}
                     </span>
                   </label>
-                ) : (
-                  <p className="text-sm text-blue-800">
-                    No saved home address found.
-                  </p>
-                )}
+                ) : null}
 
                 {!useSavedAddress || !ownerAddress ? (
                   <textarea
@@ -599,27 +555,53 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             ) : null}
 
-            {/* Keep rest of your existing modal UI unchanged below this point */}
+            {isStayService ? (
+              <>
+                <input type="date" className="w-full rounded border px-3 py-2" value={arrivalDate} onChange={(e) => setArrivalDate(e.target.value)} />
+                <input type="date" className="w-full rounded border px-3 py-2" value={departureDate} onChange={(e) => setDepartureDate(e.target.value)} />
+              </>
+            ) : (
+              <>
+                <input type="date" className="w-full rounded border px-3 py-2" value={date} onChange={(e) => { setDate(e.target.value); setSelectedSlot(null); }} />
+
+                {usesSlotSelection && slots.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {slots.map((slot, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`rounded border p-2 text-sm ${
+                          selectedSlot === slot ? "bg-blue-600 text-white" : "bg-white"
+                        }`}
+                      >
+                        {new Date(slot).toLocaleTimeString("en-ZA", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
+
+            <textarea
+              className="min-h-[100px] w-full rounded border px-3 py-2"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Anything the supplier should know"
+            />
           </div>
 
           <div className="shrink-0 border-t bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
-            {isStayService ? (
-              <button
-                onClick={handleStayBooking}
-                disabled={stayBookingDisabled}
-                className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
-              >
-                {loading ? "Booking..." : "Confirm Booking"}
-              </button>
-            ) : (
-              <button
-                onClick={handleAppointmentBooking}
-                disabled={appointmentBookingDisabled}
-                className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
-              >
-                {loading ? "Booking..." : "Confirm Booking"}
-              </button>
-            )}
+            <button
+              onClick={isStayService ? handleStayBooking : handleAppointmentBooking}
+              disabled={isStayService ? stayBookingDisabled : appointmentBookingDisabled}
+              className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
+            >
+              {loading ? "Booking..." : "Confirm Booking"}
+            </button>
 
             <button
               onClick={onClose}
