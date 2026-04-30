@@ -8,6 +8,7 @@ interface Props {
   onClose: () => void;
 }
 
+type KennelType = "SOCIAL" | "PRIVATE";
 type PetSittingLocation = "OWNER_HOME" | "SITTER_HOME";
 type PetTransportJourneyType = "ONE_WAY" | "RETURN";
 
@@ -33,10 +34,6 @@ function formatLabel(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function buildLocalDateTime(date: string, time: string) {
-  return new Date(`${date}T${time}:00`);
-}
-
 export default function BookingModal({ supplierId, service, onClose }: Props) {
   const serviceType = service?.service || "WALKING";
 
@@ -47,11 +44,8 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isGrooming = serviceType === "GROOMING";
   const isWalking = serviceType === "WALKING";
   const isTraining = serviceType === "TRAINING";
-  const isDaycare = serviceType === "DAYCARE";
 
   const isStayService = isBoarding || isPetSitting;
-  const usesSlotSelection = !isStayService && !isDaycare;
-
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
 
   const [ownerAddress, setOwnerAddress] = useState("");
@@ -68,6 +62,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
   const [petSittingLocation, setPetSittingLocation] =
     useState<PetSittingLocation>("OWNER_HOME");
 
@@ -86,6 +81,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [groomingCategory, setGroomingCategory] = useState("");
   const [groomingSize, setGroomingSize] = useState("");
+  const [isMobileGrooming, setIsMobileGrooming] = useState(false);
 
   const availableGroomingSizes = useMemo(() => {
     return groomingTiers.filter((tier) => tier.category === groomingCategory);
@@ -112,6 +108,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isWalking ||
     isTraining ||
     isMobileVet ||
+    isMobileGrooming ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
 
   const displayPrice =
@@ -135,7 +132,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [isPetTransport]);
 
   useEffect(() => {
-    if (!date || !usesSlotSelection) {
+    if (!date || isStayService) {
       setSlots([]);
       setSelectedSlot(null);
       return;
@@ -145,7 +142,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
       .then((res) => setSlots(res.data?.slots || []))
       .catch(() => setSlots([]));
-  }, [date, supplierId, usesSlotSelection]);
+  }, [date, supplierId, isStayService]);
 
   useEffect(() => {
     if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
@@ -177,9 +174,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       parts.push(`Owner address: ${ownerAddress}.`);
     }
 
-    if (isTraining) {
-      parts.push("Training location: owner home.");
-    }
+    if (isTraining) parts.push("Training location: owner home.");
+
+    if (isBoarding) parts.push(`Kennel type: ${kennelType}.`);
 
     if (isPetSitting) {
       parts.push(`Pet sitting location: ${petSittingLocation}.`);
@@ -191,32 +188,28 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       parts.push(`Drop-off point: ${dropoff.trim()}.`);
     }
 
-    if (isMobileVet) {
-      parts.push(`Mobile vet service: ${mobileVetService}.`);
-    }
+    if (isMobileVet) parts.push(`Mobile vet service: ${mobileVetService}.`);
 
     if (isGrooming) {
       parts.push(`Grooming option: ${groomingCategory}.`);
       parts.push(`Size: ${groomingSize}.`);
+      if (isMobileGrooming) parts.push("Mobile grooming.");
     }
 
-    if (notes.trim()) {
-      parts.push(notes.trim());
-    }
+    if (notes.trim()) parts.push(notes.trim());
 
     return parts.join(" ");
   }
 
   async function handleBooking() {
-    if (selectedDogIds.length === 0) return alert("Select a dog");
+    if (selectedDogIds.length === 0) return alert("Select at least one dog");
 
     if (isStayService && (!arrivalDate || !departureDate)) {
       return alert("Select arrival and departure dates");
     }
 
     if (!isStayService && !date) return alert("Select a date");
-
-    if (usesSlotSelection && !selectedSlot) return alert("Select a time");
+    if (!isStayService && !selectedSlot) return alert("Select a time");
 
     if (shouldRequireOwnerAddress && !ownerAddress) {
       return alert("Please add your home address in your profile first");
@@ -233,25 +226,23 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     setLoading(true);
 
     try {
+      const startAt = isStayService
+        ? new Date(`${arrivalDate}T09:00`)
+        : new Date(selectedSlot!);
+
+      const endAt = isStayService
+        ? new Date(`${departureDate}T09:00`)
+        : new Date(startAt.getTime() + appointmentDurationMinutes * 60000);
+
       await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
         serviceType,
-        startAt: isStayService
-          ? new Date(`${arrivalDate}T09:00`)
-          : isDaycare
-          ? buildLocalDateTime(date, "08:00")
-          : new Date(selectedSlot!),
-        endAt: isStayService
-          ? new Date(`${departureDate}T09:00`)
-          : isDaycare
-          ? buildLocalDateTime(date, "17:00")
-          : new Date(
-              new Date(selectedSlot!).getTime() +
-                appointmentDurationMinutes * 60000
-            ),
+        startAt,
+        endAt,
         dogIds: selectedDogIds,
         dogCount: selectedDogIds.length,
+        kennelType: isBoarding ? kennelType : undefined,
         notes: buildNotes() || undefined,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
@@ -267,6 +258,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       setLoading(false);
     }
   }
+
+  const dateInputClass =
+    "block w-full max-w-full min-w-0 appearance-none rounded-md border border-gray-300 bg-white px-3 py-2 text-base leading-tight";
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-3 py-4">
@@ -284,7 +278,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             </p>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 pb-6">
+          <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 pb-6">
             <div className="space-y-2">
               <p className="text-sm text-gray-600">Select dog(s)</p>
               {dogs.map((dog) => (
@@ -304,6 +298,23 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 </label>
               ))}
             </div>
+
+            {isBoarding ? (
+              <div className="rounded-lg border border-gray-200 p-3">
+                <p className="mb-2 text-sm font-medium">Kennel preference</p>
+                <select
+                  className="w-full rounded border px-3 py-2"
+                  value={kennelType}
+                  onChange={(e) => setKennelType(e.target.value as KennelType)}
+                >
+                  <option value="SOCIAL">Social kennel</option>
+                  <option value="PRIVATE">Individual kennel</option>
+                </select>
+                <p className="mt-2 text-xs text-gray-500">
+                  You can select one or multiple dogs above.
+                </p>
+              </div>
+            ) : null}
 
             {shouldRequireOwnerAddress && ownerAddress ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -350,11 +361,20 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     ))}
                   </select>
                 </div>
+
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isMobileGrooming}
+                    onChange={(e) => setIsMobileGrooming(e.target.checked)}
+                  />
+                  <span>Mobile grooming at owner home</span>
+                </label>
               </div>
             ) : null}
 
             {isStayService ? (
-              <div className="rounded-lg border-2 border-blue-300 p-3">
+              <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
                 <p className="text-sm font-semibold">
                   Select arrival and departure dates
                 </p>
@@ -363,25 +383,25 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 </p>
 
                 <div className="space-y-3">
-                  <label className="block">
+                  <label className="block overflow-hidden">
                     <span className="mb-1 block text-sm font-medium">
                       Arrival date
                     </span>
                     <input
                       type="date"
-                      className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                      className={dateInputClass}
                       value={arrivalDate}
                       onChange={(e) => setArrivalDate(e.target.value)}
                     />
                   </label>
 
-                  <label className="block">
+                  <label className="block overflow-hidden">
                     <span className="mb-1 block text-sm font-medium">
                       Departure date
                     </span>
                     <input
                       type="date"
-                      className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                      className={dateInputClass}
                       value={departureDate}
                       onChange={(e) => setDepartureDate(e.target.value)}
                     />
@@ -407,7 +427,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-lg border-2 border-blue-300 p-3">
+              <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
                 <p className="text-sm font-semibold">Select date and time</p>
                 <p className="mb-3 text-xs text-gray-500">
                   Choose a date first, then pick an available time slot.
@@ -415,7 +435,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
                 <input
                   type="date"
-                  className="block w-full min-w-0 rounded-md border border-gray-300 px-3 py-2"
+                  className={dateInputClass}
                   value={date}
                   onChange={(e) => {
                     setDate(e.target.value);
@@ -425,7 +445,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             )}
 
-            {usesSlotSelection && slots.length > 0 ? (
+            {!isStayService && slots.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => (
                   <button
