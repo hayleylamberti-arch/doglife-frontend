@@ -1,26 +1,28 @@
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
-
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer
-} from "recharts";
 
 type Dog = {
   id: string;
   name: string;
-  breed: string;
-  gender?: string;
-  size?: string;
-  dateOfBirth?: string;
-  medicalNotes?: string;
-  profileImageUrl?: string;
+  breed?: string | null;
+  dateOfBirth?: string | null;
+  size?: string | null;
+  sex?: string | null;
+  isNeutered?: boolean | null;
+  behavioralNotes?: string | null;
+  goodWithDogs?: boolean | null;
+  goodWithChildren?: boolean | null;
+  medicalNotes?: string | null;
+  isVaccinated?: boolean | null;
+  vaccinationExpiryDate?: string | null;
+  kennelCoughAt?: string | null;
+  dewormedAt?: string | null;
+  tickFleaTreatedAt?: string | null;
+  vetName?: string | null;
+  vetPhone?: string | null;
+  profileImageUrl?: string | null;
 };
 
 type Activity = {
@@ -28,8 +30,110 @@ type Activity = {
   date: string;
   type: string;
   notes: string;
-  weight?: number;
 };
+
+function formatDate(value?: string | null) {
+  if (!value) return "Not added";
+  return new Date(value).toLocaleDateString("en-ZA", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function addDays(value?: string | null, days = 0) {
+  if (!value) return null;
+  const date = new Date(value);
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
+
+function getAge(value?: string | null) {
+  if (!value) return "Age not added";
+
+  const birthDate = new Date(value);
+  const today = new Date();
+
+  let years = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    years -= 1;
+  }
+
+  if (years <= 0) return "Under 1 year";
+  if (years === 1) return "1 year old";
+  return `${years} years old`;
+}
+
+function getDueStatus(date?: string | null) {
+  if (!date) {
+    return {
+      label: "Not added",
+      className: "bg-gray-100 text-gray-700",
+    };
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dueDate = new Date(date);
+  dueDate.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(
+    (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return {
+      label: "Overdue",
+      className: "bg-red-100 text-red-700",
+    };
+  }
+
+  if (diffDays <= 14) {
+    return {
+      label: "Due soon",
+      className: "bg-yellow-100 text-yellow-700",
+    };
+  }
+
+  return {
+    label: "Up to date",
+    className: "bg-green-100 text-green-700",
+  };
+}
+
+function HealthCard({
+  title,
+  date,
+  note,
+}: {
+  title: string;
+  date?: string | null;
+  note?: string;
+}) {
+  const status = getDueStatus(date);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-gray-900">{title}</p>
+          <p className="mt-1 text-sm text-gray-600">{formatDate(date)}</p>
+          {note ? <p className="mt-1 text-xs text-gray-500">{note}</p> : null}
+        </div>
+
+        <span className={`rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>
+          {status.label}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function DogProfilePage() {
   const { id } = useParams();
@@ -39,97 +143,89 @@ export default function DogProfilePage() {
     queryFn: async () => {
       const res = await apiRequest(`/api/owner/dogs/${id}`);
       return res.json();
-    }
+    },
   });
 
-  const dog: Dog = data?.dog;
+  const dog: Dog | undefined = data?.dog;
 
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [showForm, setShowForm] = useState(false);
-
-  const [activities, setActivities] = useState<Activity[]>([
-    { id: 1, date: "May 12", type: "🩺 Vet Visit", notes: "Annual Checkup" },
-    { id: 2, date: "May 10", type: "💉 Vaccination", notes: "Rabies" },
-    { id: 3, date: "May 5", type: "📝 Note", notes: "Limp after long walk" },
-    { id: 4, date: "May 1", type: "⚖️ Weight", notes: "Weigh-in", weight: 24 },
-    { id: 5, date: "Apr 20", type: "🪱 Deworming", notes: "Milbemax tablet" },
-    { id: 6, date: "Apr 10", type: "🦟 Flea & Tick", notes: "Frontline applied" }
-  ]);
-
   const [newActivity, setNewActivity] = useState({
     date: "",
     type: "",
     notes: "",
-    weight: ""
   });
 
+  const reminders = useMemo(() => {
+    if (!dog) return [];
+
+    return [
+      {
+        title: "Core vaccinations",
+        date: dog.vaccinationExpiryDate,
+        note: "Usually updated annually depending on vet guidance.",
+      },
+      {
+        title: "Kennel cough",
+        date: addDays(dog.kennelCoughAt, 365),
+        note: dog.kennelCoughAt
+          ? `Last done: ${formatDate(dog.kennelCoughAt)}`
+          : "Add last kennel cough date.",
+      },
+      {
+        title: "Deworming",
+        date: addDays(dog.dewormedAt, 90),
+        note: dog.dewormedAt
+          ? `Last done: ${formatDate(dog.dewormedAt)}`
+          : "Add last deworming date.",
+      },
+      {
+        title: "Tick and flea",
+        date: addDays(dog.tickFleaTreatedAt, 30),
+        note: dog.tickFleaTreatedAt
+          ? `Last done: ${formatDate(dog.tickFleaTreatedAt)}`
+          : "Add last tick and flea treatment date.",
+      },
+    ];
+  }, [dog]);
+
+  const birthdayAlert = useMemo(() => {
+    if (!dog?.dateOfBirth) return null;
+
+    const today = new Date();
+    const birthday = new Date(dog.dateOfBirth);
+
+    if (
+      today.getDate() === birthday.getDate() &&
+      today.getMonth() === birthday.getMonth()
+    ) {
+      return `🎂 Happy birthday, ${dog.name}!`;
+    }
+
+    return null;
+  }, [dog]);
+
   const addActivity = () => {
-    if (!newActivity.type) return;
+    if (!newActivity.type.trim()) return;
 
-    const activity: Activity = {
-      id: Date.now(),
-      date: newActivity.date,
-      type: newActivity.type,
-      notes: newActivity.notes,
-      weight: newActivity.weight ? Number(newActivity.weight) : undefined
-    };
-
-    setActivities([activity, ...activities]);
+    setActivities([
+      {
+        id: Date.now(),
+        date: newActivity.date || formatDate(new Date().toISOString()),
+        type: newActivity.type,
+        notes: newActivity.notes,
+      },
+      ...activities,
+    ]);
 
     setNewActivity({
       date: "",
       type: "",
       notes: "",
-      weight: ""
     });
 
     setShowForm(false);
   };
-
-  const deleteActivity = (id: number) => {
-    setActivities(activities.filter((a) => a.id !== id));
-  };
-
-  const weightData = activities
-    .filter((a) => a.weight)
-    .map((a) => ({
-      date: a.date,
-      weight: a.weight
-    }));
-
-  const today = new Date();
-
-  const isBirthday =
-    dog?.dateOfBirth &&
-    new Date(dog.dateOfBirth).getDate() === today.getDate() &&
-    new Date(dog.dateOfBirth).getMonth() === today.getMonth();
-
-  const alerts: string[] = [];
-
-  if (isBirthday) {
-    alerts.push(`🎂 Happy Birthday ${dog?.name}!`);
-  }
-
-  const lastDeworm = activities.find((a) =>
-    a.type.includes("Deworming")
-  );
-
-  const lastFlea = activities.find((a) =>
-    a.type.includes("Flea")
-  );
-
-  const addDays = (date: Date, days: number) => {
-    const d = new Date(date);
-    d.setDate(d.getDate() + days);
-    return d.toDateString();
-  };
-
-  if (lastDeworm) {
-    alerts.push(`🪱 Next Deworming Due: ${addDays(today, 90)}`);
-  }
-
-  if (lastFlea) {
-    alerts.push(`🦟 Next Flea Treatment Due: ${addDays(today, 30)}`);
-  }
 
   if (isLoading) {
     return <div className="p-10">Loading dog...</div>;
@@ -140,87 +236,100 @@ export default function DogProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-8">
-
-      {alerts.length > 0 && (
-        <div className="mb-8 space-y-2">
-          {alerts.map((alert, index) => (
-            <div
-              key={index}
-              className="bg-yellow-50 border border-yellow-200 p-3 rounded-md text-sm"
-            >
-              {alert}
-            </div>
-          ))}
+    <div className="mx-auto max-w-5xl space-y-8 p-6">
+      {birthdayAlert ? (
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-yellow-800">
+          {birthdayAlert}
         </div>
-      )}
+      ) : null}
 
-      <div className="flex flex-col items-center text-center mb-10">
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <div className="flex flex-col items-center text-center">
+          {dog.profileImageUrl ? (
+            <img
+              src={dog.profileImageUrl}
+              alt={dog.name}
+              className="h-36 w-36 rounded-full border object-cover"
+            />
+          ) : (
+            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-gray-100 text-5xl">
+              🐶
+            </div>
+          )}
 
-        {dog.profileImageUrl ? (
-          <img
-            src={dog.profileImageUrl}
-            alt={dog.name}
-            className="w-40 h-40 rounded-full object-cover border mb-4"
-          />
-        ) : (
-          <div className="w-40 h-40 rounded-full flex items-center justify-center bg-gray-100 text-4xl mb-4">
-            🐶
-          </div>
-        )}
+          <h1 className="mt-4 text-3xl font-bold text-gray-900">{dog.name}</h1>
 
-        <h1 className="text-3xl font-bold">{dog.name}</h1>
+          <p className="mt-2 text-gray-500">
+            {dog.breed || "Breed not added"} • {dog.size || "Size not added"} •{" "}
+            {dog.sex || "Sex not added"}
+          </p>
 
-        <p className="text-gray-500 mt-1">
-          {dog.breed} • {dog.size || "Unknown size"} • {dog.gender || "Unknown"}
-        </p>
-
+          <p className="mt-1 text-sm text-gray-500">
+            Birthday: {formatDate(dog.dateOfBirth)} • {getAge(dog.dateOfBirth)}
+          </p>
+        </div>
       </div>
 
-      {weightData.length > 0 && (
-        <div className="mb-12">
+      <div className="grid gap-4 md:grid-cols-2">
+        <HealthCard
+          title="Core vaccinations due"
+          date={dog.vaccinationExpiryDate}
+        />
+        {reminders.slice(1).map((reminder) => (
+          <HealthCard
+            key={reminder.title}
+            title={`${reminder.title} due`}
+            date={reminder.date}
+            note={reminder.note}
+          />
+        ))}
+      </div>
 
-          <h2 className="text-xl font-semibold mb-4">Weight Tracking</h2>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">Behaviour</h2>
 
-          <div className="border rounded-lg p-4">
-
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={weightData}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="weight"
-                  stroke="#000"
-                  strokeWidth={2}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-
+          <div className="mt-4 space-y-2 text-sm text-gray-700">
+            <p>Good with dogs: {dog.goodWithDogs ? "Yes" : "Not added"}</p>
+            <p>
+              Good with children: {dog.goodWithChildren ? "Yes" : "Not added"}
+            </p>
+            <p>Neutered: {dog.isNeutered ? "Yes" : "Not added"}</p>
+            <p className="whitespace-pre-line">
+              Notes: {dog.behavioralNotes || "No behaviour notes added."}
+            </p>
           </div>
-
         </div>
-      )}
 
-      <div className="mt-12">
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">Vet details</h2>
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Activity</h2>
+          <div className="mt-4 space-y-2 text-sm text-gray-700">
+            <p>Vet name: {dog.vetName || "Not added"}</p>
+            <p>Vet phone: {dog.vetPhone || "Not added"}</p>
+            <p className="whitespace-pre-line">
+              Medical notes: {dog.medicalNotes || "No medical notes added."}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">Activity</h2>
 
           <button
-            className="bg-black text-white px-4 py-2 rounded-md text-sm"
+            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
             onClick={() => setShowForm(true)}
           >
             + Add Activity
           </button>
         </div>
 
-        {showForm && (
-          <div className="border rounded-lg p-4 mb-6 space-y-3">
-
+        {showForm ? (
+          <div className="mb-6 space-y-3 rounded-xl border border-gray-200 p-4">
             <input
-              className="border p-2 w-full rounded"
+              className="w-full rounded border px-3 py-2"
               placeholder="Date"
               value={newActivity.date}
               onChange={(e) =>
@@ -229,35 +338,23 @@ export default function DogProfilePage() {
             />
 
             <select
-              className="border p-2 w-full rounded"
+              className="w-full rounded border px-3 py-2"
               value={newActivity.type}
               onChange={(e) =>
                 setNewActivity({ ...newActivity, type: e.target.value })
               }
             >
               <option value="">Select activity</option>
-              <option value="🩺 Vet Visit">Vet Visit</option>
-              <option value="💉 Vaccination">Vaccination</option>
-              <option value="💊 Medication">Medication</option>
-              <option value="⚖️ Weight">Weight</option>
-              <option value="🪱 Deworming">Deworming</option>
-              <option value="🦟 Flea & Tick">Flea & Tick Treatment</option>
-              <option value="📝 Note">Note</option>
+              <option value="Vet visit">Vet visit</option>
+              <option value="Vaccination">Vaccination</option>
+              <option value="Medication">Medication</option>
+              <option value="Deworming">Deworming</option>
+              <option value="Tick and flea">Tick and flea</option>
+              <option value="Note">Note</option>
             </select>
 
-            {newActivity.type === "⚖️ Weight" && (
-              <input
-                className="border p-2 w-full rounded"
-                placeholder="Weight (kg)"
-                value={newActivity.weight}
-                onChange={(e) =>
-                  setNewActivity({ ...newActivity, weight: e.target.value })
-                }
-              />
-            )}
-
             <input
-              className="border p-2 w-full rounded"
+              className="w-full rounded border px-3 py-2"
               placeholder="Notes"
               value={newActivity.notes}
               onChange={(e) =>
@@ -266,55 +363,43 @@ export default function DogProfilePage() {
             />
 
             <div className="flex gap-3">
-
               <button
-                className="bg-black text-white px-4 py-2 rounded"
+                className="rounded bg-black px-4 py-2 text-white"
                 onClick={addActivity}
               >
                 Save Activity
               </button>
 
               <button
-                className="border px-4 py-2 rounded"
+                className="rounded border px-4 py-2"
                 onClick={() => setShowForm(false)}
               >
                 Cancel
               </button>
-
             </div>
+          </div>
+        ) : null}
 
+        {activities.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No activity added yet. Add vet visits, treatments, medication, or
+            notes here.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {activities.map((activity) => (
+              <div
+                key={activity.id}
+                className="rounded-xl border border-gray-200 p-4"
+              >
+                <p className="text-sm text-gray-500">{activity.date}</p>
+                <p className="font-medium text-gray-900">{activity.type}</p>
+                <p className="text-sm text-gray-700">{activity.notes}</p>
+              </div>
+            ))}
           </div>
         )}
-
-        <div className="space-y-4">
-
-          {activities.map((activity) => (
-            <div
-              key={activity.id}
-              className="p-4 border rounded-lg flex justify-between items-center"
-            >
-
-              <div>
-                <p className="text-sm text-gray-500">{activity.date}</p>
-                <p className="font-medium">
-                  {activity.type} • {activity.notes}
-                </p>
-              </div>
-
-              <button
-                className="text-red-500 text-sm"
-                onClick={() => deleteActivity(activity.id)}
-              >
-                Delete
-              </button>
-
-            </div>
-          ))}
-
-        </div>
-
       </div>
-
     </div>
   );
 }
