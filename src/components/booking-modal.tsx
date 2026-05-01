@@ -281,12 +281,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
     try {
       const startAt = isStayService
-  ? new Date(`${arrivalDate}T09:00`)
-  : new Date(selectedSlot!);
+        ? new Date(`${arrivalDate}T09:00`)
+        : new Date(selectedSlot!);
 
-const endAt = isStayService
-  ? new Date(`${departureDate}T09:00`)
-  : new Date(startAt.getTime() + appointmentDurationMinutes * 60000);
+      const endAt = isStayService
+        ? new Date(`${departureDate}T09:00`)
+        : new Date(startAt.getTime() + appointmentDurationMinutes * 60000);
 
       await api.post("/api/bookings", {
         supplierId,
