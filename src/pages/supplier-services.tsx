@@ -20,7 +20,7 @@ function formatService(service: string) {
     BOARDING: "🏠 Boarding",
     TRAINING: "🎓 Training",
     DAYCARE: "🐾 Daycare",
-    PET_SITTING: "🛋️ Pet Sitting",
+    PET_SITTING: "🩷 Pet Sitting",
     PET_TRANSPORT: "🚗 Transport",
     MOBILE_VET: "🩺 Mobile Vet",
   };
@@ -31,19 +31,22 @@ function getServiceUnit(service: string, s: any) {
   switch (service) {
     case "WALKING":
     case "TRAINING":
+    case "MOBILE_VET":
+    case "PET_TRANSPORT":
       return `${s.durationMinutes || 30} mins`;
     case "BOARDING":
     case "PET_SITTING":
       return "per night";
     case "DAYCARE":
       return "per day";
-    case "PET_TRANSPORT":
-      return "per trip";
-    case "MOBILE_VET":
-      return "call-out fee";
     default:
       return "";
   }
+}
+
+function formatBufferMinutes(value?: number | null) {
+  if (value == null || value === 0) return "No buffer";
+  return `${value} min buffer`;
 }
 
 type DogSize = "SMALL" | "MEDIUM" | "LARGE" | "XL";
@@ -78,13 +81,36 @@ function calculateGroomingPrice({
   return total;
 }
 
+function serviceDefaults(serviceType: string) {
+  switch (serviceType) {
+    case "WALKING":
+      return { unit: "PER_VISIT", durationMinutes: 30, bufferMinutes: 15 };
+    case "TRAINING":
+      return { unit: "PER_SESSION", durationMinutes: 60, bufferMinutes: 15 };
+    case "MOBILE_VET":
+      return { unit: "PER_VISIT", durationMinutes: 60, bufferMinutes: 20 };
+    case "PET_TRANSPORT":
+      return { unit: "PER_TRIP", durationMinutes: 60, bufferMinutes: 15 };
+    case "BOARDING":
+      return { unit: "PER_NIGHT", durationMinutes: null, bufferMinutes: 0 };
+    case "PET_SITTING":
+      return { unit: "PER_NIGHT", durationMinutes: null, bufferMinutes: 0 };
+    case "DAYCARE":
+      return { unit: "PER_DAY", durationMinutes: null, bufferMinutes: 0 };
+    case "GROOMING":
+      return { unit: "PER_VISIT", durationMinutes: 60, bufferMinutes: 0 };
+    default:
+      return { unit: "PER_VISIT", durationMinutes: 30, bufferMinutes: 0 };
+  }
+}
+
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["supplier-services"],
     queryFn: async () => {
-      const res = await api.get("/api/supplier/services");
+      const res = await api.get("/api/supplierServices");
       return res.data.services;
     },
   });
@@ -94,9 +120,7 @@ export default function SupplierServicesPage() {
   const [serviceType, setServiceType] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("30");
-
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editPrice, setEditPrice] = useState("");
+  const [bufferMinutes, setBufferMinutes] = useState("0");
 
   const [washBrush, setWashBrush] = useState({
     small: "",
@@ -114,20 +138,48 @@ export default function SupplierServicesPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!serviceType) throw new Error("Select a service");
+      if (!serviceType) {
+        throw new Error("Select a service");
+      }
+
+      const defaults = serviceDefaults(serviceType);
 
       if (serviceType === "GROOMING") {
-        return api.post("/api/supplier/services", {
-          service: "GROOMING",
-          baseRate: 0,
-          groomingOptions: { washBrush, washCut },
+        return api.post("/api/supplierServices", {
+          services: [
+            {
+              service: "GROOMING",
+              unit: defaults.unit,
+              baseRateCents: 1,
+              durationMinutes: defaults.durationMinutes,
+              bufferMinutes: Number(bufferMinutes || "0"),
+              groomingOptions: { washBrush, washCut },
+            },
+          ],
         });
       }
 
-      return api.post("/api/supplier/services", {
-        service: serviceType,
-        baseRate: Number(price),
-        durationMinutes: Number(duration),
+      if (!price || Number(price) <= 0) {
+        throw new Error("Enter a valid price");
+      }
+
+      const parsedDuration =
+        defaults.durationMinutes == null
+          ? null
+          : Number(duration || String(defaults.durationMinutes));
+
+      const parsedBuffer = Number(bufferMinutes || "0");
+
+      return api.post("/api/supplierServices", {
+        services: [
+          {
+            service: serviceType,
+            unit: defaults.unit,
+            baseRateCents: Math.round(Number(price) * 100),
+            durationMinutes: parsedDuration,
+            bufferMinutes: parsedBuffer,
+          },
+        ],
       });
     },
     onSuccess: () => {
@@ -135,25 +187,16 @@ export default function SupplierServicesPage() {
       setServiceType("");
       setPrice("");
       setDuration("30");
+      setBufferMinutes("0");
       setWashBrush({ small: "", medium: "", large: "", xl: "" });
       setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/supplier/services/${id}`),
+    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      return api.patch(`/api/supplier/services/${payload.id}`, payload.data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-      setEditingId(null);
     },
   });
 
@@ -163,16 +206,36 @@ export default function SupplierServicesPage() {
     return acc;
   }, {});
 
+  const showDurationInput =
+    serviceType &&
+    !["GROOMING", "BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
+
+  const showBufferInput =
+    serviceType &&
+    !["BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-semibold">Manage Services</h1>
 
       <div className="border rounded-xl p-6 bg-white space-y-4">
-        <h2>Add New Service</h2>
+        <h2 className="text-lg font-medium">Add New Service</h2>
 
         <select
           value={serviceType}
-          onChange={(e) => setServiceType(e.target.value)}
+          onChange={(e) => {
+            const nextType = e.target.value;
+            setServiceType(nextType);
+
+            const defaults = serviceDefaults(nextType || "");
+            setDuration(
+              defaults.durationMinutes == null
+                ? ""
+                : String(defaults.durationMinutes)
+            );
+            setBufferMinutes(String(defaults.bufferMinutes ?? 0));
+          }}
+          className="border rounded px-3 py-2 w-full"
         >
           <option value="">Select service</option>
           {SERVICE_TYPES.map((s) => (
@@ -183,30 +246,44 @@ export default function SupplierServicesPage() {
         </select>
 
         {serviceType && serviceType !== "GROOMING" && (
-          <>
-            <input
-              placeholder="Price (R)"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="border px-2 block"
-            />
+          <input
+            placeholder="Price (R)"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="border rounded px-3 py-2 block w-full"
+          />
+        )}
 
+        {showDurationInput && (
+          <input
+            placeholder="Duration (mins)"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            className="border rounded px-3 py-2 block w-full"
+          />
+        )}
+
+        {showBufferInput && (
+          <div className="space-y-1">
             <input
-              placeholder="Duration (mins)"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="border px-2 block"
+              placeholder="Buffer time between appointments (mins)"
+              value={bufferMinutes}
+              onChange={(e) => setBufferMinutes(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
             />
-          </>
+            <p className="text-sm text-gray-500">
+              Use this for travel, setup, cleanup, or admin time between bookings.
+            </p>
+          </div>
         )}
 
         {serviceType === "GROOMING" && (
           <>
-            <p>Wash & Brush</p>
+            <p className="font-medium">Wash & Brush</p>
             {["small", "medium", "large", "xl"].map((size) => (
               <input
                 key={size}
-                placeholder={size}
+                placeholder={`${size} price`}
                 value={(washBrush as any)[size]}
                 onChange={(e) =>
                   setWashBrush((prev) => ({
@@ -214,15 +291,15 @@ export default function SupplierServicesPage() {
                     [size]: e.target.value,
                   }))
                 }
-                className="border px-2 block"
+                className="border rounded px-3 py-2 block w-full"
               />
             ))}
 
-            <p>Wash & Cut</p>
+            <p className="font-medium">Wash & Cut</p>
             {["small", "medium", "large", "xl"].map((size) => (
               <input
                 key={size}
-                placeholder={size}
+                placeholder={`${size} price`}
                 value={(washCut as any)[size]}
                 onChange={(e) =>
                   setWashCut((prev) => ({
@@ -230,66 +307,71 @@ export default function SupplierServicesPage() {
                     [size]: e.target.value,
                   }))
                 }
-                className="border px-2 block"
+                className="border rounded px-3 py-2 block w-full"
               />
             ))}
+
+            <div className="space-y-1">
+              <input
+                placeholder="Buffer time between appointments (mins)"
+                value={bufferMinutes}
+                onChange={(e) => setBufferMinutes(e.target.value)}
+                className="border rounded px-3 py-2 block w-full"
+              />
+              <p className="text-sm text-gray-500">
+                Use this for travel, setup, cleanup, or admin time between bookings.
+              </p>
+            </div>
           </>
         )}
 
         {serviceType && (
-          <button onClick={() => createMutation.mutate()}>
-            Add Service
+          <button
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
+            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+          >
+            {createMutation.isPending ? "Saving..." : "Add Service"}
           </button>
         )}
+
+        {createMutation.isError ? (
+          <p className="text-sm text-red-600">
+            {(createMutation.error as Error)?.message || "Failed to save service"}
+          </p>
+        ) : null}
       </div>
 
       <div>
-        <h2>Your Services</h2>
+        <h2 className="text-lg font-medium mb-4">Your Services</h2>
+
+        {isLoading ? <p>Loading services...</p> : null}
+
+        {!isLoading && Object.keys(groupedServices).length === 0 ? (
+          <p className="text-gray-500">No services added yet.</p>
+        ) : null}
 
         {Object.entries(groupedServices).map(([type, group]: any) => (
-          <div key={type} className="border rounded-lg p-4 mb-4">
+          <div key={type} className="border rounded-lg p-4 mb-4 bg-white">
             <p className="font-medium">{formatService(type)}</p>
 
-            <div className="text-sm text-gray-500 mt-2 space-y-1">
+            <div className="text-sm text-gray-500 mt-2 space-y-2">
               {type !== "GROOMING" &&
                 group.map((s: any) => (
-                  <div key={s.id} className="flex gap-2 items-center">
-                    {editingId === s.id ? (
-                      <>
-                        <input
-                          value={editPrice}
-                          onChange={(e) => setEditPrice(e.target.value)}
-                          className="border px-2"
-                        />
-                        <button
-                          onClick={() =>
-                            updateMutation.mutate({
-                              id: s.id,
-                              data: {
-                                baseRateCents: Math.round(Number(editPrice) * 100),
-                              },
-                            })
-                          }
-                        >
-                          Save
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span>
-                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                          {getServiceUnit(type, s)}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setEditingId(s.id);
-                            setEditPrice((s.baseRateCents / 100).toFixed(0));
-                          }}
-                        >
-                          Edit
-                        </button>
-                      </>
-                    )}
+                  <div key={s.id} className="flex items-center justify-between gap-3">
+                    <div>
+                      <p>
+                        R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
+                      </p>
+                      <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+                    </div>
+
+                    <button
+                      onClick={() => deleteMutation.mutate(s.id)}
+                      className="rounded border px-3 py-1"
+                    >
+                      Delete
+                    </button>
                   </div>
                 ))}
 
@@ -306,10 +388,12 @@ export default function SupplierServicesPage() {
                   });
 
                   return (
-                    <div key={s.id}>
+                    <div key={s.id} className="space-y-2">
                       <p className="text-green-600 font-semibold">
                         Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
                       </p>
+
+                      <p>{formatBufferMinutes(s.bufferMinutes)}</p>
 
                       {brush.length > 0 && (
                         <>
@@ -332,19 +416,16 @@ export default function SupplierServicesPage() {
                           ))}
                         </>
                       )}
+
+                      <button
+                        onClick={() => deleteMutation.mutate(s.id)}
+                        className="rounded border px-3 py-1 mt-2"
+                      >
+                        Delete
+                      </button>
                     </div>
                   );
                 })}
-            </div>
-
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() =>
-                  group.forEach((s: any) => deleteMutation.mutate(s.id))
-                }
-              >
-                Delete
-              </button>
             </div>
           </div>
         ))}
