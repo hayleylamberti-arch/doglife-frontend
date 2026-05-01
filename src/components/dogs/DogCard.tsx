@@ -1,69 +1,115 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Edit, Trash2, PawPrint } from "lucide-react";
+
+function formatLabel(value?: string | null) {
+  if (!value) return "Not added";
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getAge(dateOfBirth?: string | null) {
+  if (!dateOfBirth) return null;
+
+  const birthDate = new Date(dateOfBirth);
+  const today = new Date();
+
+  let years = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDiff < 0 ||
+    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    years -= 1;
+  }
+
+  if (years <= 0) return "Under 1 year";
+  if (years === 1) return "1 year old";
+  return `${years} years old`;
+}
 
 export default function DogCard({ dog, onEdit, onDelete }: any) {
-  const navigate = useNavigate();
+  const age = getAge(dog.dateOfBirth);
 
   return (
-    <Card
-      className="cursor-pointer hover:shadow-xl transition duration-200"
-      onClick={() => navigate(`/dogs/${dog.id}`)}
-    >
-      <CardHeader>
-        <CardTitle className="text-lg">{dog.name}</CardTitle>
-      </CardHeader>
+    <Card className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
+      <CardContent className="p-5">
+        <div className="flex items-start gap-4">
+          {dog.profileImageUrl ? (
+            <img
+              src={dog.profileImageUrl}
+              alt={dog.name}
+              className="h-24 w-24 shrink-0 rounded-2xl border object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border bg-gray-100 text-4xl">
+              🐶
+            </div>
+          )}
 
-      <CardContent className="flex items-center gap-5">
-        
-        {/* Dog Avatar */}
-        {dog.profileImageUrl ? (
-          <img
-            src={dog.profileImageUrl}
-            alt={dog.name}
-            className="w-24 h-24 rounded-full object-cover border"
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-full flex items-center justify-center bg-gray-100 text-4xl border">
-            🐶
-          </div>
-        )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="truncate text-xl font-bold text-gray-900">
+                  {dog.name}
+                </h3>
 
-        {/* Dog Info */}
-        <div className="flex-1">
-          <p className="font-medium text-gray-900">
-            {dog.breed || "Mixed breed"}
-          </p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {dog.breed || "Breed not added"}
+                </p>
+              </div>
 
-          <p className="text-sm text-gray-500">{dog.size}</p>
+              <PawPrint className="h-5 w-5 shrink-0 text-blue-500" />
+            </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 mt-3">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                {formatLabel(dog.size)}
+              </span>
 
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(dog.id);
-              }}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+              {dog.sex ? (
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+                  {formatLabel(dog.sex)}
+                </span>
+              ) : null}
+
+              {age ? (
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                  {age}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+              >
+                <Edit className="mr-1 h-4 w-4" />
+                Edit
+              </Button>
+
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(dog.id);
+                }}
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                Delete
+              </Button>
+            </div>
           </div>
         </div>
-
       </CardContent>
     </Card>
   );
