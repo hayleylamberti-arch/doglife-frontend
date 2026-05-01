@@ -18,6 +18,23 @@ interface Dog {
   breed?: string | null;
 }
 
+interface BookableSlot {
+  start: string;
+  end: string;
+}
+
+interface BookableSlotsResponse {
+  ok?: boolean;
+  date?: string;
+  totalSlots?: number;
+  hasMore?: boolean;
+  slots?: {
+    morning?: BookableSlot[];
+    afternoon?: BookableSlot[];
+    evening?: BookableSlot[];
+  };
+}
+
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
@@ -32,6 +49,15 @@ function formatLabel(value?: string | null) {
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatSlotTime(value: string) {
+  return new Intl.DateTimeFormat("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Africa/Johannesburg",
+  }).format(new Date(value));
 }
 
 export default function BookingModal({ supplierId, service, onClose }: Props) {
@@ -55,6 +81,8 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsLoaded, setSlotsLoaded] = useState(false);
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
@@ -132,17 +160,43 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [isPetTransport]);
 
   useEffect(() => {
-    if (!date || isStayService) {
+    if (!date || isStayService || !service?.id) {
       setSlots([]);
       setSelectedSlot(null);
+      setSlotsLoaded(false);
       return;
     }
 
+    setSlotsLoading(true);
+    setSlotsLoaded(false);
+
     api
-      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
-      .then((res) => setSlots(res.data?.slots || []))
-      .catch(() => setSlots([]));
-  }, [date, supplierId, isStayService]);
+      .get<BookableSlotsResponse>(
+        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}`
+      )
+      .then((res) => {
+        const grouped = res.data?.slots || {};
+
+        const flatSlots = [
+          ...(grouped.morning || []),
+          ...(grouped.afternoon || []),
+          ...(grouped.evening || []),
+        ]
+          .map((slot) => slot.start)
+          .filter(Boolean);
+
+        setSlots(flatSlots);
+        setSelectedSlot(null);
+      })
+      .catch(() => {
+        setSlots([]);
+        setSelectedSlot(null);
+      })
+      .finally(() => {
+        setSlotsLoading(false);
+        setSlotsLoaded(true);
+      });
+  }, [date, supplierId, service?.id, isStayService]);
 
   useEffect(() => {
     if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
@@ -228,7 +282,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     try {
       const startAt = isStayService
         ? new Date(`${arrivalDate}T09:00`)
-        : new Date(selectedSlot!);
+        : new Date(selectedSlot);
 
       const endAt = isStayService
         ? new Date(`${departureDate}T09:00`)
@@ -445,6 +499,16 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             )}
 
+            {!isStayService && slotsLoading ? (
+              <div className="text-sm text-gray-500">Loading available times...</div>
+            ) : null}
+
+            {!isStayService && date && slotsLoaded && slots.length === 0 ? (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+                This supplier is not available on this date. Please choose another date.
+              </div>
+            ) : null}
+
             {!isStayService && slots.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => (
@@ -456,10 +520,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                       selectedSlot === slot ? "bg-blue-600 text-white" : "bg-white"
                     }`}
                   >
-                    {new Date(slot).toLocaleTimeString("en-ZA", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatSlotTime(slot)}
                   </button>
                 ))}
               </div>
