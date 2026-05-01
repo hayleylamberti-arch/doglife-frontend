@@ -146,7 +146,7 @@ export default function DogProfilePage() {
     },
   });
 
-  const dog: Dog | undefined = data?.dog;
+  const dog: Dog | undefined = data?.dog || data?.data?.dog || data?.data || data;
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [showForm, setShowForm] = useState(false);
