@@ -408,10 +408,18 @@ export default function SupplierDashboardPage() {
   });
 
   const declineMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`);
+    mutationFn: async ({
+      bookingId,
+      message,
+    }: {
+      bookingId: string;
+      message?: string;
+    }) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
+        message,
+      });
     },
-    onMutate: (bookingId) => setActiveBookingId(bookingId),
+    onMutate: ({ bookingId }) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
@@ -470,6 +478,22 @@ export default function SupplierDashboardPage() {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }, 50);
+  }
+
+  function handleDecline(booking: SupplierBooking) {
+    const message = window.prompt(
+      "Add a message for the owner. You can suggest another time here.",
+      ""
+    );
+
+    if (message === null) {
+      return;
+    }
+
+    declineMutation.mutate({
+      bookingId: booking.id,
+      message: message.trim() || undefined,
+    });
   }
 
   return (
@@ -554,7 +578,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
@@ -571,7 +595,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
@@ -588,7 +612,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
@@ -605,7 +629,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
@@ -622,7 +646,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
@@ -639,7 +663,7 @@ export default function SupplierDashboardPage() {
           error={error}
           activeBookingId={activeBookingId}
           onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={(booking) => declineMutation.mutate(booking.id)}
+          onDecline={handleDecline}
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
