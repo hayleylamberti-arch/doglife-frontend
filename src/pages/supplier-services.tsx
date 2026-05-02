@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { api } from "@/lib/api";
 
 const SERVICE_TYPES = [
@@ -47,6 +48,23 @@ function getServiceUnit(service: string, s: any) {
 function formatBufferMinutes(value?: number | null) {
   if (value == null || value === 0) return "No buffer";
   return `${value} min buffer`;
+}
+
+function getApiErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    return (
+      error.response?.data?.error ||
+      error.response?.data?.message ||
+      error.message ||
+      "Failed to save service"
+    );
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Failed to save service";
 }
 
 type DogSize = "SMALL" | "MEDIUM" | "LARGE" | "XL";
@@ -240,6 +258,8 @@ export default function SupplierServicesPage() {
 
         {serviceType && serviceType !== "GROOMING" && (
           <input
+            type="number"
+            min="0"
             placeholder="Price (R)"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
@@ -249,6 +269,8 @@ export default function SupplierServicesPage() {
 
         {showDurationInput && (
           <input
+            type="number"
+            min="1"
             placeholder="Time (mins)"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
@@ -259,6 +281,8 @@ export default function SupplierServicesPage() {
         {showBufferInput && serviceType !== "GROOMING" && (
           <div className="space-y-1">
             <input
+              type="number"
+              min="0"
               placeholder="Time buffer (mins)"
               value={bufferMinutes}
               onChange={(e) => setBufferMinutes(e.target.value)}
@@ -276,6 +300,8 @@ export default function SupplierServicesPage() {
             {["small", "medium", "large", "xl"].map((size) => (
               <input
                 key={size}
+                type="number"
+                min="0"
                 placeholder={`${size} price`}
                 value={(washBrush as any)[size]}
                 onChange={(e) =>
@@ -292,6 +318,8 @@ export default function SupplierServicesPage() {
             {["small", "medium", "large", "xl"].map((size) => (
               <input
                 key={size}
+                type="number"
+                min="0"
                 placeholder={`${size} price`}
                 value={(washCut as any)[size]}
                 onChange={(e) =>
@@ -306,6 +334,8 @@ export default function SupplierServicesPage() {
 
             <div className="space-y-1">
               <input
+                type="number"
+                min="0"
                 placeholder="Time buffer (mins)"
                 value={bufferMinutes}
                 onChange={(e) => setBufferMinutes(e.target.value)}
@@ -330,7 +360,7 @@ export default function SupplierServicesPage() {
 
         {createMutation.isError ? (
           <p className="text-sm text-red-600">
-            {(createMutation.error as Error)?.message || "Failed to save service"}
+            {getApiErrorMessage(createMutation.error)}
           </p>
         ) : null}
       </div>
