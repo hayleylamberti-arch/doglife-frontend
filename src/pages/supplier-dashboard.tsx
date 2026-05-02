@@ -527,6 +527,27 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">
+              Welcome to DogLife 🐾
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Easily manage your bookings, keep your availability updated, and
+              stay on top of your day.
+            </p>
+          </div>
+
+          <Link
+            to="/supplier/availability"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            Update Availability
+          </Link>
+        </div>
+      </div>
+
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
           label="Pending bookings"

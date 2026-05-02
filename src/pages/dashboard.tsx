@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -159,38 +159,71 @@ function BookingMetaPill({ label, value }: { label: string; value: string }) {
 }
 
 function Section({
+  id,
   title,
   bookings,
   renderBookingCard,
   titleColor,
+  isOpen,
+  onToggle,
 }: {
+  id: string;
   title: string;
   bookings: any[];
   renderBookingCard: (booking: any, isToday?: boolean) => React.ReactNode;
   titleColor?: string;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
   if (bookings.length === 0) return null;
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className={`text-lg font-semibold ${titleColor || "text-gray-900"}`}>
-          {title}
-        </h3>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-          {bookings.length}
-        </span>
-      </div>
+    <section
+      id={id}
+      className="rounded-2xl border border-gray-200 bg-white p-4"
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <div>
+          <h3 className={`text-lg font-semibold ${titleColor || "text-gray-900"}`}>
+            {title}
+          </h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
+          </p>
+        </div>
 
-      <div className="space-y-4">
-        {bookings.map((booking: any) => renderBookingCard(booking))}
-      </div>
-    </div>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            {bookings.length}
+          </span>
+          <span className="text-xl text-gray-500">{isOpen ? "−" : "+"}</span>
+        </div>
+      </button>
+
+      {isOpen ? (
+        <div className="mt-4 space-y-4">
+          {bookings.map((booking: any) => renderBookingCard(booking))}
+        </div>
+      ) : null}
+    </section>
   );
 }
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    today: true,
+    pending: true,
+    confirmed: true,
+    "in-progress": false,
+    "completed-unbilled": false,
+    completed: false,
+    cancelled: false,
+  });
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
@@ -328,6 +361,13 @@ export default function Dashboard() {
   const hasAnyBookings = bookingSections.some(
     (section) => section.bookings.length > 0
   );
+
+  function toggleSection(sectionKey: string) {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }));
+  }
 
   const renderBookingCard = (booking: any, isToday = false) => {
     const supplierMessage =
@@ -510,8 +550,8 @@ export default function Dashboard() {
               Welcome to DogLife 🐾
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              Manage your bookings, view service updates, and book trusted dog
-              services near you.
+              Easily manage your bookings, view service updates, and book trusted
+              dog services near you.
             </p>
           </div>
 
@@ -552,16 +592,19 @@ export default function Dashboard() {
         ) : null}
 
         {!isLoading && hasAnyBookings ? (
-          <div className="space-y-10">
+          <div className="space-y-6">
             {bookingSections.map((section) => (
               <Section
                 key={section.key}
+                id={section.key}
                 title={section.title}
                 bookings={section.bookings}
                 renderBookingCard={(booking) =>
                   renderBookingCard(booking, section.isToday)
                 }
                 titleColor={section.titleColor}
+                isOpen={Boolean(openSections[section.key])}
+                onToggle={() => toggleSection(section.key)}
               />
             ))}
           </div>
