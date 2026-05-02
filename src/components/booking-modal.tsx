@@ -10,6 +10,7 @@ interface Props {
 type KennelType = "SOCIAL" | "PRIVATE";
 type PetSittingLocation = "OWNER_HOME" | "SITTER_HOME";
 type PetTransportJourneyType = "ONE_WAY" | "RETURN";
+type DaycareSessionType = "HALF_DAY" | "FULL_DAY";
 
 interface Dog {
   id: string;
@@ -96,6 +97,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
 
+  const [daycareSessionType, setDaycareSessionType] =
+    useState<DaycareSessionType>("FULL_DAY");
+
   const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
     ? service.pricingTiers
     : [];
@@ -140,6 +144,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     () => getStayDays(arrivalDate, departureDate),
     [arrivalDate, departureDate]
   );
+
+  const maxDogsPerBooking = useMemo(() => {
+    return toNumber(service?.maxDogsPerBooking);
+  }, [service?.maxDogsPerBooking]);
 
   const boardingBaseRateCents = useMemo(() => {
     return toNumber(service?.baseRateCents);
@@ -203,9 +211,86 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     kennelType,
   ]);
 
+  const daycareHalfDayPriceCents = useMemo(() => {
+    return toNumber(service?.pricingJson?.halfDayPriceCents);
+  }, [service?.pricingJson?.halfDayPriceCents]);
+
+  const daycareFullDayPriceCents = useMemo(() => {
+    return (
+      toNumber(service?.pricingJson?.fullDayPriceCents) ||
+      toNumber(service?.baseRateCents)
+    );
+  }, [service?.pricingJson?.fullDayPriceCents, service?.baseRateCents]);
+
+  const daycareAdditionalDogEnabled = useMemo(() => {
+    const directEnabled = toBoolean(service?.additionalDogEnabled);
+    const pricingJsonEnabled = toBoolean(service?.pricingJson?.additionalDogEnabled);
+    const additionalDogPriceExists =
+      toNumber(service?.additionalDogPriceCents) > 0 ||
+      toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
+      toNumber(service?.pricingJson?.additionalDogPrice) > 0;
+
+    return directEnabled || pricingJsonEnabled || additionalDogPriceExists;
+  }, [
+    service?.additionalDogEnabled,
+    service?.pricingJson?.additionalDogEnabled,
+    service?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPrice,
+  ]);
+
+  const daycareAdditionalDogPriceCents = useMemo(() => {
+    return (
+      toNumber(service?.additionalDogPriceCents) ||
+      toNumber(service?.pricingJson?.additionalDogPriceCents) ||
+      toNumber(service?.pricingJson?.additionalDogPrice)
+    );
+  }, [
+    service?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPrice,
+  ]);
+
+  const daycareBaseSessionPriceCents = useMemo(() => {
+    return daycareSessionType === "HALF_DAY"
+      ? daycareHalfDayPriceCents
+      : daycareFullDayPriceCents;
+  }, [
+    daycareSessionType,
+    daycareHalfDayPriceCents,
+    daycareFullDayPriceCents,
+  ]);
+
+  const estimatedDaycareTotalCents = useMemo(() => {
+    if (!isDaycare) return null;
+
+    const dogCount = Math.max(1, selectedDogIds.length || 1);
+    let total = daycareBaseSessionPriceCents;
+
+    if (dogCount > 1) {
+      if (daycareAdditionalDogEnabled && daycareAdditionalDogPriceCents > 0) {
+        total += daycareAdditionalDogPriceCents * (dogCount - 1);
+      } else {
+        total = daycareBaseSessionPriceCents * dogCount;
+      }
+    }
+
+    return total;
+  }, [
+    isDaycare,
+    selectedDogIds.length,
+    daycareBaseSessionPriceCents,
+    daycareAdditionalDogEnabled,
+    daycareAdditionalDogPriceCents,
+  ]);
+
   const displayPrice = useMemo(() => {
     if (isBoarding) {
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
+    }
+
+    if (isDaycare) {
+      return estimatedDaycareTotalCents ?? daycareBaseSessionPriceCents;
     }
 
     if (isGrooming && selectedGroomingTier?.priceCents) {
@@ -217,6 +302,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isBoarding,
     estimatedBoardingTotalCents,
     boardingBaseRateCents,
+    isDaycare,
+    estimatedDaycareTotalCents,
+    daycareBaseSessionPriceCents,
     isGrooming,
     selectedGroomingTier,
     service?.baseRateCents,
@@ -234,6 +322,16 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return `${formatPrice(boardingBaseRateCents)} per night`;
     }
 
+    if (isDaycare) {
+      const dogCount = Math.max(1, selectedDogIds.length || 1);
+      const sessionLabel =
+        daycareSessionType === "HALF_DAY" ? "half day" : "full day";
+
+      return `${formatPrice(displayPrice)} total • ${sessionLabel} • ${dogCount} dog${
+        dogCount > 1 ? "s" : ""
+      }`;
+    }
+
     return `${formatPrice(displayPrice)} ${
       service?.unit
         ? `per ${String(service.unit).toLowerCase().replace(/^per_/, "")}`
@@ -247,6 +345,8 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     stayDays,
     displayPrice,
     boardingBaseRateCents,
+    isDaycare,
+    daycareSessionType,
     service?.unit,
   ]);
 
@@ -330,6 +430,14 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       if (isMobileGrooming) parts.push("Mobile grooming.");
     }
 
+    if (isDaycare) {
+      parts.push(
+        `Daycare session: ${
+          daycareSessionType === "HALF_DAY" ? "HALF_DAY" : "FULL_DAY"
+        }.`
+      );
+    }
+
     if (notes.trim()) parts.push(notes.trim());
 
     return parts.join(" ");
@@ -337,6 +445,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   async function handleBooking() {
     if (selectedDogIds.length === 0) return alert("Select at least one dog");
+
+    if (maxDogsPerBooking > 0 && selectedDogIds.length > maxDogsPerBooking) {
+      return alert(`You can only book up to ${maxDogsPerBooking} dog(s) for this service`);
+    }
 
     if (isStayService && (!arrivalDate || !departureDate)) {
       return alert("Select arrival and departure dates");
@@ -382,9 +494,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
         groomingCategory: isGrooming ? groomingCategory : undefined,
         groomingSize: isGrooming ? groomingSize : undefined,
+        daycareType: isDaycare ? daycareSessionType : undefined,
       });
 
-      alert("✅ Booking sent");
+      alert("✅ Booking request sent");
       onClose();
     } catch (e: any) {
       alert(e?.response?.data?.error || "Error");
@@ -426,6 +539,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                   </span>
                 </label>
               ))}
+
+              {maxDogsPerBooking > 0 ? (
+                <p className="text-xs text-gray-500">
+                  Maximum dogs allowed for this booking: {maxDogsPerBooking}
+                </p>
+              ) : null}
             </div>
 
             {isBoarding ? (
@@ -470,6 +589,65 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     )}
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+
+            {isDaycare ? (
+              <div className="rounded-lg border border-gray-200 p-3">
+                <p className="mb-2 text-sm font-medium">Daycare session</p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDaycareSessionType("HALF_DAY")}
+                    className={`rounded border px-3 py-2 text-sm ${
+                      daycareSessionType === "HALF_DAY"
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "bg-white"
+                    }`}
+                  >
+                    Half day
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDaycareSessionType("FULL_DAY")}
+                    className={`rounded border px-3 py-2 text-sm ${
+                      daycareSessionType === "FULL_DAY"
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "bg-white"
+                    }`}
+                  >
+                    Full day
+                  </button>
+                </div>
+
+                <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                  <p>
+                    Half day price: {formatPrice(daycareHalfDayPriceCents)}
+                  </p>
+                  <p>
+                    Full day price: {formatPrice(daycareFullDayPriceCents)}
+                  </p>
+
+                  {daycareAdditionalDogEnabled && selectedDogIds.length > 1 ? (
+                    <p>
+                      Extra dog price: {formatPrice(daycareAdditionalDogPriceCents)} ×{" "}
+                      {selectedDogIds.length - 1} extra dog
+                      {selectedDogIds.length - 1 > 1 ? "s" : ""}
+                    </p>
+                  ) : null}
+
+                  {selectedDogIds.length > 0 ? (
+                    <p className="mt-2 font-medium text-gray-900">
+                      Estimated total: {formatPrice(estimatedDaycareTotalCents)}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-gray-500">
+                      Select one or more dogs to see the total.
+                    </p>
+                  )}
+                </div>
               </div>
             ) : null}
 
@@ -619,12 +797,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     })}
                   </button>
                 ))}
-              </div>
-            ) : null}
-
-            {isDaycare ? (
-              <div className="rounded-lg border border-gray-200 p-3 text-sm text-gray-600">
-                Daycare pricing options will be added next.
               </div>
             ) : null}
 
