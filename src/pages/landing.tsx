@@ -7,6 +7,7 @@ import FeaturedProviders from "../components/FeaturedProviders";
 import FAQ from "../components/FAQ";
 import TrustSection from "../components/TrustSection";
 import Suburbs from "../components/Suburbs";
+import InstallBanner from "../components/InstallBanner";
 
 export default function Landing() {
   return (
@@ -14,6 +15,8 @@ export default function Landing() {
       <div className="bg-blue-50 border-b text-center py-2 text-sm text-blue-700">
         🐾 Now launching in Gauteng – Sandton, Fourways, Midrand, Pretoria & surrounding suburbs
       </div>
+
+      <InstallBanner />
 
       <Hero />
       <Suburbs />
