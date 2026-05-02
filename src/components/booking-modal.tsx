@@ -989,7 +989,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               disabled={loading}
               className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
             >
-              {loading ? "Booking..." : "Confirm Booking"}
+              {loading ? "Sending Request..." : "Request Booking"}
             </button>
 
             <button onClick={onClose} className="mt-3 w-full py-2 text-gray-500">
