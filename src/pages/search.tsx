@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,17 +34,40 @@ type SearchSupplier = {
   available?: boolean;
 };
 
+const VALID_SERVICES = [
+  "GROOMING",
+  "BOARDING",
+  "DAYCARE",
+  "WALKING",
+  "TRAINING",
+  "PET_SITTING",
+  "PET_TRANSPORT",
+  "MOBILE_VET",
+] as const;
+
+function isValidService(value: string | null): value is (typeof VALID_SERVICES)[number] {
+  return Boolean(value && VALID_SERVICES.includes(value as (typeof VALID_SERVICES)[number]));
+}
+
 export default function SearchPage() {
   const [params] = useSearchParams();
-  const initialLocation = params.get("location") || "";
+  const navigate = useNavigate();
 
-  const [searchMode, setSearchMode] = useState<SearchMode>("AREA");
-  const [suburb, setSuburb] = useState(initialLocation);
-  const [suburbQuery, setSuburbQuery] = useState(initialLocation);
+  const serviceFromUrl = params.get("service");
+  const locationFromUrl = params.get("location") || "";
+
+  const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "GROOMING";
+  const openedFromShortcut = isValidService(serviceFromUrl);
+
+  const [searchMode, setSearchMode] = useState<SearchMode>(
+    openedFromShortcut ? "AREA" : "AREA"
+  );
+  const [suburb, setSuburb] = useState(locationFromUrl);
+  const [suburbQuery, setSuburbQuery] = useState(locationFromUrl);
   const [suburbResults, setSuburbResults] = useState<SuburbResult[]>([]);
   const [showSuburbDropdown, setShowSuburbDropdown] = useState(false);
 
-  const [service, setService] = useState("GROOMING");
+  const [service, setService] = useState(initialService);
   const [groomingCategory, setGroomingCategory] = useState("WASH_BRUSH");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
@@ -54,7 +77,15 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const navigate = useNavigate();
+  const [ownerProfileLoaded, setOwnerProfileLoaded] = useState(false);
+  const [autoLoadedShortcutResults, setAutoLoadedShortcutResults] = useState(false);
+
+  const selectedServiceLabel = useMemo(() => {
+    return service
+      .toLowerCase()
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }, [service]);
 
   const searchSuburbs = async (value: string) => {
     setSuburbQuery(value);
@@ -80,6 +111,37 @@ export default function SearchPage() {
     }
   };
 
+  const fetchAreaSuppliers = async (selectedSuburb: string, selectedService?: string) => {
+    const query = new URLSearchParams({
+      suburb: selectedSuburb.trim(),
+    });
+
+    if (selectedService) {
+      query.set("service", selectedService);
+    }
+
+    const res = await api.get(`/api/suppliers/location?${query.toString()}`);
+    const data = res.data?.suppliers ?? [];
+    setSuppliers(Array.isArray(data) ? data : []);
+  };
+
+  const fetchAvailabilitySuppliers = async () => {
+    const query = new URLSearchParams({
+      suburb: suburb.trim(),
+      service,
+      date,
+      time,
+    });
+
+    if (service === "GROOMING") {
+      query.set("groomingCategory", groomingCategory);
+    }
+
+    const res = await api.get(`/api/suppliers/search?${query.toString()}`);
+    const data = res.data?.suppliers ?? [];
+    setSuppliers(Array.isArray(data) ? data : []);
+  };
+
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
@@ -93,12 +155,7 @@ export default function SearchPage() {
       }
 
       if (searchMode === "AREA") {
-        const res = await api.get(
-          `/api/suppliers/location?suburb=${encodeURIComponent(suburb.trim())}`
-        );
-
-        const data = res.data?.suppliers ?? [];
-        setSuppliers(Array.isArray(data) ? data : []);
+        await fetchAreaSuppliers(suburb, service || undefined);
         return;
       }
 
@@ -108,21 +165,7 @@ export default function SearchPage() {
         return;
       }
 
-      const query = new URLSearchParams({
-        suburb: suburb.trim(),
-        service,
-        date,
-        time,
-      });
-
-      if (service === "GROOMING") {
-        query.set("groomingCategory", groomingCategory);
-      }
-
-      const res = await api.get(`/api/suppliers/search?${query.toString()}`);
-      const data = res.data?.suppliers ?? [];
-
-      setSuppliers(Array.isArray(data) ? data : []);
+      await fetchAvailabilitySuppliers();
     } catch (err) {
       console.error("FETCH ERROR:", err);
       setError("Failed to load suppliers");
@@ -157,6 +200,69 @@ export default function SearchPage() {
     }
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOwnerDefaults() {
+      try {
+        const res = await api.get("/api/owner/profile");
+        const profile = res.data?.profile;
+
+        const profileSuburb =
+          typeof profile?.suburb === "string" && profile.suburb.trim()
+            ? profile.suburb.trim()
+            : "";
+
+        if (!cancelled && !suburb.trim() && profileSuburb) {
+          setSuburb(profileSuburb);
+          setSuburbQuery(profileSuburb);
+        }
+      } catch (err) {
+        console.error("OWNER PROFILE LOAD ERROR:", err);
+      } finally {
+        if (!cancelled) {
+          setOwnerProfileLoaded(true);
+        }
+      }
+    }
+
+    loadOwnerDefaults();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!openedFromShortcut) return;
+    if (!ownerProfileLoaded) return;
+    if (autoLoadedShortcutResults) return;
+    if (!suburb.trim()) return;
+
+    const runAutoSearch = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        await fetchAreaSuppliers(suburb, service);
+        setAutoLoadedShortcutResults(true);
+      } catch (err) {
+        console.error("SHORTCUT AUTO SEARCH ERROR:", err);
+        setError("Failed to load suppliers");
+        setSuppliers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    runAutoSearch();
+  }, [
+    openedFromShortcut,
+    ownerProfileLoaded,
+    autoLoadedShortcutResults,
+    suburb,
+    service,
+  ]);
+
   return (
     <div className="min-h-screen bg-doglife-gray-50">
       <div className="max-w-5xl mx-auto px-6 py-10">
@@ -164,7 +270,7 @@ export default function SearchPage() {
 
         <Card className="mb-8">
           <CardContent className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="md:col-span-5 flex gap-3">
+            <div className="md:col-span-5 flex flex-wrap gap-3">
               <Button
                 type="button"
                 variant={searchMode === "AREA" ? "default" : "outline"}
@@ -181,6 +287,13 @@ export default function SearchPage() {
                 Search availability
               </Button>
             </div>
+
+            {openedFromShortcut ? (
+              <div className="md:col-span-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                Showing <span className="font-semibold">{selectedServiceLabel}</span>{" "}
+                providers in your suburb, with preferred providers first.
+              </div>
+            ) : null}
 
             <div className="relative">
               <Input
@@ -214,22 +327,23 @@ export default function SearchPage() {
               ) : null}
             </div>
 
+            <select
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+              className="border rounded-md px-3 py-2 bg-white"
+            >
+              <option value="GROOMING">Grooming</option>
+              <option value="BOARDING">Boarding</option>
+              <option value="DAYCARE">Daycare</option>
+              <option value="WALKING">Walking</option>
+              <option value="TRAINING">Training</option>
+              <option value="PET_SITTING">Pet Sitting</option>
+              <option value="PET_TRANSPORT">Pet Transport</option>
+              <option value="MOBILE_VET">Mobile Vet</option>
+            </select>
+
             {searchMode === "AVAILABLE" ? (
               <>
-                <select
-                  value={service}
-                  onChange={(e) => setService(e.target.value)}
-                  className="border rounded-md px-3 py-2 bg-white"
-                >
-                  <option value="GROOMING">Grooming</option>
-                  <option value="BOARDING">Boarding</option>
-                  <option value="DAYCARE">Daycare</option>
-                  <option value="WALKING">Walking</option>
-                  <option value="TRAINING">Training</option>
-                  <option value="PET_SITTING">Pet Sitting</option>
-                  <option value="PET_TRANSPORT">Pet Transport</option>
-                </select>
-
                 {service === "GROOMING" ? (
                   <select
                     value={groomingCategory}
@@ -255,16 +369,24 @@ export default function SearchPage() {
                   onChange={(e) => setTime(e.target.value)}
                 />
               </>
-            ) : null}
+            ) : (
+              <>
+                <div />
+                <div />
+                <div />
+              </>
+            )}
 
             <div className="md:col-span-5">
-              <Button onClick={fetchSuppliers}>Search</Button>
+              <Button onClick={fetchSuppliers}>
+                {searchMode === "AVAILABLE" ? "Check availability" : "Search"}
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {loading && <p>Loading suppliers...</p>}
-        {error && <p className="text-red-500">{error}</p>}
+        {loading ? <p>Loading suppliers...</p> : null}
+        {error ? <p className="text-red-500">{error}</p> : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {suppliers.map((supplier) => (
@@ -291,7 +413,7 @@ export default function SearchPage() {
                         </p>
                       ) : null}
 
-                      <div className="flex gap-2 mt-2">
+                      <div className="flex gap-2 mt-2 flex-wrap">
                         {supplier.isPreferred ? (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
                             Preferred
@@ -358,7 +480,7 @@ export default function SearchPage() {
                       navigate(`/supplier/${supplier.id}`, {
                         state: {
                           isPreferred: supplier.isPreferred,
-                          selectedService: searchMode === "AVAILABLE" ? service : null,
+                          selectedService: service,
                           groomingCategory:
                             searchMode === "AVAILABLE" ? groomingCategory : null,
                           date: searchMode === "AVAILABLE" ? date : null,
@@ -375,13 +497,13 @@ export default function SearchPage() {
           ))}
         </div>
 
-        {!loading && suppliers.length === 0 && (
+        {!loading && suppliers.length === 0 ? (
           <div className="text-center text-gray-500 mt-10">
             {searchMode === "AVAILABLE"
               ? "No available providers found for this search."
-              : "No suppliers found in this area yet."}
+              : `No ${selectedServiceLabel.toLowerCase()} providers found in this area yet.`}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
