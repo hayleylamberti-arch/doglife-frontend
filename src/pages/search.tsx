@@ -329,7 +329,7 @@ export default function SearchPage() {
 
             <select
               value={service}
-              onChange={(e) => setService(e.target.value)}
+              onChange={(e) => setService(e.target.value as (typeof VALID_SERVICES)[number])}
               className="border rounded-md px-3 py-2 bg-white"
             >
               <option value="GROOMING">Grooming</option>
