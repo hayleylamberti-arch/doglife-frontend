@@ -39,6 +39,11 @@ function formatDogSize(value?: string | null) {
   return value.toLowerCase().replace(/^xl$/, "x large");
 }
 
+function toNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 type LocationState = {
   isPreferred?: boolean;
 };
@@ -140,7 +145,9 @@ export default function SupplierPublicProfile() {
 
           <div>
             <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
-            <p className="text-gray-500 mt-1">{supplier.suburb}</p>
+            <p className="text-gray-500 mt-1">
+              {supplier.suburb?.name || supplier.suburb || ""}
+            </p>
             <p className="text-sm text-gray-400 mt-1">⭐⭐⭐⭐⭐ (Coming soon)</p>
           </div>
         </div>
@@ -175,7 +182,26 @@ export default function SupplierPublicProfile() {
 
         {supplier.services?.length > 0 ? (
           supplier.services.map((service: any) => {
-            const hasGroomingTiers = Array.isArray(service.pricingTiers) && service.pricingTiers.length > 0;
+            const hasGroomingTiers =
+              Array.isArray(service.pricingTiers) &&
+              service.pricingTiers.length > 0;
+
+            const isDaycare = service.service === "DAYCARE";
+            const isBoarding = service.service === "BOARDING";
+
+            const halfDayPriceCents = toNumber(
+              service?.pricingJson?.halfDayPriceCents
+            );
+            const fullDayPriceCents =
+              toNumber(service?.pricingJson?.fullDayPriceCents) ||
+              toNumber(service?.baseRateCents);
+
+            const additionalDogPriceCents =
+              toNumber(service?.additionalDogPriceCents) ||
+              toNumber(service?.pricingJson?.additionalDogPriceCents) ||
+              toNumber(service?.pricingJson?.additionalDogPrice);
+
+            const hasAdditionalDogPrice = additionalDogPriceCents > 0;
 
             return (
               <Card key={service.id}>
@@ -185,16 +211,51 @@ export default function SupplierPublicProfile() {
                       {formatServiceName(service.service)}
                     </h3>
 
-                    <div className="text-gray-700">
-                      {service.baseRateCents > 0 ? (
-                        <p>
-                          From {formatPrice(service.baseRateCents)}
-                          {formatUnit(service.unit) ? ` ${formatUnit(service.unit)}` : ""}
-                          {service.durationMinutes ? ` • ${service.durationMinutes} mins` : ""}
-                        </p>
-                      ) : service.durationMinutes ? (
-                        <p>{service.durationMinutes} mins</p>
-                      ) : null}
+                    <div className="text-gray-700 space-y-1">
+                      {isDaycare ? (
+                        <>
+                          <p>
+                            Half day: {formatPrice(halfDayPriceCents)}
+                          </p>
+                          <p>
+                            Full day: {formatPrice(fullDayPriceCents)}
+                          </p>
+                          {hasAdditionalDogPrice ? (
+                            <p>Extra dog: {formatPrice(additionalDogPriceCents)}</p>
+                          ) : null}
+                          {service.maxDogsPerBooking ? (
+                            <p>
+                              Max dogs per booking: {service.maxDogsPerBooking}
+                            </p>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          {service.baseRateCents > 0 ? (
+                            <p>
+                              From {formatPrice(service.baseRateCents)}
+                              {formatUnit(service.unit)
+                                ? ` ${formatUnit(service.unit)}`
+                                : ""}
+                              {service.durationMinutes
+                                ? ` • ${service.durationMinutes} mins`
+                                : ""}
+                            </p>
+                          ) : service.durationMinutes ? (
+                            <p>{service.durationMinutes} mins</p>
+                          ) : null}
+
+                          {isBoarding && hasAdditionalDogPrice ? (
+                            <p>Extra dog: {formatPrice(additionalDogPriceCents)}</p>
+                          ) : null}
+
+                          {service.maxDogsPerBooking ? (
+                            <p>
+                              Max dogs per booking: {service.maxDogsPerBooking}
+                            </p>
+                          ) : null}
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -210,12 +271,15 @@ export default function SupplierPublicProfile() {
                         return (
                           <div key={category} className="space-y-1">
                             <p className="font-medium">
-                              {category === "WASH_BRUSH" ? "Wash & Brush" : "Wash & Cut"}
+                              {category === "WASH_BRUSH"
+                                ? "Wash & Brush"
+                                : "Wash & Cut"}
                             </p>
 
                             {tiers.map((tier: any) => (
                               <p key={tier.id}>
-                                {formatDogSize(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                                {formatDogSize(tier.dogSize)} —{" "}
+                                {formatPrice(tier.priceCents)}
                               </p>
                             ))}
                           </div>
