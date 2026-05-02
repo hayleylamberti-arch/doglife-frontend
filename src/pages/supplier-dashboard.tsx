@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type BookingStatus =
   | "PENDING"
@@ -271,6 +271,8 @@ function BookingSection({
   onStart,
   onComplete,
   onMarkPaid,
+  isOpen,
+  onToggle,
 }: {
   id: string;
   title: string;
@@ -284,73 +286,101 @@ function BookingSection({
   onStart: (bookingId: string) => void;
   onComplete: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }) {
   return (
-    <section id={id} className="scroll-mt-28 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-          {bookings.length}
-        </span>
-      </div>
+    <section id={id} className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white p-4">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 text-left"
+      >
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
+          </p>
+        </div>
 
-      {isLoading ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-          Loading bookings...
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            {bookings.length}
+          </span>
+          <span className="text-xl text-gray-500">{isOpen ? "−" : "+"}</span>
         </div>
-      ) : error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-          Failed to load supplier bookings.
+      </button>
+
+      {isOpen ? (
+        <div className="mt-4">
+          {isLoading ? (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
+              Loading bookings...
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+              Failed to load supplier bookings.
+            </div>
+          ) : bookings.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+              {emptyText}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bookings.map((booking) => (
+                <BookingCard
+                  key={booking.id}
+                  booking={booking}
+                  onAccept={onAccept}
+                  onDecline={onDecline}
+                  onStart={onStart}
+                  onComplete={onComplete}
+                  onMarkPaid={onMarkPaid}
+                  actionLoading={activeBookingId === booking.id}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      ) : bookings.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-          {emptyText}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {bookings.map((booking) => (
-            <BookingCard
-              key={booking.id}
-              booking={booking}
-              onAccept={onAccept}
-              onDecline={onDecline}
-              onStart={onStart}
-              onComplete={onComplete}
-              onMarkPaid={onMarkPaid}
-              actionLoading={activeBookingId === booking.id}
-            />
-          ))}
-        </div>
-      )}
+      ) : null}
     </section>
   );
 }
 
 function StatCard({
-  href,
   label,
   value,
   valueClassName,
+  onClick,
 }: {
-  href: string;
   label: string;
   value: number;
   valueClassName: string;
+  onClick: () => void;
 }) {
   return (
-    <a
-      href={href}
-      className="block rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+    <button
+      type="button"
+      onClick={onClick}
+      className="block rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-gray-300 hover:shadow-sm"
     >
       <div className="text-sm text-gray-500">{label}</div>
       <div className={`mt-2 text-3xl font-bold ${valueClassName}`}>{value}</div>
-    </a>
+    </button>
   );
 }
 
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    "pending-bookings": true,
+    "confirmed-bookings": true,
+    "in-progress-bookings": false,
+    "completed-unbilled-bookings": false,
+    "completed-bookings": false,
+    "cancelled-bookings": false,
+  });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier-dashboard-bookings"],
@@ -439,6 +469,38 @@ export default function SupplierDashboardPage() {
       b.status === "COMPLETED_UNBILLED"
   ).length;
 
+  function openAndScrollTo(sectionId: string) {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionId]: true,
+    }));
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 50);
+    });
+  }
+
+  function toggleSection(sectionId: string) {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  }
+
+  useEffect(() => {
+    if (pendingBookings.length > 0) {
+      setOpenSections((prev) => ({
+        ...prev,
+        "pending-bookings": true,
+      }));
+    }
+  }, [pendingBookings.length]);
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -467,35 +529,35 @@ export default function SupplierDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard
-          href="#pending-bookings"
           label="Pending bookings"
           value={pendingBookings.length}
           valueClassName="text-amber-600"
+          onClick={() => openAndScrollTo("pending-bookings")}
         />
 
         <StatCard
-          href="#confirmed-bookings"
           label="Confirmed bookings"
           value={confirmedBookings.length}
           valueClassName="text-green-600"
+          onClick={() => openAndScrollTo("confirmed-bookings")}
         />
 
         <StatCard
-          href="#in-progress-bookings"
           label="In progress"
           value={inProgressBookings.length}
           valueClassName="text-blue-600"
+          onClick={() => openAndScrollTo("in-progress-bookings")}
         />
 
         <StatCard
-          href="#active-bookings"
           label="Total active bookings"
           value={totalActive}
           valueClassName="text-gray-900"
+          onClick={() => openAndScrollTo("pending-bookings")}
         />
       </div>
 
-      <div id="active-bookings" className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-6">
         <BookingSection
           id="pending-bookings"
           title="Pending Bookings"
@@ -509,6 +571,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["pending-bookings"])}
+          onToggle={() => toggleSection("pending-bookings")}
         />
 
         <BookingSection
@@ -524,6 +588,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["confirmed-bookings"])}
+          onToggle={() => toggleSection("confirmed-bookings")}
         />
 
         <BookingSection
@@ -539,6 +605,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["in-progress-bookings"])}
+          onToggle={() => toggleSection("in-progress-bookings")}
         />
 
         <BookingSection
@@ -554,6 +622,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["completed-unbilled-bookings"])}
+          onToggle={() => toggleSection("completed-unbilled-bookings")}
         />
 
         <BookingSection
@@ -569,6 +639,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["completed-bookings"])}
+          onToggle={() => toggleSection("completed-bookings")}
         />
 
         <BookingSection
@@ -584,6 +656,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections["cancelled-bookings"])}
+          onToggle={() => toggleSection("cancelled-bookings")}
         />
       </div>
     </div>
