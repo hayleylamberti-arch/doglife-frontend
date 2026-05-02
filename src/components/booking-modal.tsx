@@ -1,4 +1,3 @@
-// src/components/booking-modal.tsx
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -45,6 +44,18 @@ function getStayDays(arrivalDate: string, departureDate: string) {
 
   const msPerDay = 1000 * 60 * 60 * 24;
   return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / msPerDay));
+}
+
+function toNumber(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.toLowerCase() === "true";
+  if (typeof value === "number") return value === 1;
+  return false;
 }
 
 export default function BookingModal({ supplierId, service, onClose }: Props) {
@@ -130,17 +141,51 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     [arrivalDate, departureDate]
   );
 
+  const boardingBaseRateCents = useMemo(() => {
+    return toNumber(service?.baseRateCents);
+  }, [service?.baseRateCents]);
+
+  const boardingAdditionalDogEnabled = useMemo(() => {
+    const directEnabled = toBoolean(service?.additionalDogEnabled);
+    const pricingJsonEnabled = toBoolean(service?.pricingJson?.additionalDogEnabled);
+    const additionalDogPriceExists =
+      toNumber(service?.additionalDogPriceCents) > 0 ||
+      toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
+      toNumber(service?.pricingJson?.additionalDogPrice) > 0;
+
+    return directEnabled || pricingJsonEnabled || additionalDogPriceExists;
+  }, [
+    service?.additionalDogEnabled,
+    service?.pricingJson?.additionalDogEnabled,
+    service?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPrice,
+  ]);
+
+  const boardingAdditionalDogPriceCents = useMemo(() => {
+    return (
+      toNumber(service?.additionalDogPriceCents) ||
+      toNumber(service?.pricingJson?.additionalDogPriceCents) ||
+      toNumber(service?.pricingJson?.additionalDogPrice)
+    );
+  }, [
+    service?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPriceCents,
+    service?.pricingJson?.additionalDogPrice,
+  ]);
+
   const estimatedBoardingTotalCents = useMemo(() => {
     if (!isBoarding) return null;
 
-    const baseRateCents = Number(service?.baseRateCents || 0);
     const dogCount = Math.max(1, selectedDogIds.length || 1);
+    let total = boardingBaseRateCents * stayDays;
 
-    let total = baseRateCents * stayDays;
-
-    if (dogCount > 1 && service?.additionalDogEnabled) {
-      const extraDogPriceCents = Number(service?.additionalDogPriceCents || 0);
-      total += extraDogPriceCents * (dogCount - 1) * stayDays;
+    if (dogCount > 1) {
+      if (boardingAdditionalDogEnabled && boardingAdditionalDogPriceCents > 0) {
+        total += boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
+      } else {
+        total = boardingBaseRateCents * dogCount * stayDays;
+      }
     }
 
     if (kennelType === "PRIVATE") {
@@ -150,17 +195,17 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     return total;
   }, [
     isBoarding,
-    service?.baseRateCents,
-    service?.additionalDogEnabled,
-    service?.additionalDogPriceCents,
     selectedDogIds.length,
+    boardingBaseRateCents,
+    boardingAdditionalDogEnabled,
+    boardingAdditionalDogPriceCents,
     stayDays,
     kennelType,
   ]);
 
   const displayPrice = useMemo(() => {
     if (isBoarding) {
-      return estimatedBoardingTotalCents ?? service?.baseRateCents;
+      return estimatedBoardingTotalCents ?? boardingBaseRateCents;
     }
 
     if (isGrooming && selectedGroomingTier?.priceCents) {
@@ -171,6 +216,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [
     isBoarding,
     estimatedBoardingTotalCents,
+    boardingBaseRateCents,
     isGrooming,
     selectedGroomingTier,
     service?.baseRateCents,
@@ -185,7 +231,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         } • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
       }
 
-      return `${formatPrice(service?.baseRateCents)} per night`;
+      return `${formatPrice(boardingBaseRateCents)} per night`;
     }
 
     return `${formatPrice(displayPrice)} ${
@@ -200,7 +246,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     selectedDogIds.length,
     stayDays,
     displayPrice,
-    service?.baseRateCents,
+    boardingBaseRateCents,
     service?.unit,
   ]);
 
@@ -399,14 +445,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
                 {selectedDogIds.length > 0 ? (
                   <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                    <p>
-                      Base price: {formatPrice(service?.baseRateCents)} per night
-                    </p>
+                    <p>Base price: {formatPrice(boardingBaseRateCents)} per night</p>
 
-                    {service?.additionalDogEnabled && selectedDogIds.length > 1 ? (
+                    {boardingAdditionalDogEnabled && selectedDogIds.length > 1 ? (
                       <p>
-                        Extra dog price:{" "}
-                        {formatPrice(service?.additionalDogPriceCents)} ×{" "}
+                        Extra dog price: {formatPrice(boardingAdditionalDogPriceCents)} ×{" "}
                         {selectedDogIds.length - 1} extra dog
                         {selectedDogIds.length - 1 > 1 ? "s" : ""}
                       </p>
