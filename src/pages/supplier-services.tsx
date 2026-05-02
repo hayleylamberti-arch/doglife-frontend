@@ -119,11 +119,15 @@ function serviceDefaults(serviceType: string) {
       return { unit: "PER_VISIT" };
     default:
       return { unit: "PER_VISIT" };
-    }
   }
+}
 
 function shouldShowDogCapacity(serviceType: string) {
   return ["BOARDING", "DAYCARE", "PET_SITTING", "WALKING"].includes(serviceType);
+}
+
+function formatRandFromCents(value?: number | null) {
+  return `R${(((value ?? 0) as number) / 100).toFixed(0)}`;
 }
 
 export default function SupplierServicesPage() {
@@ -147,6 +151,11 @@ export default function SupplierServicesPage() {
   const [boardingExtraDogEnabled, setBoardingExtraDogEnabled] = useState(false);
   const [boardingExtraDogPrice, setBoardingExtraDogPrice] = useState("");
 
+  const [daycareHalfDayPrice, setDaycareHalfDayPrice] = useState("");
+  const [daycareFullDayPrice, setDaycareFullDayPrice] = useState("");
+  const [daycareExtraDogEnabled, setDaycareExtraDogEnabled] = useState(false);
+  const [daycareExtraDogPrice, setDaycareExtraDogPrice] = useState("");
+
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
 
@@ -164,6 +173,23 @@ export default function SupplierServicesPage() {
     xl: "",
   });
 
+  const resetForm = () => {
+    setServiceType("");
+    setPrice("");
+    setDuration("");
+    setBufferMinutes("");
+    setBoardingExtraDogEnabled(false);
+    setBoardingExtraDogPrice("");
+    setDaycareHalfDayPrice("");
+    setDaycareFullDayPrice("");
+    setDaycareExtraDogEnabled(false);
+    setDaycareExtraDogPrice("");
+    setMaxDogsPerBooking("");
+    setConcurrentCapacityDogs("");
+    setWashBrush({ small: "", medium: "", large: "", xl: "" });
+    setWashCut({ small: "", medium: "", large: "", xl: "" });
+  };
+
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!serviceType) {
@@ -172,6 +198,8 @@ export default function SupplierServicesPage() {
 
       const defaults = serviceDefaults(serviceType);
       const showDogCapacity = shouldShowDogCapacity(serviceType);
+      const isDaycare = serviceType === "DAYCARE";
+      const isBoarding = serviceType === "BOARDING";
 
       if (
         showDogCapacity &&
@@ -187,6 +215,17 @@ export default function SupplierServicesPage() {
         Number(concurrentCapacityDogs) <= 0
       ) {
         throw new Error("Enter a valid concurrent capacity");
+      }
+
+      if (
+        showDogCapacity &&
+        maxDogsPerBooking &&
+        concurrentCapacityDogs &&
+        Number(concurrentCapacityDogs) < Number(maxDogsPerBooking)
+      ) {
+        throw new Error(
+          "Concurrent capacity cannot be less than maximum dogs per booking"
+        );
       }
 
       if (serviceType === "GROOMING") {
@@ -206,6 +245,63 @@ export default function SupplierServicesPage() {
         });
       }
 
+      if (isDaycare) {
+        if (
+          daycareHalfDayPrice === "" ||
+          Number(daycareHalfDayPrice) < 0
+        ) {
+          throw new Error("Enter a valid half day price");
+        }
+
+        if (
+          daycareFullDayPrice === "" ||
+          Number(daycareFullDayPrice) < 0
+        ) {
+          throw new Error("Enter a valid full day price");
+        }
+
+        if (!maxDogsPerBooking || Number(maxDogsPerBooking) <= 0) {
+          throw new Error("Enter a valid maximum dogs per booking");
+        }
+
+        if (
+          daycareExtraDogEnabled &&
+          (Number(maxDogsPerBooking) < 2 ||
+            daycareExtraDogPrice === "" ||
+            Number(daycareExtraDogPrice) < 0)
+        ) {
+          if (Number(maxDogsPerBooking) < 2) {
+            throw new Error(
+              "Maximum dogs per booking must be at least 2 when extra dog pricing is enabled"
+            );
+          }
+
+          throw new Error("Enter a valid extra dog price");
+        }
+
+        return api.post("/api/supplierServices", {
+          services: [
+            {
+              service: serviceType,
+              unit: defaults.unit,
+              baseRateCents: Math.round(Number(daycareFullDayPrice) * 100),
+              durationMinutes: null,
+              bufferMinutes: Number(bufferMinutes || "0"),
+              pricingJson: {
+                halfDayPriceCents: Math.round(Number(daycareHalfDayPrice) * 100),
+                fullDayPriceCents: Math.round(Number(daycareFullDayPrice) * 100),
+              },
+              additionalDogEnabled: daycareExtraDogEnabled,
+              additionalDogPriceCents: daycareExtraDogEnabled
+                ? Math.round(Number(daycareExtraDogPrice) * 100)
+                : null,
+              maxDogsPerBooking: Number(maxDogsPerBooking),
+              concurrentCapacityDogs: Number(concurrentCapacityDogs || "0") || null,
+            },
+          ],
+        });
+      }
+
       if (!price || Number(price) <= 0) {
         throw new Error("Enter a valid price");
       }
@@ -219,7 +315,7 @@ export default function SupplierServicesPage() {
       }
 
       if (
-        serviceType === "BOARDING" &&
+        isBoarding &&
         boardingExtraDogEnabled &&
         (!boardingExtraDogPrice || Number(boardingExtraDogPrice) < 0)
       ) {
@@ -234,10 +330,9 @@ export default function SupplierServicesPage() {
             baseRateCents: Math.round(Number(price) * 100),
             durationMinutes: requiresDuration ? Number(duration) : null,
             bufferMinutes: Number(bufferMinutes || "0"),
-            additionalDogEnabled:
-              serviceType === "BOARDING" ? boardingExtraDogEnabled : false,
+            additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
             additionalDogPriceCents:
-              serviceType === "BOARDING" && boardingExtraDogEnabled
+              isBoarding && boardingExtraDogEnabled
                 ? Math.round(Number(boardingExtraDogPrice) * 100)
                 : null,
             maxDogsPerBooking: showDogCapacity
@@ -252,16 +347,7 @@ export default function SupplierServicesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-      setServiceType("");
-      setPrice("");
-      setDuration("");
-      setBufferMinutes("");
-      setBoardingExtraDogEnabled(false);
-      setBoardingExtraDogPrice("");
-      setMaxDogsPerBooking("");
-      setConcurrentCapacityDogs("");
-      setWashBrush({ small: "", medium: "", large: "", xl: "" });
-      setWashCut({ small: "", medium: "", large: "", xl: "" });
+      resetForm();
     },
   });
 
@@ -284,6 +370,7 @@ export default function SupplierServicesPage() {
 
   const showBufferInput = Boolean(serviceType);
   const isBoarding = serviceType === "BOARDING";
+  const isDaycare = serviceType === "DAYCARE";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
 
   return (
@@ -302,6 +389,10 @@ export default function SupplierServicesPage() {
             setBufferMinutes("");
             setBoardingExtraDogEnabled(false);
             setBoardingExtraDogPrice("");
+            setDaycareHalfDayPrice("");
+            setDaycareFullDayPrice("");
+            setDaycareExtraDogEnabled(false);
+            setDaycareExtraDogPrice("");
             setMaxDogsPerBooking("");
             setConcurrentCapacityDogs("");
           }}
@@ -315,7 +406,7 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {serviceType && serviceType !== "GROOMING" && (
+        {serviceType && serviceType !== "GROOMING" && serviceType !== "DAYCARE" && (
           <input
             type="number"
             min="0"
@@ -324,6 +415,32 @@ export default function SupplierServicesPage() {
             onChange={(e) => setPrice(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
+        )}
+
+        {isDaycare && (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <input
+              type="number"
+              min="0"
+              placeholder="Half day price (R)"
+              value={daycareHalfDayPrice}
+              onChange={(e) => setDaycareHalfDayPrice(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <input
+              type="number"
+              min="0"
+              placeholder="Full day price (R)"
+              value={daycareFullDayPrice}
+              onChange={(e) => setDaycareFullDayPrice(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="text-sm text-gray-500">
+              Half day and full day prices are both required for daycare.
+            </p>
+          </div>
         )}
 
         {isBoarding && (
@@ -351,6 +468,34 @@ export default function SupplierServicesPage() {
             <p className="text-sm text-gray-500">
               Base price applies to the first dog. Extra dog price is added for
               each additional dog in the same booking.
+            </p>
+          </div>
+        )}
+
+        {isDaycare && (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={daycareExtraDogEnabled}
+                onChange={(e) => setDaycareExtraDogEnabled(e.target.checked)}
+              />
+              Enable extra dog pricing
+            </label>
+
+            {daycareExtraDogEnabled && (
+              <input
+                type="number"
+                min="0"
+                placeholder="Extra dog price (R)"
+                value={daycareExtraDogPrice}
+                onChange={(e) => setDaycareExtraDogPrice(e.target.value)}
+                className="border rounded px-3 py-2 block w-full"
+              />
+            )}
+
+            <p className="text-sm text-gray-500">
+              Use this when a daycare booking includes more than one dog.
             </p>
           </div>
         )}
@@ -495,35 +640,62 @@ export default function SupplierServicesPage() {
 
             <div className="text-sm text-gray-500 mt-2 space-y-2">
               {type !== "GROOMING" &&
-                group.map((s: any) => (
-                  <div key={s.id} className="flex items-center justify-between gap-3">
-                    <div>
-                      <p>
-                        R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
-                      </p>
-                      <p>{formatBufferMinutes(s.bufferMinutes)}</p>
-                      {s.maxDogsPerBooking ? (
-                        <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
-                      ) : null}
-                      {s.concurrentCapacityDogs ? (
-                        <p>Total concurrent capacity: {s.concurrentCapacityDogs}</p>
-                      ) : null}
-                      {type === "BOARDING" && s.additionalDogEnabled ? (
-                        <p>
-                          Extra dog: R
-                          {((s.additionalDogPriceCents || 0) / 100).toFixed(0)}
-                        </p>
-                      ) : null}
-                    </div>
+                group.map((s: any) => {
+                  const halfDayPriceCents = s.pricingJson?.halfDayPriceCents;
+                  const fullDayPriceCents = s.pricingJson?.fullDayPriceCents;
 
-                    <button
-                      onClick={() => deleteMutation.mutate(s.id)}
-                      className="rounded border px-3 py-1"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
+                  return (
+                    <div key={s.id} className="flex items-center justify-between gap-3">
+                      <div>
+                        {type === "DAYCARE" ? (
+                          <>
+                            <p>
+                              Half day: {formatRandFromCents(halfDayPriceCents)}
+                            </p>
+                            <p>
+                              Full day: {formatRandFromCents(
+                                fullDayPriceCents ?? s.baseRateCents
+                              )}
+                            </p>
+                          </>
+                        ) : (
+                          <p>
+                            R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
+                          </p>
+                        )}
+
+                        <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+
+                        {s.maxDogsPerBooking ? (
+                          <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+                        ) : null}
+
+                        {s.concurrentCapacityDogs ? (
+                          <p>Total concurrent capacity: {s.concurrentCapacityDogs}</p>
+                        ) : null}
+
+                        {type === "BOARDING" && s.additionalDogEnabled ? (
+                          <p>
+                            Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
+                          </p>
+                        ) : null}
+
+                        {type === "DAYCARE" && s.additionalDogEnabled ? (
+                          <p>
+                            Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <button
+                        onClick={() => deleteMutation.mutate(s.id)}
+                        className="rounded border px-3 py-1"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  );
+                })}
 
               {type === "GROOMING" &&
                 group.map((s: any) => {
