@@ -178,10 +178,7 @@ function Section({
   if (bookings.length === 0) return null;
 
   return (
-    <section
-      id={id}
-      className="rounded-2xl border border-gray-200 bg-white p-4"
-    >
+    <section id={id} className="rounded-2xl border border-gray-200 bg-white p-4">
       <button
         type="button"
         onClick={onToggle}
@@ -214,59 +211,19 @@ function Section({
 }
 
 const SERVICE_SHORTCUTS = [
-  {
-    key: "WALKING",
-    label: "Walking",
-    icon: "🐾",
-    href: "/search?service=WALKING",
-  },
-  {
-    key: "TRAINING",
-    label: "Training",
-    icon: "🎓",
-    href: "/search?service=TRAINING",
-  },
-  {
-    key: "GROOMING",
-    label: "Grooming",
-    icon: "✂️",
-    href: "/search?service=GROOMING",
-  },
-  {
-    key: "BOARDING",
-    label: "Boarding",
-    icon: "🏠",
-    href: "/search?service=BOARDING",
-  },
-  {
-    key: "DAYCARE",
-    label: "Daycare",
-    icon: "☀️",
-    href: "/search?service=DAYCARE",
-  },
-  {
-    key: "PET_SITTING",
-    label: "Pet Sitting",
-    icon: "🩷",
-    href: "/search?service=PET_SITTING",
-  },
-  {
-    key: "PET_TRANSPORT",
-    label: "Transport",
-    icon: "🚗",
-    href: "/search?service=PET_TRANSPORT",
-  },
-  {
-    key: "MOBILE_VET",
-    label: "Mobile Vet",
-    icon: "🩺",
-    href: "/search?service=MOBILE_VET",
-  },
+  { key: "WALKING", label: "Walking", icon: "🐾", href: "/search?service=WALKING" },
+  { key: "TRAINING", label: "Training", icon: "🎓", href: "/search?service=TRAINING" },
+  { key: "GROOMING", label: "Grooming", icon: "✂️", href: "/search?service=GROOMING" },
+  { key: "BOARDING", label: "Boarding", icon: "🏠", href: "/search?service=BOARDING" },
+  { key: "DAYCARE", label: "Daycare", icon: "☀️", href: "/search?service=DAYCARE" },
+  { key: "PET_SITTING", label: "Pet Sitting", icon: "🩷", href: "/search?service=PET_SITTING" },
+  { key: "PET_TRANSPORT", label: "Transport", icon: "🚗", href: "/search?service=PET_TRANSPORT" },
+  { key: "MOBILE_VET", label: "Mobile Vet", icon: "🩺", href: "/search?service=MOBILE_VET" },
 ];
 
 function ServiceShortcuts() {
   return (
-    <div className="space-y-4">
+    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Book a service</h2>
@@ -283,18 +240,18 @@ function ServiceShortcuts() {
         </Link>
       </div>
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex gap-4 min-w-max">
+      <div className="mt-5 overflow-x-auto pb-2">
+        <div className="flex min-w-max gap-4">
           {SERVICE_SHORTCUTS.map((service) => (
             <Link
               key={service.key}
               to={service.href}
               className="group flex w-24 shrink-0 flex-col items-center text-center"
             >
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-gray-200 bg-white text-3xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-3xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:bg-white group-hover:shadow-md">
                 <span aria-hidden="true">{service.icon}</span>
               </div>
-              <span className="mt-3 text-sm font-medium text-gray-800 leading-tight">
+              <span className="mt-3 text-sm font-medium leading-tight text-gray-800">
                 {service.label}
               </span>
             </Link>
@@ -655,6 +612,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      <ServiceShortcuts />
 
       {notifications.length > 0 && (
         <div className="space-y-2">
