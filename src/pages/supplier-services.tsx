@@ -84,7 +84,7 @@ function calculateGroomingPrice({
 function serviceDefaults(serviceType: string) {
   switch (serviceType) {
     case "WALKING":
-      return { unit: "PER_VISIT" };
+      return { unit: "PER_WALK" };
     case "TRAINING":
       return { unit: "PER_SESSION" };
     case "MOBILE_VET":
