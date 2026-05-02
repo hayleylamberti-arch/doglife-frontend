@@ -162,30 +162,29 @@ function Section({
   title,
   bookings,
   renderBookingCard,
-  emptyText,
   titleColor,
 }: {
   title: string;
   bookings: any[];
   renderBookingCard: (booking: any, isToday?: boolean) => React.ReactNode;
-  emptyText: string;
   titleColor?: string;
 }) {
+  if (bookings.length === 0) return null;
+
   return (
     <div>
-      <h3 className={`mb-4 text-lg font-semibold ${titleColor || "text-gray-900"}`}>
-        {title}
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className={`text-lg font-semibold ${titleColor || "text-gray-900"}`}>
+          {title}
+        </h3>
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+          {bookings.length}
+        </span>
+      </div>
 
-      {bookings.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-          {emptyText}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {bookings.map((booking: any) => renderBookingCard(booking))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {bookings.map((booking: any) => renderBookingCard(booking))}
+      </div>
     </div>
   );
 }
@@ -272,6 +271,62 @@ export default function Dashboard() {
 
   const cancelledBookings = sortedBookings.filter(
     (b: any) => b.status === "CANCELLED"
+  );
+
+  const bookingSections = [
+    {
+      key: "today",
+      title: "Today",
+      bookings: todayBookings,
+      titleColor: "text-blue-700",
+      isToday: true,
+    },
+    {
+      key: "pending",
+      title: "Pending",
+      bookings: pendingBookings,
+      titleColor: "text-yellow-700",
+      isToday: false,
+    },
+    {
+      key: "confirmed",
+      title: "Confirmed",
+      bookings: confirmedBookings,
+      titleColor: "text-green-700",
+      isToday: false,
+    },
+    {
+      key: "in-progress",
+      title: "Started / In Progress",
+      bookings: inProgressBookings,
+      titleColor: "text-blue-700",
+      isToday: false,
+    },
+    {
+      key: "completed-unbilled",
+      title: "Completed - Awaiting Payment",
+      bookings: completedAwaitingPaymentBookings,
+      titleColor: "text-purple-700",
+      isToday: false,
+    },
+    {
+      key: "completed",
+      title: "Completed - Paid",
+      bookings: completedPaidBookings,
+      titleColor: "text-gray-800",
+      isToday: false,
+    },
+    {
+      key: "cancelled",
+      title: "Cancelled",
+      bookings: cancelledBookings,
+      titleColor: "text-red-700",
+      isToday: false,
+    },
+  ];
+
+  const hasAnyBookings = bookingSections.some(
+    (section) => section.bookings.length > 0
   );
 
   const renderBookingCard = (booking: any, isToday = false) => {
@@ -488,68 +543,29 @@ export default function Dashboard() {
           Your Bookings
         </h2>
 
-        {isLoading && <p>Loading bookings...</p>}
+        {isLoading ? <p>Loading bookings...</p> : null}
 
-        {!isLoading && data.length === 0 && (
+        {!isLoading && !hasAnyBookings ? (
           <p className="text-gray-500">
             No bookings yet — find trusted dog services near you 🐾
           </p>
-        )}
+        ) : null}
 
-        <div className="space-y-10">
-          {todayBookings.length > 0 && (
-            <div>
-              <h3 className="mb-4 text-lg font-semibold text-blue-700">Today</h3>
-              <div className="space-y-4">
-                {todayBookings.map((b: any) => renderBookingCard(b, true))}
-              </div>
-            </div>
-          )}
-
-          <Section
-            title="Pending"
-            bookings={pendingBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No pending bookings."
-          />
-
-          <Section
-            title="Confirmed"
-            bookings={confirmedBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No confirmed bookings."
-          />
-
-          <Section
-            title="In Progress"
-            bookings={inProgressBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No bookings in progress."
-            titleColor="text-blue-700"
-          />
-
-          <Section
-            title="Completed - Awaiting Payment"
-            bookings={completedAwaitingPaymentBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No completed unpaid bookings."
-            titleColor="text-purple-700"
-          />
-
-          <Section
-            title="Completed - Paid"
-            bookings={completedPaidBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No paid completed bookings."
-          />
-
-          <Section
-            title="Cancelled"
-            bookings={cancelledBookings}
-            renderBookingCard={renderBookingCard}
-            emptyText="No cancelled bookings."
-          />
-        </div>
+        {!isLoading && hasAnyBookings ? (
+          <div className="space-y-10">
+            {bookingSections.map((section) => (
+              <Section
+                key={section.key}
+                title={section.title}
+                bookings={section.bookings}
+                renderBookingCard={(booking) =>
+                  renderBookingCard(booking, section.isToday)
+                }
+                titleColor={section.titleColor}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );

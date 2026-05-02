@@ -159,7 +159,7 @@ function BookingCard({
   actionLoading: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+    <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
@@ -170,7 +170,7 @@ function BookingCard({
           </div>
         </div>
 
-        <div className="text-right space-y-2">
+        <div className="space-y-2 text-right">
           <div
             className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
               booking.status
@@ -259,6 +259,7 @@ function BookingCard({
 }
 
 function BookingSection({
+  id,
   title,
   emptyText,
   bookings,
@@ -271,6 +272,7 @@ function BookingSection({
   onComplete,
   onMarkPaid,
 }: {
+  id: string;
   title: string;
   emptyText: string;
   bookings: SupplierBooking[];
@@ -284,8 +286,13 @@ function BookingSection({
   onMarkPaid: (bookingId: string) => void;
 }) {
   return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+    <section id={id} className="scroll-mt-28 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+          {bookings.length}
+        </span>
+      </div>
 
       {isLoading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
@@ -316,6 +323,28 @@ function BookingSection({
         </div>
       )}
     </section>
+  );
+}
+
+function StatCard({
+  href,
+  label,
+  value,
+  valueClassName,
+}: {
+  href: string;
+  label: string;
+  value: number;
+  valueClassName: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="block rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-gray-300 hover:shadow-sm"
+    >
+      <div className="text-sm text-gray-500">{label}</div>
+      <div className={`mt-2 text-3xl font-bold ${valueClassName}`}>{value}</div>
+    </a>
   );
 }
 
@@ -383,14 +412,24 @@ export default function SupplierDashboardPage() {
   const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
   const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
-  const pendingBookings = sortBookingsByStart(bookings.filter((b) => b.status === "PENDING"));
-  const confirmedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CONFIRMED"));
-  const inProgressBookings = sortBookingsByStart(bookings.filter((b) => b.status === "IN_PROGRESS"));
+  const pendingBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "PENDING")
+  );
+  const confirmedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CONFIRMED")
+  );
+  const inProgressBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "IN_PROGRESS")
+  );
   const completedUnbilledBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "COMPLETED_UNBILLED")
   );
-  const completedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED"));
-  const cancelledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CANCELLED"));
+  const completedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "COMPLETED")
+  );
+  const cancelledBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CANCELLED")
+  );
 
   const totalActive = bookings.filter(
     (b) =>
@@ -401,11 +440,11 @@ export default function SupplierDashboardPage() {
   ).length;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-2">
+          <p className="mt-2 text-gray-500">
             Manage bookings and keep your business profile updated.
           </p>
         </div>
@@ -427,35 +466,38 @@ export default function SupplierDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">Pending bookings</div>
-          <div className="mt-2 text-3xl font-bold text-amber-600">
-            {pendingBookings.length}
-          </div>
-        </div>
+        <StatCard
+          href="#pending-bookings"
+          label="Pending bookings"
+          value={pendingBookings.length}
+          valueClassName="text-amber-600"
+        />
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">Confirmed bookings</div>
-          <div className="mt-2 text-3xl font-bold text-green-600">
-            {confirmedBookings.length}
-          </div>
-        </div>
+        <StatCard
+          href="#confirmed-bookings"
+          label="Confirmed bookings"
+          value={confirmedBookings.length}
+          valueClassName="text-green-600"
+        />
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">In progress</div>
-          <div className="mt-2 text-3xl font-bold text-blue-600">
-            {inProgressBookings.length}
-          </div>
-        </div>
+        <StatCard
+          href="#in-progress-bookings"
+          label="In progress"
+          value={inProgressBookings.length}
+          valueClassName="text-blue-600"
+        />
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">Total active bookings</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{totalActive}</div>
-        </div>
+        <StatCard
+          href="#active-bookings"
+          label="Total active bookings"
+          value={totalActive}
+          valueClassName="text-gray-900"
+        />
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div id="active-bookings" className="grid gap-8 lg:grid-cols-2">
         <BookingSection
+          id="pending-bookings"
           title="Pending Bookings"
           emptyText="No pending bookings."
           bookings={pendingBookings}
@@ -470,6 +512,7 @@ export default function SupplierDashboardPage() {
         />
 
         <BookingSection
+          id="confirmed-bookings"
           title="Confirmed Bookings"
           emptyText="No confirmed bookings."
           bookings={confirmedBookings}
@@ -484,6 +527,7 @@ export default function SupplierDashboardPage() {
         />
 
         <BookingSection
+          id="in-progress-bookings"
           title="In Progress"
           emptyText="No bookings in progress."
           bookings={inProgressBookings}
@@ -498,6 +542,7 @@ export default function SupplierDashboardPage() {
         />
 
         <BookingSection
+          id="completed-unbilled-bookings"
           title="Completed - Awaiting Payment"
           emptyText="No completed unpaid bookings."
           bookings={completedUnbilledBookings}
@@ -512,6 +557,7 @@ export default function SupplierDashboardPage() {
         />
 
         <BookingSection
+          id="completed-bookings"
           title="Completed - Paid"
           emptyText="No completed paid bookings."
           bookings={completedBookings}
@@ -526,6 +572,7 @@ export default function SupplierDashboardPage() {
         />
 
         <BookingSection
+          id="cancelled-bookings"
           title="Cancelled"
           emptyText="No cancelled bookings."
           bookings={cancelledBookings}
