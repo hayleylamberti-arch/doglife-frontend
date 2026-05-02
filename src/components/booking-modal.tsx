@@ -18,23 +18,6 @@ interface Dog {
   breed?: string | null;
 }
 
-interface BookableSlot {
-  start: string;
-  end: string;
-}
-
-interface BookableSlotsResponse {
-  ok?: boolean;
-  date?: string;
-  totalSlots?: number;
-  hasMore?: boolean;
-  slots?: {
-    morning?: BookableSlot[];
-    afternoon?: BookableSlot[];
-    evening?: BookableSlot[];
-  };
-}
-
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
@@ -51,13 +34,17 @@ function formatLabel(value?: string | null) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatSlotTime(value: string) {
-  return new Intl.DateTimeFormat("en-ZA", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Africa/Johannesburg",
-  }).format(new Date(value));
+function getStayDays(arrivalDate: string, departureDate: string) {
+  if (!arrivalDate || !departureDate) return 1;
+
+  const start = new Date(`${arrivalDate}T09:00:00`);
+  const end = new Date(`${departureDate}T09:00:00`);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1;
+  if (end <= start) return 1;
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / msPerDay));
 }
 
 export default function BookingModal({ supplierId, service, onClose }: Props) {
@@ -70,6 +57,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const isGrooming = serviceType === "GROOMING";
   const isWalking = serviceType === "WALKING";
   const isTraining = serviceType === "TRAINING";
+  const isDaycare = serviceType === "DAYCARE";
 
   const isStayService = isBoarding || isPetSitting;
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
@@ -81,8 +69,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [slotsLoading, setSlotsLoading] = useState(false);
-  const [slotsLoaded, setSlotsLoaded] = useState(false);
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
@@ -139,10 +125,84 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isMobileGrooming ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
 
-  const displayPrice =
-    isGrooming && selectedGroomingTier?.priceCents
-      ? selectedGroomingTier.priceCents
-      : service?.baseRateCents;
+  const stayDays = useMemo(
+    () => getStayDays(arrivalDate, departureDate),
+    [arrivalDate, departureDate]
+  );
+
+  const estimatedBoardingTotalCents = useMemo(() => {
+    if (!isBoarding) return null;
+
+    const baseRateCents = Number(service?.baseRateCents || 0);
+    const dogCount = Math.max(1, selectedDogIds.length || 1);
+
+    let total = baseRateCents * stayDays;
+
+    if (dogCount > 1 && service?.additionalDogEnabled) {
+      const extraDogPriceCents = Number(service?.additionalDogPriceCents || 0);
+      total += extraDogPriceCents * (dogCount - 1) * stayDays;
+    }
+
+    if (kennelType === "PRIVATE") {
+      total += Math.round(total * 0.15);
+    }
+
+    return total;
+  }, [
+    isBoarding,
+    service?.baseRateCents,
+    service?.additionalDogEnabled,
+    service?.additionalDogPriceCents,
+    selectedDogIds.length,
+    stayDays,
+    kennelType,
+  ]);
+
+  const displayPrice = useMemo(() => {
+    if (isBoarding) {
+      return estimatedBoardingTotalCents ?? service?.baseRateCents;
+    }
+
+    if (isGrooming && selectedGroomingTier?.priceCents) {
+      return selectedGroomingTier.priceCents;
+    }
+
+    return service?.baseRateCents;
+  }, [
+    isBoarding,
+    estimatedBoardingTotalCents,
+    isGrooming,
+    selectedGroomingTier,
+    service?.baseRateCents,
+  ]);
+
+  const displaySubtitle = useMemo(() => {
+    if (isBoarding) {
+      if (arrivalDate && departureDate) {
+        const dogCount = Math.max(1, selectedDogIds.length || 1);
+        return `${formatPrice(displayPrice)} total • ${stayDays} night${
+          stayDays > 1 ? "s" : ""
+        } • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
+      }
+
+      return `${formatPrice(service?.baseRateCents)} per night`;
+    }
+
+    return `${formatPrice(displayPrice)} ${
+      service?.unit
+        ? `per ${String(service.unit).toLowerCase().replace(/^per_/, "")}`
+        : ""
+    }`;
+  }, [
+    isBoarding,
+    arrivalDate,
+    departureDate,
+    selectedDogIds.length,
+    stayDays,
+    displayPrice,
+    service?.baseRateCents,
+    service?.unit,
+  ]);
 
   useEffect(() => {
     api.get("/api/owner/profile").then((res) => {
@@ -160,43 +220,17 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [isPetTransport]);
 
   useEffect(() => {
-    if (!date || isStayService || !service?.id) {
+    if (!date || isStayService) {
       setSlots([]);
       setSelectedSlot(null);
-      setSlotsLoaded(false);
       return;
     }
 
-    setSlotsLoading(true);
-    setSlotsLoaded(false);
-
     api
-      .get<BookableSlotsResponse>(
-        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}`
-      )
-      .then((res) => {
-        const grouped = res.data?.slots || {};
-
-        const flatSlots = [
-          ...(grouped.morning || []),
-          ...(grouped.afternoon || []),
-          ...(grouped.evening || []),
-        ]
-          .map((slot) => slot.start)
-          .filter(Boolean);
-
-        setSlots(flatSlots);
-        setSelectedSlot(null);
-      })
-      .catch(() => {
-        setSlots([]);
-        setSelectedSlot(null);
-      })
-      .finally(() => {
-        setSlotsLoading(false);
-        setSlotsLoaded(true);
-      });
-  }, [date, supplierId, service?.id, isStayService]);
+      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
+      .then((res) => setSlots(res.data?.slots || []))
+      .catch(() => setSlots([]));
+  }, [date, supplierId, isStayService]);
 
   useEffect(() => {
     if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
@@ -324,12 +358,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
             <h2 className="text-xl font-semibold">
               Book {formatServiceName(serviceType)}
             </h2>
-            <p className="text-sm text-gray-500">
-              {formatPrice(displayPrice)}{" "}
-              {service?.unit
-                ? `per ${String(service.unit).toLowerCase().replace(/^per_/, "")}`
-                : ""}
-            </p>
+            <p className="text-sm text-gray-500">{displaySubtitle}</p>
           </div>
 
           <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 pb-6">
@@ -367,6 +396,37 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 <p className="mt-2 text-xs text-gray-500">
                   You can select one or multiple dogs above.
                 </p>
+
+                {selectedDogIds.length > 0 ? (
+                  <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+                    <p>
+                      Base price: {formatPrice(service?.baseRateCents)} per night
+                    </p>
+
+                    {service?.additionalDogEnabled && selectedDogIds.length > 1 ? (
+                      <p>
+                        Extra dog price:{" "}
+                        {formatPrice(service?.additionalDogPriceCents)} ×{" "}
+                        {selectedDogIds.length - 1} extra dog
+                        {selectedDogIds.length - 1 > 1 ? "s" : ""}
+                      </p>
+                    ) : null}
+
+                    {kennelType === "PRIVATE" ? (
+                      <p>Private kennel surcharge: 15%</p>
+                    ) : null}
+
+                    {arrivalDate && departureDate ? (
+                      <p className="mt-2 font-medium text-gray-900">
+                        Estimated total: {formatPrice(estimatedBoardingTotalCents)}
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-500">
+                        Select arrival and departure dates to see the total.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -499,16 +559,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             )}
 
-            {!isStayService && slotsLoading ? (
-              <div className="text-sm text-gray-500">Loading available times...</div>
-            ) : null}
-
-            {!isStayService && date && slotsLoaded && slots.length === 0 ? (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-                This supplier is not available on this date. Please choose another date.
-              </div>
-            ) : null}
-
             {!isStayService && slots.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => (
@@ -520,9 +570,18 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                       selectedSlot === slot ? "bg-blue-600 text-white" : "bg-white"
                     }`}
                   >
-                    {formatSlotTime(slot)}
+                    {new Date(slot).toLocaleTimeString("en-ZA", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </button>
                 ))}
+              </div>
+            ) : null}
+
+            {isDaycare ? (
+              <div className="rounded-lg border border-gray-200 p-3 text-sm text-gray-600">
+                Daycare pricing options will be added next.
               </div>
             ) : null}
 
