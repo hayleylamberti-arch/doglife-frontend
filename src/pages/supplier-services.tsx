@@ -120,6 +120,10 @@ function serviceDefaults(serviceType: string) {
     default:
       return { unit: "PER_VISIT" };
     }
+  }
+
+function shouldShowDogCapacity(serviceType: string) {
+  return ["BOARDING", "DAYCARE", "PET_SITTING", "WALKING"].includes(serviceType);
 }
 
 export default function SupplierServicesPage() {
@@ -143,6 +147,9 @@ export default function SupplierServicesPage() {
   const [boardingExtraDogEnabled, setBoardingExtraDogEnabled] = useState(false);
   const [boardingExtraDogPrice, setBoardingExtraDogPrice] = useState("");
 
+  const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
+  const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
+
   const [washBrush, setWashBrush] = useState({
     small: "",
     medium: "",
@@ -164,6 +171,23 @@ export default function SupplierServicesPage() {
       }
 
       const defaults = serviceDefaults(serviceType);
+      const showDogCapacity = shouldShowDogCapacity(serviceType);
+
+      if (
+        showDogCapacity &&
+        maxDogsPerBooking &&
+        Number(maxDogsPerBooking) <= 0
+      ) {
+        throw new Error("Enter a valid maximum dogs per booking");
+      }
+
+      if (
+        showDogCapacity &&
+        concurrentCapacityDogs &&
+        Number(concurrentCapacityDogs) <= 0
+      ) {
+        throw new Error("Enter a valid concurrent capacity");
+      }
 
       if (serviceType === "GROOMING") {
         return api.post("/api/supplierServices", {
@@ -175,6 +199,8 @@ export default function SupplierServicesPage() {
               durationMinutes: null,
               bufferMinutes: Number(bufferMinutes || "0"),
               groomingOptions: { washBrush, washCut },
+              maxDogsPerBooking: null,
+              concurrentCapacityDogs: null,
             },
           ],
         });
@@ -214,6 +240,12 @@ export default function SupplierServicesPage() {
               serviceType === "BOARDING" && boardingExtraDogEnabled
                 ? Math.round(Number(boardingExtraDogPrice) * 100)
                 : null,
+            maxDogsPerBooking: showDogCapacity
+              ? Number(maxDogsPerBooking || "0") || null
+              : null,
+            concurrentCapacityDogs: showDogCapacity
+              ? Number(concurrentCapacityDogs || "0") || null
+              : null,
           },
         ],
       });
@@ -226,6 +258,8 @@ export default function SupplierServicesPage() {
       setBufferMinutes("");
       setBoardingExtraDogEnabled(false);
       setBoardingExtraDogPrice("");
+      setMaxDogsPerBooking("");
+      setConcurrentCapacityDogs("");
       setWashBrush({ small: "", medium: "", large: "", xl: "" });
       setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
@@ -249,8 +283,8 @@ export default function SupplierServicesPage() {
     !["GROOMING", "BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
 
   const showBufferInput = Boolean(serviceType);
-
   const isBoarding = serviceType === "BOARDING";
+  const showDogCapacityInput = shouldShowDogCapacity(serviceType);
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -268,6 +302,8 @@ export default function SupplierServicesPage() {
             setBufferMinutes("");
             setBoardingExtraDogEnabled(false);
             setBoardingExtraDogPrice("");
+            setMaxDogsPerBooking("");
+            setConcurrentCapacityDogs("");
           }}
           className="border rounded px-3 py-2 w-full"
         >
@@ -315,6 +351,33 @@ export default function SupplierServicesPage() {
             <p className="text-sm text-gray-500">
               Base price applies to the first dog. Extra dog price is added for
               each additional dog in the same booking.
+            </p>
+          </div>
+        )}
+
+        {showDogCapacityInput && (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <input
+              type="number"
+              min="1"
+              placeholder="Maximum dogs per booking"
+              value={maxDogsPerBooking}
+              onChange={(e) => setMaxDogsPerBooking(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <input
+              type="number"
+              min="1"
+              placeholder="Total concurrent dog capacity"
+              value={concurrentCapacityDogs}
+              onChange={(e) => setConcurrentCapacityDogs(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="text-sm text-gray-500">
+              Maximum dogs per booking limits one booking. Total concurrent dog
+              capacity limits how many dogs you can handle at the same time.
             </p>
           </div>
         )}
@@ -439,6 +502,12 @@ export default function SupplierServicesPage() {
                         R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
                       </p>
                       <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+                      {s.maxDogsPerBooking ? (
+                        <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+                      ) : null}
+                      {s.concurrentCapacityDogs ? (
+                        <p>Total concurrent capacity: {s.concurrentCapacityDogs}</p>
+                      ) : null}
                       {type === "BOARDING" && s.additionalDogEnabled ? (
                         <p>
                           Extra dog: R
