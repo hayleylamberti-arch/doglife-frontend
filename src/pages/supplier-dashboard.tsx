@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 type BookingStatus =
   | "PENDING"
@@ -159,7 +159,7 @@ function BookingCard({
   actionLoading: boolean;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-4">
+    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
@@ -170,7 +170,7 @@ function BookingCard({
           </div>
         </div>
 
-        <div className="space-y-2 text-right">
+        <div className="text-right space-y-2">
           <div
             className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
               booking.status
@@ -290,7 +290,7 @@ function BookingSection({
   onToggle: () => void;
 }) {
   return (
-    <section id={id} className="scroll-mt-28 rounded-2xl border border-gray-200 bg-white p-4">
+    <section id={id} className="rounded-2xl border border-gray-200 bg-white p-5">
       <button
         type="button"
         onClick={onToggle}
@@ -303,16 +303,16 @@ function BookingSection({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
             {bookings.length}
           </span>
-          <span className="text-xl text-gray-500">{isOpen ? "−" : "+"}</span>
+          <span className="text-2xl text-gray-500">{isOpen ? "−" : "+"}</span>
         </div>
       </button>
 
       {isOpen ? (
-        <div className="mt-4">
+        <div className="mt-5">
           {isLoading ? (
             <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
               Loading bookings...
@@ -322,7 +322,7 @@ function BookingSection({
               Failed to load supplier bookings.
             </div>
           ) : bookings.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
               {emptyText}
             </div>
           ) : (
@@ -347,39 +347,16 @@ function BookingSection({
   );
 }
 
-function StatCard({
-  label,
-  value,
-  valueClassName,
-  onClick,
-}: {
-  label: string;
-  value: number;
-  valueClassName: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="block rounded-2xl border border-gray-200 bg-white p-5 text-left transition hover:border-gray-300 hover:shadow-sm"
-    >
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className={`mt-2 text-3xl font-bold ${valueClassName}`}>{value}</div>
-    </button>
-  );
-}
-
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    "pending-bookings": true,
-    "confirmed-bookings": true,
-    "in-progress-bookings": false,
-    "completed-unbilled-bookings": false,
-    "completed-bookings": false,
-    "cancelled-bookings": false,
+    pending: false,
+    confirmed: false,
+    inProgress: false,
+    completedUnbilled: false,
+    completed: false,
+    cancelled: false,
   });
 
   const { data, isLoading, error } = useQuery({
@@ -445,18 +422,23 @@ export default function SupplierDashboardPage() {
   const pendingBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "PENDING")
   );
+
   const confirmedBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "CONFIRMED")
   );
+
   const inProgressBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "IN_PROGRESS")
   );
+
   const completedUnbilledBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "COMPLETED_UNBILLED")
   );
+
   const completedBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "COMPLETED")
   );
+
   const cancelledBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "CANCELLED")
   );
@@ -469,116 +451,100 @@ export default function SupplierDashboardPage() {
       b.status === "COMPLETED_UNBILLED"
   ).length;
 
-  function openAndScrollTo(sectionId: string) {
+  function toggleSection(sectionKey: string) {
     setOpenSections((prev) => ({
       ...prev,
-      [sectionId]: true,
-    }));
-
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        const el = document.getElementById(sectionId);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      }, 50);
-    });
-  }
-
-  function toggleSection(sectionId: string) {
-    setOpenSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
+      [sectionKey]: !prev[sectionKey],
     }));
   }
 
-  useEffect(() => {
-    if (pendingBookings.length > 0) {
-      setOpenSections((prev) => ({
-        ...prev,
-        "pending-bookings": true,
-      }));
-    }
-  }, [pendingBookings.length]);
+  function openAndScroll(sectionKey: string, sectionId: string) {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: true,
+    }));
+
+    setTimeout(() => {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 50);
+  }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-2 text-gray-500">
-            Manage bookings and keep your business profile updated.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link
-            to="/supplier/business-profile"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Edit Business Profile
-          </Link>
-          <Link
-            to="/supplier/availability"
-            className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            Update Availability
-          </Link>
-        </div>
-      </div>
-
+    <div className="max-w-6xl mx-auto p-6 space-y-8">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900">
               Welcome to DogLife 🐾
-            </h2>
+            </h1>
             <p className="mt-2 text-sm text-gray-600">
               Easily manage your bookings, keep your availability updated, and
               stay on top of your day.
             </p>
           </div>
 
-          <Link
-            to="/supplier/availability"
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            Update Availability
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to="/supplier/business-profile"
+              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Edit Business Profile
+            </Link>
+
+            <Link
+              to="/supplier/availability"
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Update Availability
+            </Link>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          label="Pending bookings"
-          value={pendingBookings.length}
-          valueClassName="text-amber-600"
-          onClick={() => openAndScrollTo("pending-bookings")}
-        />
+        <button
+          type="button"
+          onClick={() => openAndScroll("pending", "pending-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+        >
+          <div className="text-sm text-gray-500">Pending bookings</div>
+          <div className="mt-2 text-3xl font-bold text-amber-600">
+            {pendingBookings.length}
+          </div>
+        </button>
 
-        <StatCard
-          label="Confirmed bookings"
-          value={confirmedBookings.length}
-          valueClassName="text-green-600"
-          onClick={() => openAndScrollTo("confirmed-bookings")}
-        />
+        <button
+          type="button"
+          onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+        >
+          <div className="text-sm text-gray-500">Confirmed bookings</div>
+          <div className="mt-2 text-3xl font-bold text-green-600">
+            {confirmedBookings.length}
+          </div>
+        </button>
 
-        <StatCard
-          label="In progress"
-          value={inProgressBookings.length}
-          valueClassName="text-blue-600"
-          onClick={() => openAndScrollTo("in-progress-bookings")}
-        />
+        <button
+          type="button"
+          onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+        >
+          <div className="text-sm text-gray-500">In progress</div>
+          <div className="mt-2 text-3xl font-bold text-blue-600">
+            {inProgressBookings.length}
+          </div>
+        </button>
 
-        <StatCard
-          label="Total active bookings"
-          value={totalActive}
-          valueClassName="text-gray-900"
-          onClick={() => openAndScrollTo("pending-bookings")}
-        />
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="text-sm text-gray-500">Total active bookings</div>
+          <div className="mt-2 text-3xl font-bold text-gray-900">{totalActive}</div>
+        </div>
       </div>
 
-      <div className="grid gap-6">
+      <div className="space-y-6">
         <BookingSection
           id="pending-bookings"
           title="Pending Bookings"
@@ -592,8 +558,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["pending-bookings"])}
-          onToggle={() => toggleSection("pending-bookings")}
+          isOpen={Boolean(openSections.pending)}
+          onToggle={() => toggleSection("pending")}
         />
 
         <BookingSection
@@ -609,8 +575,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["confirmed-bookings"])}
-          onToggle={() => toggleSection("confirmed-bookings")}
+          isOpen={Boolean(openSections.confirmed)}
+          onToggle={() => toggleSection("confirmed")}
         />
 
         <BookingSection
@@ -626,8 +592,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["in-progress-bookings"])}
-          onToggle={() => toggleSection("in-progress-bookings")}
+          isOpen={Boolean(openSections.inProgress)}
+          onToggle={() => toggleSection("inProgress")}
         />
 
         <BookingSection
@@ -643,8 +609,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["completed-unbilled-bookings"])}
-          onToggle={() => toggleSection("completed-unbilled-bookings")}
+          isOpen={Boolean(openSections.completedUnbilled)}
+          onToggle={() => toggleSection("completedUnbilled")}
         />
 
         <BookingSection
@@ -660,8 +626,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["completed-bookings"])}
-          onToggle={() => toggleSection("completed-bookings")}
+          isOpen={Boolean(openSections.completed)}
+          onToggle={() => toggleSection("completed")}
         />
 
         <BookingSection
@@ -677,8 +643,8 @@ export default function SupplierDashboardPage() {
           onStart={(id) => startMutation.mutate(id)}
           onComplete={(id) => completeMutation.mutate(id)}
           onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections["cancelled-bookings"])}
-          onToggle={() => toggleSection("cancelled-bookings")}
+          isOpen={Boolean(openSections.cancelled)}
+          onToggle={() => toggleSection("cancelled")}
         />
       </div>
     </div>
