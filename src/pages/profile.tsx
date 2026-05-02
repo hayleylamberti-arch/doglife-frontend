@@ -30,6 +30,7 @@ const profileSchema = z.object({
     .regex(/^[\+]?[0-9\s\-\(\)]{10,}$/, "Please enter a valid phone number")
     .optional()
     .or(z.literal("")),
+  suburb: z.string().min(2, "Please enter your suburb").optional().or(z.literal("")),
   address: z.string().min(5, "Please enter a complete address").optional().or(z.literal("")),
 });
 
@@ -46,6 +47,7 @@ export default function Profile() {
       firstName: "",
       lastName: "",
       mobilePhone: "",
+      suburb: "",
       address: "",
     },
   });
@@ -69,6 +71,7 @@ export default function Profile() {
       firstName: profileUser.firstName || "",
       lastName: profileUser.lastName || "",
       mobilePhone: profileUser.mobilePhone || "",
+      suburb: ownerProfile?.suburb || "",
       address: ownerProfile?.address || "",
     });
   }, [profileUser, ownerProfile, form]);
@@ -79,6 +82,7 @@ export default function Profile() {
         firstName: data.firstName,
         lastName: data.lastName,
         mobilePhone: data.mobilePhone || null,
+        suburb: data.suburb || null,
         address: data.address || null,
       });
 
@@ -186,6 +190,24 @@ export default function Profile() {
 
                 <FormField
                   control={form.control}
+                  name="suburb"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Suburb</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          placeholder="Enter your suburb for faster service search"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
@@ -204,7 +226,7 @@ export default function Profile() {
                 />
 
                 <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 text-sm text-blue-800">
-                  Your address is used for services that happen at your home, such as walking, home training, mobile grooming, or mobile vet bookings.
+                  Your suburb helps us show nearby providers faster. Your address is used for services that happen at your home, such as walking, home training, mobile grooming, or mobile vet bookings.
                 </div>
 
                 <Button type="submit" disabled={updateProfileMutation.isPending}>
@@ -238,6 +260,16 @@ export default function Profile() {
                 <p className="font-medium">Phone number</p>
                 <p className="text-sm text-doglife-neutral">
                   {form.watch("mobilePhone") || "Not added yet"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 border rounded-lg">
+              <MapPin className="h-5 w-5 mt-0.5 text-doglife-neutral" />
+              <div>
+                <p className="font-medium">Suburb</p>
+                <p className="text-sm text-doglife-neutral">
+                  {form.watch("suburb") || "Not added yet"}
                 </p>
               </div>
             </div>
