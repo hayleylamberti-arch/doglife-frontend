@@ -140,6 +140,9 @@ export default function SupplierServicesPage() {
   const [duration, setDuration] = useState("");
   const [bufferMinutes, setBufferMinutes] = useState("");
 
+  const [boardingExtraDogEnabled, setBoardingExtraDogEnabled] = useState(false);
+  const [boardingExtraDogPrice, setBoardingExtraDogPrice] = useState("");
+
   const [washBrush, setWashBrush] = useState({
     small: "",
     medium: "",
@@ -189,6 +192,14 @@ export default function SupplierServicesPage() {
         throw new Error("Enter a valid time in minutes");
       }
 
+      if (
+        serviceType === "BOARDING" &&
+        boardingExtraDogEnabled &&
+        (!boardingExtraDogPrice || Number(boardingExtraDogPrice) < 0)
+      ) {
+        throw new Error("Enter a valid extra dog price");
+      }
+
       return api.post("/api/supplierServices", {
         services: [
           {
@@ -197,6 +208,12 @@ export default function SupplierServicesPage() {
             baseRateCents: Math.round(Number(price) * 100),
             durationMinutes: requiresDuration ? Number(duration) : null,
             bufferMinutes: Number(bufferMinutes || "0"),
+            additionalDogEnabled:
+              serviceType === "BOARDING" ? boardingExtraDogEnabled : false,
+            additionalDogPriceCents:
+              serviceType === "BOARDING" && boardingExtraDogEnabled
+                ? Math.round(Number(boardingExtraDogPrice) * 100)
+                : null,
           },
         ],
       });
@@ -207,6 +224,8 @@ export default function SupplierServicesPage() {
       setPrice("");
       setDuration("");
       setBufferMinutes("");
+      setBoardingExtraDogEnabled(false);
+      setBoardingExtraDogPrice("");
       setWashBrush({ small: "", medium: "", large: "", xl: "" });
       setWashCut({ small: "", medium: "", large: "", xl: "" });
     },
@@ -231,6 +250,8 @@ export default function SupplierServicesPage() {
 
   const showBufferInput = Boolean(serviceType);
 
+  const isBoarding = serviceType === "BOARDING";
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
       <h1 className="text-2xl font-semibold">Manage Services</h1>
@@ -245,6 +266,8 @@ export default function SupplierServicesPage() {
             setPrice("");
             setDuration("");
             setBufferMinutes("");
+            setBoardingExtraDogEnabled(false);
+            setBoardingExtraDogPrice("");
           }}
           className="border rounded px-3 py-2 w-full"
         >
@@ -265,6 +288,35 @@ export default function SupplierServicesPage() {
             onChange={(e) => setPrice(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
+        )}
+
+        {isBoarding && (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={boardingExtraDogEnabled}
+                onChange={(e) => setBoardingExtraDogEnabled(e.target.checked)}
+              />
+              Enable extra dog pricing
+            </label>
+
+            {boardingExtraDogEnabled && (
+              <input
+                type="number"
+                min="0"
+                placeholder="Extra dog price (R)"
+                value={boardingExtraDogPrice}
+                onChange={(e) => setBoardingExtraDogPrice(e.target.value)}
+                className="border rounded px-3 py-2 block w-full"
+              />
+            )}
+
+            <p className="text-sm text-gray-500">
+              Base price applies to the first dog. Extra dog price is added for
+              each additional dog in the same booking.
+            </p>
+          </div>
         )}
 
         {showDurationInput && (
@@ -387,6 +439,12 @@ export default function SupplierServicesPage() {
                         R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
                       </p>
                       <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+                      {type === "BOARDING" && s.additionalDogEnabled ? (
+                        <p>
+                          Extra dog: R
+                          {((s.additionalDogPriceCents || 0) / 100).toFixed(0)}
+                        </p>
+                      ) : null}
                     </div>
 
                     <button
