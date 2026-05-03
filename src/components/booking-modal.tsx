@@ -20,16 +20,24 @@ interface Dog {
 }
 
 interface SupplierAvailability {
-  dayOfWeek?: string;
-  day?: string;
-  weekday?: string;
+  dayOfWeek?: string | number;
+  day?: string | number;
+  weekday?: string | number;
   isAvailable?: boolean;
   available?: boolean;
   enabled?: boolean;
   startTime?: string;
   endTime?: string;
+  start?: string;
+  end?: string;
+  openTime?: string;
+  closeTime?: string;
   opensAt?: string;
   closesAt?: string;
+  from?: string;
+  to?: string;
+  startAt?: string;
+  endAt?: string;
 }
 
 const WEEKDAYS = [
@@ -94,15 +102,39 @@ function dateToWeekday(date: string) {
 }
 
 function getAvailabilityDay(value: SupplierAvailability) {
-  return String(value.dayOfWeek || value.day || value.weekday || "").toUpperCase();
+  const rawDay = value.dayOfWeek ?? value.day ?? value.weekday;
+
+  if (typeof rawDay === "number") {
+    return WEEKDAYS[rawDay];
+  }
+
+  if (typeof rawDay === "string" && /^\d+$/.test(rawDay)) {
+    return WEEKDAYS[Number(rawDay)];
+  }
+
+  return String(rawDay || "").toUpperCase();
 }
 
-function getAvailabilityStart(value: SupplierAvailability) {
-  return normaliseTime(value.startTime || value.opensAt);
+function getAvailabilityStart(value: any) {
+  return normaliseTime(
+    value.startTime ||
+      value.start ||
+      value.openTime ||
+      value.opensAt ||
+      value.from ||
+      value.startAt
+  );
 }
 
-function getAvailabilityEnd(value: SupplierAvailability) {
-  return normaliseTime(value.endTime || value.closesAt);
+function getAvailabilityEnd(value: any) {
+  return normaliseTime(
+    value.endTime ||
+      value.end ||
+      value.closeTime ||
+      value.closesAt ||
+      value.to ||
+      value.endAt
+  );
 }
 
 function isAvailabilityEnabled(value: SupplierAvailability) {
