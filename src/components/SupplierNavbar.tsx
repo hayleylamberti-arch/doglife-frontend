@@ -1,11 +1,23 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Brand from "@/components/Brand";
+import { api } from "@/lib/api";
 
 export default function SupplierNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await api.get("/api/notifications");
+      return res.data;
+    },
+  });
+
+  const unreadCount = notificationsData?.unreadCount || 0;
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -38,39 +50,37 @@ export default function SupplierNavbar() {
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-gray-200 bg-white">
       <div className="mx-auto max-w-screen-xl px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* LEFT */}
           <Link to="/supplier/dashboard" onClick={closeMobileMenu}>
             <Brand />
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden items-center gap-6 text-sm md:flex">
-            <Link
-              to="/supplier/dashboard"
-              className={isActive("/supplier/dashboard")}
-            >
+            <Link to="/supplier/dashboard" className={isActive("/supplier/dashboard")}>
               Dashboard
             </Link>
 
-            <Link
-              to="/supplier/profile"
-              className={isActive("/supplier/profile")}
-            >
+            <Link to="/supplier/profile" className={isActive("/supplier/profile")}>
               Business Profile
             </Link>
 
-            <Link
-              to="/supplier/services"
-              className={isActive("/supplier/services")}
-            >
+            <Link to="/supplier/services" className={isActive("/supplier/services")}>
               Services
             </Link>
 
-            <Link
-              to="/supplier/availability"
-              className={isActive("/supplier/availability")}
-            >
+            <Link to="/supplier/availability" className={isActive("/supplier/availability")}>
               Availability
+            </Link>
+
+            <Link
+              to="/supplier/notifications"
+              className={isActive("/supplier/notifications")}
+            >
+              Notifications
+              {unreadCount > 0 ? (
+                <span className="ml-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  {unreadCount}
+                </span>
+              ) : null}
             </Link>
 
             <button
@@ -82,7 +92,6 @@ export default function SupplierNavbar() {
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen((open) => !open)}
@@ -94,7 +103,6 @@ export default function SupplierNavbar() {
           </button>
         </div>
 
-        {/* Mobile Navigation */}
         {mobileMenuOpen ? (
           <div className="mt-3 border-t border-gray-200 pt-3 md:hidden">
             <div className="flex flex-col gap-2">
@@ -128,6 +136,14 @@ export default function SupplierNavbar() {
                 className={mobileLinkClass("/supplier/availability")}
               >
                 Availability
+              </Link>
+
+              <Link
+                to="/supplier/notifications"
+                onClick={closeMobileMenu}
+                className={mobileLinkClass("/supplier/notifications")}
+              >
+                Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}
               </Link>
 
               <button
