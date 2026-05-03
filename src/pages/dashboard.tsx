@@ -638,7 +638,11 @@ const cancelledBookings = sortedBookings.filter(
   }`}
 >
   <p className="font-semibold text-gray-800">{n.title}</p>
-  <p className="text-sm text-gray-600">{n.message}</p>
+  <p className="text-sm text-gray-600">
+  {n.booking
+    ? `${n.booking.serviceLabel} with ${n.booking.dogNames || "your dog"} on ${formatDate(n.booking.startAt)}`
+    : n.message}
+</p>
 </div>
           ))}
         </div>
