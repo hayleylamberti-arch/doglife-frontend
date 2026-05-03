@@ -223,7 +223,7 @@ const SERVICE_SHORTCUTS = [
 
 function ServiceShortcuts() {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 md:p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Book a service</h2>
@@ -241,17 +241,18 @@ function ServiceShortcuts() {
       </div>
 
       <div className="mt-5 overflow-x-auto pb-2">
-        <div className="flex min-w-max gap-4">
+        <div className="flex min-w-max gap-3 md:gap-4">
           {SERVICE_SHORTCUTS.map((service) => (
             <Link
               key={service.key}
               to={service.href}
-              className="group flex w-24 shrink-0 flex-col items-center text-center"
+              className="group flex w-20 md:w-24 shrink-0 flex-col items-center text-center"
             >
-              <div className="flex h-16 w-16 md:h-20 md:w-20 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-3xl md:text-4xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:bg-white group-hover:shadow-md">
+              <div className="flex h-12 w-12 md:h-20 md:w-20 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-2xl md:text-4xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:bg-white group-hover:shadow-md">
                 <span aria-hidden="true">{service.icon}</span>
               </div>
-              <span className="mt-2 text-center text-sm md:text-base font-medium leading-tight text-gray-800">
+
+              <span className="mt-2 text-xs md:text-sm font-medium leading-tight text-gray-800">
                 {service.label}
               </span>
             </Link>
