@@ -324,41 +324,35 @@ export default function Dashboard() {
 }, [data]);
 
   const todayBookings = sortedBookings.filter((b: any) => {
-    const date = new Date(b.startAt);
-    return (
-      date >= todayStart &&
-      date <= todayEnd &&
-      (b.status === "PENDING" || b.status === "CONFIRMED")
-    );
-  });
+  const date = new Date(b.startAt);
+  return date >= todayStart && date <= todayEnd;
+});
 
-  const pendingBookings = sortedBookings.filter(
-    (b: any) =>
-      b.status === "PENDING" &&
-      !todayBookings.some((todayBooking: any) => todayBooking.id === b.id)
-  );
+const todayBookingIds = new Set(todayBookings.map((b: any) => b.id));
 
-  const confirmedBookings = sortedBookings.filter(
-    (b: any) =>
-      b.status === "CONFIRMED" &&
-      !todayBookings.some((todayBooking: any) => todayBooking.id === b.id)
-  );
+const pendingBookings = sortedBookings.filter(
+  (b: any) => b.status === "PENDING" && !todayBookingIds.has(b.id)
+);
 
-  const inProgressBookings = sortedBookings.filter(
-    (b: any) => b.status === "IN_PROGRESS"
-  );
+const confirmedBookings = sortedBookings.filter(
+  (b: any) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
+);
 
-  const completedAwaitingPaymentBookings = sortedBookings.filter(
-    (b: any) => b.status === "COMPLETED_UNBILLED"
-  );
+const inProgressBookings = sortedBookings.filter(
+  (b: any) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
+);
 
-  const completedPaidBookings = sortedBookings.filter(
-    (b: any) => b.status === "COMPLETED"
-  );
+const completedAwaitingPaymentBookings = sortedBookings.filter(
+  (b: any) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+);
 
-  const cancelledBookings = sortedBookings.filter(
-    (b: any) => b.status === "CANCELLED"
-  );
+const completedPaidBookings = sortedBookings.filter(
+  (b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)
+);
+
+const cancelledBookings = sortedBookings.filter(
+  (b: any) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)
+);
 
   const bookingSections = [
     {
