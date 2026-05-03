@@ -259,6 +259,10 @@ function ServiceShortcuts() {
           ))}
         </div>
       </div>
+
+      <p className="mt-2 text-xs text-gray-400 md:hidden">
+  Swipe to see more services
+</p>
     </div>
   );
 }
