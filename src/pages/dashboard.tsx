@@ -304,6 +304,15 @@ export default function Dashboard() {
     },
   });
 
+  const markAsReadMutation = useMutation({
+  mutationFn: async (id: string) => {
+    await api.patch(`/api/notifications/${id}/read`);
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  },
+});
+
   const todayStart = useMemo(() => {
     const date = new Date();
     date.setHours(0, 0, 0, 0);
@@ -618,12 +627,19 @@ const cancelledBookings = sortedBookings.filter(
         <div className="space-y-2">
           {notifications.slice(0, 3).map((n: any) => (
             <div
-              key={n.id}
-              className="rounded-lg border border-yellow-200 bg-yellow-50 p-4"
-            >
-              <p className="font-semibold text-gray-800">{n.title}</p>
-              <p className="text-sm text-gray-600">{n.message}</p>
-            </div>
+  key={n.id}
+  onClick={() => {
+  if (!n.read) markAsReadMutation.mutate(n.id);
+}}
+  className={`cursor-pointer rounded-lg border p-4 ${
+    n.read
+      ? "border-gray-200 bg-gray-50"
+      : "border-yellow-200 bg-yellow-50"
+  }`}
+>
+  <p className="font-semibold text-gray-800">{n.title}</p>
+  <p className="text-sm text-gray-600">{n.message}</p>
+</div>
           ))}
         </div>
       )}
