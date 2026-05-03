@@ -430,19 +430,23 @@ export default function SearchPage() {
 
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {supplier.isPreferred ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
                             Preferred
                           </span>
                         ) : null}
 
                         {supplier.usedBefore ? (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
                             Used before
                           </span>
                         ) : null}
 
+                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-semibold">
+                          {supplier.completedServicesCount ?? 0} completed
+                        </span>
+
                         {searchMode === "AVAILABLE" && supplier.available ? (
-                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">
                             Available
                           </span>
                         ) : null}
@@ -484,10 +488,6 @@ export default function SearchPage() {
                       {Number(supplier.ratingCount || 0) > 0
                         ? `${Number(supplier.ratingAverage || 0).toFixed(1)} ★ (${supplier.ratingCount})`
                         : "No ratings yet"}
-                    </p>
-
-                    <p className="text-sm text-gray-600">
-                      {(supplier.completedServicesCount ?? 0)} completed services
                     </p>
                   </div>
 
