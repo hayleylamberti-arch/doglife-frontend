@@ -19,6 +19,29 @@ interface Dog {
   breed?: string | null;
 }
 
+interface SupplierAvailability {
+  dayOfWeek?: string;
+  day?: string;
+  weekday?: string;
+  isAvailable?: boolean;
+  available?: boolean;
+  enabled?: boolean;
+  startTime?: string;
+  endTime?: string;
+  opensAt?: string;
+  closesAt?: string;
+}
+
+const WEEKDAYS = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
+
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
@@ -60,35 +83,133 @@ function toBoolean(value: unknown): boolean {
   return false;
 }
 
+function normaliseTime(value?: string | null) {
+  if (!value) return "";
+  return String(value).slice(0, 5);
+}
+
+function dateToWeekday(date: string) {
+  const parsed = new Date(`${date}T12:00:00`);
+  return WEEKDAYS[parsed.getDay()];
+}
+
+function getAvailabilityDay(value: SupplierAvailability) {
+  return String(value.dayOfWeek || value.day || value.weekday || "").toUpperCase();
+}
+
+function getAvailabilityStart(value: SupplierAvailability) {
+  return normaliseTime(value.startTime || value.opensAt);
+}
+
+function getAvailabilityEnd(value: SupplierAvailability) {
+  return normaliseTime(value.endTime || value.closesAt);
+}
+
+function isAvailabilityEnabled(value: SupplierAvailability) {
+  if (value.isAvailable === false) return false;
+  if (value.available === false) return false;
+  if (value.enabled === false) return false;
+  return true;
+}
+
+function getAvailabilityForDate(
+  date: string,
+  availability: SupplierAvailability[]
+) {
+  if (!date || !Array.isArray(availability)) return null;
+
+  const weekday = dateToWeekday(date);
+
+  const match = availability.find((item) => {
+    return getAvailabilityDay(item) === weekday && isAvailabilityEnabled(item);
+  });
+
+  if (!match) return null;
+
+  const startTime = getAvailabilityStart(match);
+  const endTime = getAvailabilityEnd(match);
+
+  if (!startTime || !endTime) return null;
+
+  return {
+    startTime,
+    endTime,
+  };
+}
+
+function minutesFromTime(time: string) {
+  const [hours, minutes] = normaliseTime(time).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function timeFromMinutes(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function buildDateTime(date: string, time: string) {
+  return new Date(`${date}T${normaliseTime(time)}:00`);
+}
+
+function generateAvailabilitySlots(
+  date: string,
+  startTime: string,
+  endTime: string,
+  durationMinutes: number
+) {
+  const slots: string[] = [];
+
+  const startMinutes = minutesFromTime(startTime);
+  const endMinutes = minutesFromTime(endTime);
+  const safeDuration = Math.max(15, durationMinutes || 60);
+
+  for (
+    let currentMinutes = startMinutes;
+    currentMinutes + safeDuration <= endMinutes;
+    currentMinutes += 60
+  ) {
+    slots.push(buildDateTime(date, timeFromMinutes(currentMinutes)).toISOString());
+  }
+
+  return slots;
+}
+
 function buildDaycareTimes(
   date: string,
   daycareSessionType: DaycareSessionType,
-  halfDayPeriod: HalfDayPeriod
+  halfDayPeriod: HalfDayPeriod,
+  availabilityForDate: { startTime: string; endTime: string } | null
 ) {
-  if (!date) {
+  if (!date || !availabilityForDate) {
     return {
       startAt: null as Date | null,
       endAt: null as Date | null,
     };
   }
 
+  const startMinutes = minutesFromTime(availabilityForDate.startTime);
+  const endMinutes = minutesFromTime(availabilityForDate.endTime);
+  const midpointMinutes = Math.floor((startMinutes + endMinutes) / 2);
+
   if (daycareSessionType === "FULL_DAY") {
     return {
-      startAt: new Date(`${date}T08:00:00`),
-      endAt: new Date(`${date}T17:00:00`),
+      startAt: buildDateTime(date, availabilityForDate.startTime),
+      endAt: buildDateTime(date, availabilityForDate.endTime),
     };
   }
 
   if (halfDayPeriod === "AFTERNOON") {
     return {
-      startAt: new Date(`${date}T13:00:00`),
-      endAt: new Date(`${date}T17:00:00`),
+      startAt: buildDateTime(date, timeFromMinutes(midpointMinutes)),
+      endAt: buildDateTime(date, availabilityForDate.endTime),
     };
   }
 
   return {
-    startAt: new Date(`${date}T08:00:00`),
-    endAt: new Date(`${date}T12:00:00`),
+    startAt: buildDateTime(date, availabilityForDate.startTime),
+    endAt: buildDateTime(date, timeFromMinutes(midpointMinutes)),
   };
 }
 
@@ -115,6 +236,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [supplierAvailability, setSupplierAvailability] = useState<
+    SupplierAvailability[]
+  >([]);
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
@@ -175,6 +299,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isMobileVet ||
     isMobileGrooming ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
+
+  const availabilityForSelectedDate = useMemo(() => {
+    return getAvailabilityForDate(date, supplierAvailability);
+  }, [date, supplierAvailability]);
 
   const stayDays = useMemo(
     () => getStayDays(arrivalDate, departureDate),
@@ -405,17 +533,58 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [isPetTransport]);
 
   useEffect(() => {
+    api
+      .get(`/api/public/suppliers/${supplierId}`)
+      .then((res) => {
+        const supplier =
+          res.data?.supplier ||
+          res.data?.profile ||
+          res.data?.data ||
+          res.data ||
+          {};
+
+        const availability =
+          supplier.availability ||
+          supplier.availabilities ||
+          supplier.supplierAvailability ||
+          supplier.operatingHours ||
+          [];
+
+        setSupplierAvailability(Array.isArray(availability) ? availability : []);
+      })
+      .catch(() => {
+        setSupplierAvailability([]);
+      });
+  }, [supplierId]);
+
+  useEffect(() => {
     if (!usesTimeSlots || !date) {
       setSlots([]);
       setSelectedSlot(null);
       return;
     }
 
-    api
-      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
-      .then((res) => setSlots(res.data?.slots || []))
-      .catch(() => setSlots([]));
-  }, [date, supplierId, usesTimeSlots]);
+    if (!availabilityForSelectedDate) {
+      setSlots([]);
+      setSelectedSlot(null);
+      return;
+    }
+
+    const generatedSlots = generateAvailabilitySlots(
+      date,
+      availabilityForSelectedDate.startTime,
+      availabilityForSelectedDate.endTime,
+      appointmentDurationMinutes
+    );
+
+    setSlots(generatedSlots);
+    setSelectedSlot(null);
+  }, [
+    date,
+    usesTimeSlots,
+    availabilityForSelectedDate,
+    appointmentDurationMinutes,
+  ]);
 
   useEffect(() => {
     if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
@@ -502,6 +671,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return alert("Select a date");
     }
 
+    if ((isDaycare || usesTimeSlots) && !availabilityForSelectedDate) {
+      return alert("The supplier is not available on this date");
+    }
+
     if (!isStayService && !isDaycare && !selectedSlot) {
       return alert("Select a time");
     }
@@ -531,7 +704,8 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         const daycareTimes = buildDaycareTimes(
           date,
           daycareSessionType,
-          halfDayPeriod
+          halfDayPeriod,
+          availabilityForSelectedDate
         );
 
         if (!daycareTimes.startAt || !daycareTimes.endAt) {
@@ -629,37 +803,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                   <option value="SOCIAL">Social kennel</option>
                   <option value="PRIVATE">Individual kennel</option>
                 </select>
-                <p className="mt-2 text-xs text-gray-500">
-                  You can select one or multiple dogs above.
-                </p>
-
-                {selectedDogIds.length > 0 ? (
-                  <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                    <p>Base price: {formatPrice(boardingBaseRateCents)} per night</p>
-
-                    {boardingAdditionalDogEnabled && selectedDogIds.length > 1 ? (
-                      <p>
-                        Extra dog price: {formatPrice(boardingAdditionalDogPriceCents)} ×{" "}
-                        {selectedDogIds.length - 1} extra dog
-                        {selectedDogIds.length - 1 > 1 ? "s" : ""}
-                      </p>
-                    ) : null}
-
-                    {kennelType === "PRIVATE" ? (
-                      <p>Private kennel surcharge: 15%</p>
-                    ) : null}
-
-                    {arrivalDate && departureDate ? (
-                      <p className="mt-2 font-medium text-gray-900">
-                        Estimated total: {formatPrice(estimatedBoardingTotalCents)}
-                      </p>
-                    ) : (
-                      <p className="mt-2 text-xs text-gray-500">
-                        Select arrival and departure dates to see the total.
-                      </p>
-                    )}
-                  </div>
-                ) : null}
               </div>
             ) : null}
 
@@ -694,59 +837,32 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 </div>
 
                 {daycareSessionType === "HALF_DAY" ? (
-                  <div className="mt-3">
-                    <p className="mb-2 text-sm font-medium">Half day period</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHalfDayPeriod("MORNING")}
+                      className={`rounded border px-3 py-2 text-sm ${
+                        halfDayPeriod === "MORNING"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "bg-white"
+                      }`}
+                    >
+                      Morning
+                    </button>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setHalfDayPeriod("MORNING")}
-                        className={`rounded border px-3 py-2 text-sm ${
-                          halfDayPeriod === "MORNING"
-                            ? "border-blue-600 bg-blue-600 text-white"
-                            : "bg-white"
-                        }`}
-                      >
-                        Morning
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setHalfDayPeriod("AFTERNOON")}
-                        className={`rounded border px-3 py-2 text-sm ${
-                          halfDayPeriod === "AFTERNOON"
-                            ? "border-blue-600 bg-blue-600 text-white"
-                            : "bg-white"
-                        }`}
-                      >
-                        Afternoon
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHalfDayPeriod("AFTERNOON")}
+                      className={`rounded border px-3 py-2 text-sm ${
+                        halfDayPeriod === "AFTERNOON"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "bg-white"
+                      }`}
+                    >
+                      Afternoon
+                    </button>
                   </div>
                 ) : null}
-
-                <div className="mt-3 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-                  <p>Half day price: {formatPrice(daycareHalfDayPriceCents)}</p>
-                  <p>Full day price: {formatPrice(daycareFullDayPriceCents)}</p>
-
-                  {daycareAdditionalDogEnabled && selectedDogIds.length > 1 ? (
-                    <p>
-                      Extra dog price: {formatPrice(daycareAdditionalDogPriceCents)} ×{" "}
-                      {selectedDogIds.length - 1} extra dog
-                      {selectedDogIds.length - 1 > 1 ? "s" : ""}
-                    </p>
-                  ) : null}
-
-                  {selectedDogIds.length > 0 ? (
-                    <p className="mt-2 font-medium text-gray-900">
-                      Estimated total: {formatPrice(estimatedDaycareTotalCents)}
-                    </p>
-                  ) : (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Select one or more dogs to see the total.
-                    </p>
-                  )}
-                </div>
               </div>
             ) : null}
 
@@ -757,89 +873,26 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
               </div>
             ) : null}
 
-            {isGrooming ? (
-              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
-                <div>
-                  <p className="mb-1 text-sm font-medium">Grooming option</p>
-                  <select
-                    className="w-full rounded border px-3 py-2"
-                    value={groomingCategory}
-                    onChange={(e) => {
-                      setGroomingCategory(e.target.value);
-                      setGroomingSize("");
-                    }}
-                  >
-                    {groomingCategories.map((category) => (
-                      <option key={String(category)} value={String(category)}>
-                        {category === "WASH_BRUSH"
-                          ? "Wash & Brush"
-                          : category === "WASH_CUT"
-                          ? "Wash & Cut"
-                          : formatLabel(String(category))}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <p className="mb-1 text-sm font-medium">Dog size</p>
-                  <select
-                    className="w-full rounded border px-3 py-2"
-                    value={groomingSize}
-                    onChange={(e) => setGroomingSize(e.target.value)}
-                  >
-                    {availableGroomingSizes.map((tier) => (
-                      <option key={tier.id} value={tier.dogSize}>
-                        {formatLabel(tier.dogSize)} — {formatPrice(tier.priceCents)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={isMobileGrooming}
-                    onChange={(e) => setIsMobileGrooming(e.target.checked)}
-                  />
-                  <span>Mobile grooming at owner home</span>
-                </label>
-              </div>
-            ) : null}
-
             {isStayService ? (
               <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
                 <p className="text-sm font-semibold">
                   Select arrival and departure dates
                 </p>
-                <p className="mb-3 text-xs text-gray-500">
-                  Choose when the stay starts and ends.
-                </p>
 
                 <div className="space-y-3">
-                  <label className="block overflow-hidden">
-                    <span className="mb-1 block text-sm font-medium">
-                      Arrival date
-                    </span>
-                    <input
-                      type="date"
-                      className={dateInputClass}
-                      value={arrivalDate}
-                      onChange={(e) => setArrivalDate(e.target.value)}
-                    />
-                  </label>
+                  <input
+                    type="date"
+                    className={dateInputClass}
+                    value={arrivalDate}
+                    onChange={(e) => setArrivalDate(e.target.value)}
+                  />
 
-                  <label className="block overflow-hidden">
-                    <span className="mb-1 block text-sm font-medium">
-                      Departure date
-                    </span>
-                    <input
-                      type="date"
-                      className={dateInputClass}
-                      value={departureDate}
-                      onChange={(e) => setDepartureDate(e.target.value)}
-                    />
-                  </label>
+                  <input
+                    type="date"
+                    className={dateInputClass}
+                    value={departureDate}
+                    onChange={(e) => setDepartureDate(e.target.value)}
+                  />
                 </div>
 
                 {isPetSitting ? (
@@ -860,25 +913,13 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                   </div>
                 ) : null}
               </div>
-            ) : isDaycare ? (
-              <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
-                <p className="text-sm font-semibold">Select daycare date</p>
-                <p className="mb-3 text-xs text-gray-500">
-                  Choose the date for this daycare session.
-                </p>
-
-                <input
-                  type="date"
-                  className={dateInputClass}
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
             ) : (
               <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
-                <p className="text-sm font-semibold">Select date and time</p>
+                <p className="text-sm font-semibold">
+                  {isDaycare ? "Select daycare date" : "Select date and time"}
+                </p>
                 <p className="mb-3 text-xs text-gray-500">
-                  Choose a date first, then pick an available time slot.
+                  Times are based on this supplier’s saved availability.
                 </p>
 
                 <input
@@ -890,6 +931,12 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     setSelectedSlot(null);
                   }}
                 />
+
+                {date && !availabilityForSelectedDate ? (
+                  <p className="mt-2 text-xs text-red-600">
+                    Supplier is not available on this date.
+                  </p>
+                ) : null}
               </div>
             )}
 
@@ -910,6 +957,46 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                     })}
                   </button>
                 ))}
+              </div>
+            ) : null}
+
+            {isGrooming ? (
+              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+                <select
+                  className="w-full rounded border px-3 py-2"
+                  value={groomingCategory}
+                  onChange={(e) => {
+                    setGroomingCategory(e.target.value);
+                    setGroomingSize("");
+                  }}
+                >
+                  {groomingCategories.map((category) => (
+                    <option key={String(category)} value={String(category)}>
+                      {formatLabel(String(category))}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  className="w-full rounded border px-3 py-2"
+                  value={groomingSize}
+                  onChange={(e) => setGroomingSize(e.target.value)}
+                >
+                  {availableGroomingSizes.map((tier) => (
+                    <option key={tier.id} value={tier.dogSize}>
+                      {formatLabel(tier.dogSize)} — {formatPrice(tier.priceCents)}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={isMobileGrooming}
+                    onChange={(e) => setIsMobileGrooming(e.target.checked)}
+                  />
+                  <span>Mobile grooming at owner home</span>
+                </label>
               </div>
             ) : null}
 
