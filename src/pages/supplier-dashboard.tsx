@@ -617,7 +617,7 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <button
           type="button"
           onClick={() => openAndScroll("pending", "pending-bookings")}
