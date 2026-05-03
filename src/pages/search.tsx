@@ -27,6 +27,7 @@ type SearchSupplier = {
   logoUrl?: string | null;
   ratingAverage?: number | null;
   ratingCount?: number | null;
+  completedServicesCount?: number | null;
   isVerified?: boolean;
   isPreferred?: boolean;
   usedBefore?: boolean;
@@ -120,7 +121,7 @@ export default function SearchPage() {
       query.set("service", selectedService);
     }
 
-    const res = await api.get(`/api/suppliers/location?${query.toString()}`);
+    const res = await api.get(`/api/suppliers/search?${query.toString()}`);
     const data = res.data?.suppliers ?? [];
     setSuppliers(Array.isArray(data) ? data : []);
   };
@@ -234,39 +235,39 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
-  if (!openedFromShortcut) return;
-  if (!ownerProfileLoaded) return;
-  if (autoLoadedShortcutResults) return;
+    if (!openedFromShortcut) return;
+    if (!ownerProfileLoaded) return;
+    if (autoLoadedShortcutResults) return;
 
-  if (!suburb.trim()) {
-    setError("Please select your suburb to view providers for this service.");
-    setSuppliers([]);
-    return;
-  }
-
-  const runAutoSearch = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      await fetchAreaSuppliers(suburb, service);
-      setAutoLoadedShortcutResults(true);
-    } catch (err) {
-      console.error("SHORTCUT AUTO SEARCH ERROR:", err);
-      setError("Failed to load suppliers");
+    if (!suburb.trim()) {
+      setError("Please select your suburb to view providers for this service.");
       setSuppliers([]);
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
 
-  runAutoSearch();
-}, [
-  openedFromShortcut,
-  ownerProfileLoaded,
-  autoLoadedShortcutResults,
-  suburb,
-  service,
-]);
+    const runAutoSearch = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        await fetchAreaSuppliers(suburb, service);
+        setAutoLoadedShortcutResults(true);
+      } catch (err) {
+        console.error("SHORTCUT AUTO SEARCH ERROR:", err);
+        setError("Failed to load suppliers");
+        setSuppliers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    runAutoSearch();
+  }, [
+    openedFromShortcut,
+    ownerProfileLoaded,
+    autoLoadedShortcutResults,
+    suburb,
+    service,
+  ]);
 
   return (
     <div className="min-h-screen bg-doglife-gray-50">
@@ -294,20 +295,20 @@ export default function SearchPage() {
             </div>
 
             {openedFromShortcut ? (
-  <div className="md:col-span-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-    {suburb.trim() ? (
-      <>
-        Showing <span className="font-semibold">{selectedServiceLabel}</span>{" "}
-        providers in <span className="font-semibold">{suburb}</span>, with preferred providers first.
-      </>
-    ) : (
-      <>
-        Select your suburb to view <span className="font-semibold">{selectedServiceLabel}</span>{" "}
-        providers near you.
-      </>
-    )}
-  </div>
-) : null}
+              <div className="md:col-span-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                {suburb.trim() ? (
+                  <>
+                    Showing <span className="font-semibold">{selectedServiceLabel}</span>{" "}
+                    providers in <span className="font-semibold">{suburb}</span>, with preferred providers first.
+                  </>
+                ) : (
+                  <>
+                    Select your suburb to view <span className="font-semibold">{selectedServiceLabel}</span>{" "}
+                    providers near you.
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <div className="relative">
               <Input
@@ -481,10 +482,12 @@ export default function SearchPage() {
 
                     <p className="text-sm text-gray-600">
                       {Number(supplier.ratingCount || 0) > 0
-                        ? `${Number(supplier.ratingAverage || 0).toFixed(1)} ★ (${
-                            supplier.ratingCount
-                          })`
+                        ? `${Number(supplier.ratingAverage || 0).toFixed(1)} ★ (${supplier.ratingCount})`
                         : "No ratings yet"}
+                    </p>
+
+                    <p className="text-sm text-gray-600">
+                      {(supplier.completedServicesCount ?? 0)} completed services
                     </p>
                   </div>
 
