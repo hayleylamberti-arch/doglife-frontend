@@ -139,6 +139,15 @@ function parseBookingNotes(notes?: string | null) {
       return;
     }
 
+    if (
+  lower.startsWith("service location:") ||
+  lower.startsWith("training location:") ||
+  lower === "owner home" ||
+  lower === "supplier location"
+) {
+  return;
+}
+
     general.push(part);
   });
 

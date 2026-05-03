@@ -45,7 +45,7 @@ export default function OwnerNavbar() {
               Home
             </Link>
 
-            <Link to="/search" className="text-sm font-medium text-gray-700 hover:underline dark:text-gray-300">
+            <Link to="/owner/search" className="text-sm font-medium text-gray-700 hover:underline dark:text-gray-300">
               Search
             </Link>
 

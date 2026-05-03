@@ -52,6 +52,7 @@ export default function AppRoutes() {
       <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
         <Route element={<OwnerLayout />}>
           <Route path="owner/dashboard" element={<Dashboard />} />
+          <Route path="owner/search" element={<Search />} />
           <Route path="owner/notifications" element={<NotificationsPage />} />
           <Route path="owner/profile" element={<Profile />} />
           <Route path="owner/my-dogs" element={<MyDogs />} />
