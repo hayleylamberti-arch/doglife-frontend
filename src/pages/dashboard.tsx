@@ -317,11 +317,11 @@ export default function Dashboard() {
   }, []);
 
   const sortedBookings = useMemo(() => {
-    return [...data].sort(
-      (a: any, b: any) =>
-        new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-    );
-  }, [data]);
+  return [...data].sort(
+    (a: any, b: any) =>
+      new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
+  );
+}, [data]);
 
   const todayBookings = sortedBookings.filter((b: any) => {
     const date = new Date(b.startAt);
