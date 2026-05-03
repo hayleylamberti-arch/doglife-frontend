@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type BookingStatus =
   | "PENDING"
@@ -112,8 +112,13 @@ function getStatusBadgeClass(status: BookingStatus) {
 
 function sortBookingsByStart(bookings: SupplierBooking[]) {
   return [...bookings].sort(
-    (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+    (a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
   );
+}
+
+function isTodayBooking(booking: SupplierBooking, todayStart: Date, todayEnd: Date) {
+  const date = new Date(booking.startAt);
+  return date >= todayStart && date <= todayEnd;
 }
 
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
@@ -351,6 +356,7 @@ export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    today: true,
     pending: false,
     confirmed: false,
     inProgress: false,
@@ -424,31 +430,51 @@ export default function SupplierDashboardPage() {
     onSettled: () => setActiveBookingId(null),
   });
 
+  const todayStart = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
+
+  const todayEnd = useMemo(() => {
+    const date = new Date();
+    date.setHours(23, 59, 59, 999);
+    return date;
+  }, []);
+
   const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
   const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
+  const todayBookings = sortBookingsByStart(
+    bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
+  );
+
+  const todayBookingIds = new Set(todayBookings.map((b) => b.id));
+
   const pendingBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "PENDING")
+    bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id))
   );
 
   const confirmedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CONFIRMED")
+    bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id))
   );
 
   const inProgressBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "IN_PROGRESS")
+    bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id))
   );
 
   const completedUnbilledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED_UNBILLED")
+    bookings.filter(
+      (b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+    )
   );
 
   const completedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED")
+    bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
   );
 
   const cancelledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CANCELLED")
+    bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id))
   );
 
   const totalActive = bookings.filter(
@@ -569,6 +595,23 @@ export default function SupplierDashboardPage() {
       </div>
 
       <div className="space-y-6">
+        <BookingSection
+          id="today-bookings"
+          title="Today"
+          emptyText="No bookings today."
+          bookings={todayBookings}
+          isLoading={isLoading}
+          error={error}
+          activeBookingId={activeBookingId}
+          onAccept={(id) => acceptMutation.mutate(id)}
+          onDecline={handleDecline}
+          onStart={(id) => startMutation.mutate(id)}
+          onComplete={(id) => completeMutation.mutate(id)}
+          onMarkPaid={(id) => markPaidMutation.mutate(id)}
+          isOpen={Boolean(openSections.today)}
+          onToggle={() => toggleSection("today")}
+        />
+
         <BookingSection
           id="pending-bookings"
           title="Pending Bookings"
