@@ -146,9 +146,24 @@ export default function SupplierPublicProfile() {
           <div>
             <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
             <p className="text-gray-500 mt-1">
-              {supplier.suburb?.name || supplier.suburb || ""}
+              {supplier.suburb || ""}
             </p>
-            <p className="text-sm text-gray-400 mt-1">⭐⭐⭐⭐⭐ (Coming soon)</p>
+
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">
+                {supplier.completedServicesCount ?? 0} completed
+              </span>
+
+              {Number(supplier.ratingCount || 0) > 0 ? (
+                <span className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-medium">
+                  {Number(supplier.ratingAverage || 0).toFixed(1)} ★ ({supplier.ratingCount})
+                </span>
+              ) : (
+                <span className="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                  No ratings yet
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
