@@ -19,37 +19,6 @@ interface Dog {
   breed?: string | null;
 }
 
-interface SupplierAvailability {
-  dayOfWeek?: string | number;
-  day?: string | number;
-  weekday?: string | number;
-  isAvailable?: boolean;
-  available?: boolean;
-  enabled?: boolean;
-  startTime?: string;
-  endTime?: string;
-  start?: string;
-  end?: string;
-  openTime?: string;
-  closeTime?: string;
-  opensAt?: string;
-  closesAt?: string;
-  from?: string;
-  to?: string;
-  startAt?: string;
-  endAt?: string;
-}
-
-const WEEKDAYS = [
-  "SUNDAY",
-  "MONDAY",
-  "TUESDAY",
-  "WEDNESDAY",
-  "THURSDAY",
-  "FRIDAY",
-  "SATURDAY",
-];
-
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
@@ -91,157 +60,35 @@ function toBoolean(value: unknown): boolean {
   return false;
 }
 
-function normaliseTime(value?: string | null) {
-  if (!value) return "";
-  return String(value).slice(0, 5);
-}
-
-function dateToWeekday(date: string) {
-  const parsed = new Date(`${date}T12:00:00`);
-  return WEEKDAYS[parsed.getDay()];
-}
-
-function getAvailabilityDay(value: SupplierAvailability) {
-  const rawDay = value.dayOfWeek ?? value.day ?? value.weekday;
-
-  if (typeof rawDay === "number") {
-    return WEEKDAYS[rawDay];
-  }
-
-  if (typeof rawDay === "string" && /^\d+$/.test(rawDay)) {
-    return WEEKDAYS[Number(rawDay)];
-  }
-
-  return String(rawDay || "").toUpperCase();
-}
-
-function getAvailabilityStart(value: any) {
-  return normaliseTime(
-    value.startTime ||
-      value.start ||
-      value.openTime ||
-      value.opensAt ||
-      value.from ||
-      value.startAt
-  );
-}
-
-function getAvailabilityEnd(value: any) {
-  return normaliseTime(
-    value.endTime ||
-      value.end ||
-      value.closeTime ||
-      value.closesAt ||
-      value.to ||
-      value.endAt
-  );
-}
-
-function isAvailabilityEnabled(value: SupplierAvailability) {
-  if (value.isAvailable === false) return false;
-  if (value.available === false) return false;
-  if (value.enabled === false) return false;
-  return true;
-}
-
-function getAvailabilityForDate(
-  date: string,
-  availability: SupplierAvailability[]
-) {
-  if (!date || !Array.isArray(availability)) return null;
-
-  const weekday = dateToWeekday(date);
-
-  const match = availability.find((item) => {
-    return getAvailabilityDay(item) === weekday && isAvailabilityEnabled(item);
-  });
-
-  if (!match) return null;
-
-  const startTime = getAvailabilityStart(match);
-  const endTime = getAvailabilityEnd(match);
-
-  if (!startTime || !endTime) return null;
-
-  return {
-    startTime,
-    endTime,
-  };
-}
-
-function minutesFromTime(time: string) {
-  const [hours, minutes] = normaliseTime(time).split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-function timeFromMinutes(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function buildDateTime(date: string, time: string) {
-  return new Date(`${date}T${normaliseTime(time)}:00`);
-}
-
-function generateAvailabilitySlots(
-  date: string,
-  startTime: string,
-  endTime: string,
-  durationMinutes: number
-) {
-  const slots: string[] = [];
-
-  const startMinutes = minutesFromTime(startTime);
-  const endMinutes = minutesFromTime(endTime);
-  const safeDuration = Math.max(15, durationMinutes || 60);
-
-  for (
-    let currentMinutes = startMinutes;
-    currentMinutes + safeDuration <= endMinutes;
-    currentMinutes += 60
-  ) {
-    slots.push(buildDateTime(date, timeFromMinutes(currentMinutes)).toISOString());
-  }
-
-  return slots;
-}
-
 function buildDaycareTimes(
   date: string,
   daycareSessionType: DaycareSessionType,
-  halfDayPeriod: HalfDayPeriod,
-  availabilityForDate: { startTime: string; endTime: string } | null
+  halfDayPeriod: HalfDayPeriod
 ) {
-  if (!date || !availabilityForDate) {
+  if (!date) {
     return {
       startAt: null as Date | null,
       endAt: null as Date | null,
     };
   }
 
-  const startMinutes = minutesFromTime(availabilityForDate.startTime);
-  const endMinutes = minutesFromTime(availabilityForDate.endTime);
-  const midpointMinutes = Math.floor((startMinutes + endMinutes) / 2);
-
   if (daycareSessionType === "FULL_DAY") {
     return {
-      startAt: buildDateTime(date, availabilityForDate.startTime),
-      endAt: buildDateTime(date, availabilityForDate.endTime),
+      startAt: new Date(`${date}T09:00:00`),
+      endAt: new Date(`${date}T17:00:00`),
     };
   }
 
   if (halfDayPeriod === "AFTERNOON") {
     return {
-      startAt: buildDateTime(date, timeFromMinutes(midpointMinutes)),
-      endAt: buildDateTime(date, availabilityForDate.endTime),
+      startAt: new Date(`${date}T13:00:00`),
+      endAt: new Date(`${date}T17:00:00`),
     };
   }
 
   return {
-    startAt: buildDateTime(date, availabilityForDate.startTime),
-    endAt: buildDateTime(date, timeFromMinutes(midpointMinutes)),
+    startAt: new Date(`${date}T09:00:00`),
+    endAt: new Date(`${date}T13:00:00`),
   };
 }
 
@@ -268,9 +115,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [slots, setSlots] = useState<string[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
-  const [supplierAvailability, setSupplierAvailability] = useState<
-    SupplierAvailability[]
-  >([]);
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
@@ -331,10 +175,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isMobileVet ||
     isMobileGrooming ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
-
-  const availabilityForSelectedDate = useMemo(() => {
-    return getAvailabilityForDate(date, supplierAvailability);
-  }, [date, supplierAvailability]);
 
   const stayDays = useMemo(
     () => getStayDays(arrivalDate, departureDate),
@@ -565,58 +405,23 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   }, [isPetTransport]);
 
   useEffect(() => {
-    api
-      .get(`/api/public/suppliers/${supplierId}`)
-      .then((res) => {
-        const supplier =
-          res.data?.supplier ||
-          res.data?.profile ||
-          res.data?.data ||
-          res.data ||
-          {};
-
-        const availability =
-          supplier.availability ||
-          supplier.availabilities ||
-          supplier.supplierAvailability ||
-          supplier.operatingHours ||
-          [];
-
-        setSupplierAvailability(Array.isArray(availability) ? availability : []);
-      })
-      .catch(() => {
-        setSupplierAvailability([]);
-      });
-  }, [supplierId]);
-
-  useEffect(() => {
     if (!usesTimeSlots || !date) {
       setSlots([]);
       setSelectedSlot(null);
       return;
     }
 
-    if (!availabilityForSelectedDate) {
-      setSlots([]);
-      setSelectedSlot(null);
-      return;
-    }
-
-    const generatedSlots = generateAvailabilitySlots(
-      date,
-      availabilityForSelectedDate.startTime,
-      availabilityForSelectedDate.endTime,
-      appointmentDurationMinutes
-    );
-
-    setSlots(generatedSlots);
-    setSelectedSlot(null);
-  }, [
-    date,
-    usesTimeSlots,
-    availabilityForSelectedDate,
-    appointmentDurationMinutes,
-  ]);
+    api
+      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
+      .then((res) => {
+        setSlots(res.data?.slots || []);
+        setSelectedSlot(null);
+      })
+      .catch(() => {
+        setSlots([]);
+        setSelectedSlot(null);
+      });
+  }, [date, supplierId, usesTimeSlots]);
 
   useEffect(() => {
     if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
@@ -703,11 +508,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return alert("Select a date");
     }
 
-    if ((isDaycare || usesTimeSlots) && !availabilityForSelectedDate) {
-      return alert("The supplier is not available on this date");
+    if (usesTimeSlots && slots.length === 0) {
+      return alert("No available time slots for this date");
     }
 
-    if (!isStayService && !isDaycare && !selectedSlot) {
+    if (usesTimeSlots && !selectedSlot) {
       return alert("Select a time");
     }
 
@@ -736,8 +541,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         const daycareTimes = buildDaycareTimes(
           date,
           daycareSessionType,
-          halfDayPeriod,
-          availabilityForSelectedDate
+          halfDayPeriod
         );
 
         if (!daycareTimes.startAt || !daycareTimes.endAt) {
@@ -951,7 +755,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                   {isDaycare ? "Select daycare date" : "Select date and time"}
                 </p>
                 <p className="mb-3 text-xs text-gray-500">
-                  Times are based on this supplier’s saved availability.
+                  {isDaycare
+                    ? "Choose the date for this daycare session."
+                    : "Choose a date first, then pick an available time slot."}
                 </p>
 
                 <input
@@ -964,9 +770,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                   }}
                 />
 
-                {date && !availabilityForSelectedDate ? (
+                {usesTimeSlots && date && slots.length === 0 ? (
                   <p className="mt-2 text-xs text-red-600">
-                    Supplier is not available on this date.
+                    No available time slots for this date.
                   </p>
                 ) : null}
               </div>
