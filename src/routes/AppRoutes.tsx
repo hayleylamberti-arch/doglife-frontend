@@ -10,6 +10,7 @@ import RoleDashboardRedirect from "@/components/RoleDashboardRedirect";
 
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
+import NotificationsPage from "@/pages/notifications";
 import Profile from "@/pages/profile";
 import Search from "@/pages/search";
 import MyDogs from "@/pages/my-dogs";
@@ -31,7 +32,6 @@ import AdminDashboard from "@/pages/admin-dashboard";
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* PUBLIC LANDING + AUTH */}
       <Route element={<GuestLayout />}>
         <Route index element={<Landing />} />
         <Route path="auth/login" element={<LoginPage />} />
@@ -40,38 +40,35 @@ export default function AppRoutes() {
         <Route path="auth/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
-      {/* PUBLIC/LOGGED-IN MIXED ROUTES */}
       <Route element={<AppLayout />}>
         <Route path="search" element={<Search />} />
         <Route path="supplier/:id" element={<SupplierPublicProfile />} />
       </Route>
 
-      {/* GENERIC DASHBOARD REDIRECT */}
       <Route element={<RequireAuth />}>
         <Route path="dashboard" element={<RoleDashboardRedirect />} />
       </Route>
 
-      {/* OWNER ROUTES */}
       <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
         <Route element={<OwnerLayout />}>
           <Route path="owner/dashboard" element={<Dashboard />} />
+          <Route path="owner/notifications" element={<NotificationsPage />} />
           <Route path="owner/profile" element={<Profile />} />
           <Route path="owner/my-dogs" element={<MyDogs />} />
           <Route path="owner/dogs/:id" element={<DogProfilePage />} />
         </Route>
       </Route>
 
-      {/* SUPPLIER ROUTES */}
       <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
         <Route element={<SupplierLayout />}>
           <Route path="supplier/dashboard" element={<SupplierDashboard />} />
+          <Route path="supplier/notifications" element={<NotificationsPage />} />
           <Route path="supplier/profile" element={<SupplierProfile />} />
           <Route path="supplier/services" element={<SupplierServices />} />
           <Route path="supplier/availability" element={<SupplierAvailability />} />
         </Route>
       </Route>
 
-      {/* ADMIN ROUTE */}
       <Route element={<RequireAuth />}>
         <Route path="admin" element={<AdminDashboard />} />
       </Route>
