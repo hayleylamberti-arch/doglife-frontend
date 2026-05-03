@@ -617,14 +617,14 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         <button
           type="button"
           onClick={() => openAndScroll("pending", "pending-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-sm text-gray-500">Pending bookings</div>
-          <div className="mt-2 text-3xl font-bold text-amber-600">
+          <div className="text-xs text-gray-500 sm:text-sm">Pending bookings</div>
+          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
             {pendingBookings.length}
           </div>
         </button>
@@ -632,10 +632,10 @@ export default function SupplierDashboardPage() {
         <button
           type="button"
           onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-sm text-gray-500">Confirmed bookings</div>
-          <div className="mt-2 text-3xl font-bold text-green-600">
+          <div className="text-xs text-gray-500 sm:text-sm">Confirmed bookings</div>
+          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
             {confirmedBookings.length}
           </div>
         </button>
@@ -643,17 +643,19 @@ export default function SupplierDashboardPage() {
         <button
           type="button"
           onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-5 text-left hover:border-gray-300"
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-sm text-gray-500">In progress</div>
-          <div className="mt-2 text-3xl font-bold text-blue-600">
+          <div className="text-xs text-gray-500 sm:text-sm">In progress</div>
+          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
             {inProgressBookings.length}
           </div>
         </button>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5">
-          <div className="text-sm text-gray-500">Total active bookings</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900">{totalActive}</div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
+          <div className="text-xs text-gray-500 sm:text-sm">Total active bookings</div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
+            {totalActive}
+          </div>
         </div>
       </div>
 
