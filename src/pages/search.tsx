@@ -120,7 +120,7 @@ export default function SearchPage() {
       query.set("service", selectedService);
     }
 
-    const res = await api.get(`/api/suppliers/search?${query.toString()}`);
+    const res = await api.get(`/api/suppliers/location?${query.toString()}`);
     const data = res.data?.suppliers ?? [];
     setSuppliers(Array.isArray(data) ? data : []);
   };
