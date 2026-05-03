@@ -116,7 +116,11 @@ function sortBookingsByStart(bookings: SupplierBooking[]) {
   );
 }
 
-function isTodayBooking(booking: SupplierBooking, todayStart: Date, todayEnd: Date) {
+function isTodayBooking(
+  booking: SupplierBooking,
+  todayStart: Date,
+  todayEnd: Date
+) {
   const date = new Date(booking.startAt);
   return date >= todayStart && date <= todayEnd;
 }
@@ -164,7 +168,10 @@ function BookingCard({
   actionLoading: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
+    <div
+      id={`booking-${booking.id}`}
+      className="space-y-4 rounded-xl border border-gray-200 bg-white p-4"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
@@ -175,7 +182,7 @@ function BookingCard({
           </div>
         </div>
 
-        <div className="text-right space-y-2">
+        <div className="space-y-2 text-right">
           <div
             className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
               booking.status
@@ -373,9 +380,30 @@ export default function SupplierDashboardPage() {
     },
   });
 
+  const { data: notificationsData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: async () => {
+      const res = await api.get("/api/notifications");
+      return res.data;
+    },
+  });
+
+  const notifications = Array.isArray(notificationsData?.notifications)
+    ? notificationsData.notifications
+    : [];
+
   const refreshBookings = () => {
     queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
   };
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.patch(`/api/notifications/${id}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
 
   const acceptMutation = useMutation({
     mutationFn: async (bookingId: string) => {
@@ -506,6 +534,41 @@ export default function SupplierDashboardPage() {
     }, 50);
   }
 
+  function handleNotificationClick(notification: any) {
+    if (!notification.read) {
+      markAsReadMutation.mutate(notification.id);
+    }
+
+    if (!notification.referenceId) return;
+
+    const sectionMap = [
+      { key: "today", bookings: todayBookings },
+      { key: "pending", bookings: pendingBookings },
+      { key: "confirmed", bookings: confirmedBookings },
+      { key: "inProgress", bookings: inProgressBookings },
+      { key: "completedUnbilled", bookings: completedUnbilledBookings },
+      { key: "completed", bookings: completedBookings },
+      { key: "cancelled", bookings: cancelledBookings },
+    ];
+
+    const matchingSection = sectionMap.find((section) =>
+      section.bookings.some((booking) => booking.id === notification.referenceId)
+    );
+
+    if (matchingSection) {
+      setOpenSections((prev) => ({
+        ...prev,
+        [matchingSection.key]: true,
+      }));
+    }
+
+    setTimeout(() => {
+      document
+        .getElementById(`booking-${notification.referenceId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }
+
   function handleDecline(booking: SupplierBooking) {
     const message = window.prompt(
       "Add a message for the owner. You can suggest another time here.",
@@ -523,7 +586,7 @@ export default function SupplierDashboardPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -593,6 +656,32 @@ export default function SupplierDashboardPage() {
           <div className="mt-2 text-3xl font-bold text-gray-900">{totalActive}</div>
         </div>
       </div>
+
+      {notifications.length > 0 ? (
+        <div className="space-y-2">
+          {notifications.slice(0, 3).map((notification: any) => (
+            <button
+              key={notification.id}
+              type="button"
+              onClick={() => handleNotificationClick(notification)}
+              className={`w-full rounded-lg border p-4 text-left ${
+                notification.read
+                  ? "border-gray-200 bg-gray-50"
+                  : "border-yellow-200 bg-yellow-50"
+              }`}
+            >
+              <p className="font-semibold text-gray-800">{notification.title}</p>
+              <p className="text-sm text-gray-600">
+                {notification.booking
+                  ? `${notification.booking.serviceLabel} with ${
+                      notification.booking.dogNames || "the dog"
+                    } on ${formatDateTime(notification.booking.startAt)}`
+                  : notification.message}
+              </p>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="space-y-6">
         <BookingSection
