@@ -1,50 +1,44 @@
 export default function HowItWorks() {
   return (
     <section className="py-16 bg-white">
-
       <div className="max-w-6xl mx-auto px-6 text-center">
-
         <h2 className="text-3xl font-bold mb-4">
-          How DogLife Works
+          How DogLife works
         </h2>
 
         <p className="text-gray-600 mb-12">
-          Simple steps to connect with trusted dog service providers
+          Find, compare and book trusted dog care in your suburb.
         </p>
 
         <div className="grid md:grid-cols-3 gap-10">
-
           <div>
             <h3 className="text-xl font-semibold mb-2">
-              Search & Compare
+              1. Search your suburb
             </h3>
             <p className="text-gray-600">
-              Browse verified providers in your area, compare prices and read reviews.
+              Find dog walkers, groomers, trainers and care providers near you.
             </p>
           </div>
 
           <div>
             <h3 className="text-xl font-semibold mb-2">
-              Book & Pay
+              2. Compare providers
             </h3>
             <p className="text-gray-600">
-              Select your preferred provider and schedule your service easily.
+              View services, pricing, reviews and provider profiles before you choose.
             </p>
           </div>
 
           <div>
             <h3 className="text-xl font-semibold mb-2">
-              Enjoy & Review
+              3. Book with confidence
             </h3>
             <p className="text-gray-600">
-              Relax while your dog enjoys great care, then share your experience.
+              Secure your booking and know your dog is in trusted local hands.
             </p>
           </div>
-
         </div>
-
       </div>
-
     </section>
   );
 }

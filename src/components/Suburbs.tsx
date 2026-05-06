@@ -14,19 +14,19 @@ export default function Suburbs() {
   ];
 
   const handleClick = (suburb: string) => {
-    // 🚀 TEMP FIX: route to working page
-    // Later upgrade to: /search?suburb=...
-    navigate("/auth/register", {
-      state: { suburb },
-    });
+    navigate(`/search?suburb=${encodeURIComponent(suburb)}`);
   };
 
   return (
     <section className="py-16 bg-white">
       <div className="max-w-5xl mx-auto px-6 text-center">
-        <h2 className="text-2xl font-bold mb-6">
-          Find Dog Services Near You
+        <h2 className="text-2xl font-bold mb-3">
+          Browse dog services in popular areas
         </h2>
+
+        <p className="text-gray-600 mb-8">
+          Find trusted dog walkers, groomers and trainers near you.
+        </p>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {suburbs.map((suburb) => (
