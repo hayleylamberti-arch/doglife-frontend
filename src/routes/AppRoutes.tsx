@@ -15,6 +15,7 @@ import Profile from "@/pages/profile";
 import Search from "@/pages/search";
 import MyDogs from "@/pages/my-dogs";
 import DogProfilePage from "@/pages/dog-profile";
+import TrustAndSafetyPage from "@/pages/TrustAndSafetyPage";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
@@ -42,6 +43,7 @@ export default function AppRoutes() {
 
       <Route element={<AppLayout />}>
         <Route path="search" element={<Search />} />
+        <Route path="trust-and-safety" element={<TrustAndSafetyPage />} />
         <Route path="supplier/:id" element={<SupplierPublicProfile />} />
       </Route>
 
