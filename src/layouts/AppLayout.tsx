@@ -7,25 +7,17 @@ export default function AppLayout() {
   const {
     data: user,
     isLoading,
-    isError,
   } = useQuery({
     queryKey: ["me"],
     queryFn: getMe,
     retry: false,
   });
 
-  if (isLoading) {
-    return <div className="p-6">Loading...</div>;
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
-
-      {/* 👇 PASS USER INTO NAVBAR */}
-      <RoleNavbar user={user} />
-
-      <main className="max-w-7xl mx-auto p-6">
-        <Outlet />
+      <RoleNavbar user={user ?? null} />
+      <main className="mx-auto max-w-7xl p-6">
+        {isLoading ? <div className="p-6">Loading...</div> : <Outlet />}
       </main>
     </div>
   );

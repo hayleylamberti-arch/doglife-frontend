@@ -6,9 +6,6 @@ import axios from "axios";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE,
-
-  // ❌ REMOVE THIS LINE (it breaks cross-origin requests)
-  // withCredentials: true,
 });
 
 console.log("API BASE:", import.meta.env.VITE_API_BASE);
@@ -20,7 +17,7 @@ console.log("API BASE:", import.meta.env.VITE_API_BASE);
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("authToken");
 
-  console.log("TOKEN USED:", token); // 👈 debug
+  console.log("TOKEN USED:", token);
 
   if (token) {
     config.headers = config.headers || {};
@@ -43,11 +40,9 @@ api.interceptors.response.use(
     console.error("API ERROR:", error?.response || error);
 
     if (error?.response?.status === 401) {
-      console.warn("Unauthorized — logging out");
+      console.warn("Unauthorized — clearing token");
 
       localStorage.removeItem("authToken");
-
-      window.location.href = "/auth";
     }
 
     return Promise.reject(error);
@@ -59,13 +54,27 @@ api.interceptors.response.use(
 ================================ */
 
 export const getMe = async () => {
-  const res = await api.get("/api/me");
-  return res.data.user;
+  const token = localStorage.getItem("authToken");
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const res = await api.get("/api/me");
+    return res.data.user;
+  } catch (error: any) {
+    if (error?.response?.status === 401) {
+      return null;
+    }
+
+    throw error;
+  }
 };
 
 export const logout = () => {
   localStorage.removeItem("authToken");
-  window.location.href = "/auth";
+  window.location.href = "/auth/login";
 };
 
 export const isAuthenticated = () => {
