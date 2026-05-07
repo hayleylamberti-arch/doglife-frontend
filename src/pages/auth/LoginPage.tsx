@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -9,8 +9,19 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const savedEmail = localStorage.getItem("doglife_remembered_email");
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
 
   const getDashboardPath = (role?: string | null) => {
     if (role === "SUPPLIER") return "/supplier/dashboard";
@@ -25,6 +36,13 @@ export default function LoginPage() {
 
     try {
       const result = await login({ email, password });
+
+      if (rememberMe) {
+        localStorage.setItem("doglife_remembered_email", email);
+      } else {
+        localStorage.removeItem("doglife_remembered_email");
+      }
+
       const role = result?.user?.role;
       const dashboardPath = getDashboardPath(role);
 
@@ -59,14 +77,34 @@ export default function LoginPage() {
           value={email}
         />
 
-        <input
-          className="w-full rounded border px-3 py-2"
-          onChange={(event) => setPassword(event.target.value)}
-          placeholder="Password"
-          required
-          type="password"
-          value={password}
-        />
+        <div className="relative">
+          <input
+            className="w-full rounded border px-3 py-2 pr-20"
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Password"
+            required
+            type={showPassword ? "text" : "password"}
+            value={password}
+          />
+
+          <button
+            className="absolute inset-y-0 right-3 text-sm font-medium text-orange-600"
+            onClick={() => setShowPassword((current) => !current)}
+            type="button"
+          >
+            {showPassword ? "Hide" : "View"}
+          </button>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            checked={rememberMe}
+            className="h-4 w-4 rounded border-gray-300"
+            onChange={(event) => setRememberMe(event.target.checked)}
+            type="checkbox"
+          />
+          Remember me
+        </label>
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
