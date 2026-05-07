@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import BookingModal from "@/components/booking-modal";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +42,29 @@ function formatDogSize(value?: string | null) {
 function toNumber(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function TrustBadge({
+  label,
+  variant = "green",
+}: {
+  label: string;
+  variant?: "green" | "blue" | "gray";
+}) {
+  const styles =
+    variant === "green"
+      ? "border-green-200 bg-green-50 text-green-800"
+      : variant === "blue"
+      ? "border-blue-200 bg-blue-50 text-blue-800"
+      : "border-gray-200 bg-gray-100 text-gray-700";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${styles}`}
+    >
+      {label}
+    </span>
+  );
 }
 
 type LocationState = {
@@ -104,9 +127,16 @@ export default function SupplierPublicProfile() {
 
   const supplier = data;
 
+  const isApprovedSupplier = supplier.approvalStatus === "APPROVED";
+  const isIdentityVerified = Boolean(supplier.identityVerified);
+  const isFullyVerified =
+    Boolean(supplier.identityVerified) &&
+    (Boolean(supplier.backgroundCheckVerified) ||
+      Boolean(supplier.premisesVerified));
+
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="flex justify-between items-center">
+    <div className="mx-auto max-w-6xl space-y-8 p-6">
+      <div className="flex items-center justify-between">
         <button
           onClick={() => window.history.back()}
           className="text-sm text-gray-500 hover:underline"
@@ -114,7 +144,7 @@ export default function SupplierPublicProfile() {
           ← Back to search
         </button>
 
-        <div className="flex gap-4 text-sm items-center">
+        <div className="flex items-center gap-4 text-sm">
           <button
             type="button"
             onClick={togglePreferredSupplier}
@@ -133,36 +163,56 @@ export default function SupplierPublicProfile() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6 flex justify-between items-center">
+      <div className="flex items-center justify-between rounded-2xl bg-white p-6 shadow">
         <div className="flex items-center gap-4">
           {supplier.logoUrl && (
             <img
               src={supplier.logoUrl}
-              className="w-16 h-16 rounded-xl object-cover border"
+              className="h-16 w-16 rounded-xl border object-cover"
               alt={supplier.businessName}
             />
           )}
 
           <div>
             <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
-            <p className="text-gray-500 mt-1">
-              {supplier.suburb || ""}
-            </p>
+            <p className="mt-1 text-gray-500">{supplier.suburb || ""}</p>
 
-            <div className="flex gap-2 mt-3 flex-wrap">
-              <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">
+            <div className="mt-3 flex flex-wrap gap-2">
+              {isApprovedSupplier ? (
+                <TrustBadge label="Approved Supplier" />
+              ) : null}
+
+              {isIdentityVerified ? (
+                <TrustBadge label="Identity Verified" />
+              ) : null}
+
+              {isFullyVerified ? (
+                <TrustBadge label="Fully Verified" variant="blue" />
+              ) : null}
+
+              <span className="rounded-full bg-purple-100 px-3 py-1 text-sm font-semibold text-purple-700">
                 {supplier.completedServicesCount ?? 0} completed
               </span>
 
               {Number(supplier.ratingCount || 0) > 0 ? (
-                <span className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-medium">
-                  {Number(supplier.ratingAverage || 0).toFixed(1)} ★ ({supplier.ratingCount})
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700">
+                  {Number(supplier.ratingAverage || 0).toFixed(1)} ★ (
+                  {supplier.ratingCount})
                 </span>
               ) : (
-                <span className="text-sm bg-gray-100 text-gray-600 px-3 py-1 rounded-full">
+                <span className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600">
                   No ratings yet
                 </span>
               )}
+            </div>
+
+            <div className="mt-3">
+              <Link
+                to="/trust-and-safety"
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                What do these trust levels mean?
+              </Link>
             </div>
           </div>
         </div>
@@ -171,12 +221,12 @@ export default function SupplierPublicProfile() {
       </div>
 
       {supplier.galleryUrls?.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {supplier.galleryUrls.map((img: string, i: number) => (
             <img
               key={i}
               src={img}
-              className="rounded-xl object-cover h-40 w-full"
+              className="h-40 w-full rounded-xl object-cover"
               alt={`${supplier.businessName} gallery ${i + 1}`}
             />
           ))}
@@ -184,7 +234,41 @@ export default function SupplierPublicProfile() {
       )}
 
       <Card>
-        <CardContent className="p-6 space-y-2">
+        <CardContent className="space-y-3 p-6">
+          <h2 className="text-xl font-semibold">Trust & Safety</h2>
+
+          <div className="flex flex-wrap gap-2">
+            {isApprovedSupplier ? (
+              <TrustBadge label="Approved Supplier" />
+            ) : (
+              <TrustBadge label="Profile Under Review" variant="gray" />
+            )}
+
+            {isIdentityVerified ? (
+              <TrustBadge label="Identity Verified" />
+            ) : null}
+
+            {isFullyVerified ? (
+              <TrustBadge label="Fully Verified" variant="blue" />
+            ) : null}
+          </div>
+
+          <p className="text-sm text-gray-600">
+            DogLife verifies suppliers in layers. Some suppliers begin as
+            Approved Suppliers and move up as additional checks are completed.
+          </p>
+
+          <Link
+            to="/trust-and-safety"
+            className="inline-block text-sm font-medium text-blue-600 hover:underline"
+          >
+            Learn how DogLife verifies suppliers
+          </Link>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-2 p-6">
           <h2 className="text-xl font-semibold">About</h2>
           <p className="text-gray-600">
             {supplier.aboutServices || "No description provided yet."}
@@ -220,23 +304,21 @@ export default function SupplierPublicProfile() {
 
             return (
               <Card key={service.id}>
-                <CardContent className="p-6 space-y-4">
+                <CardContent className="space-y-4 p-6">
                   <div className="space-y-1">
                     <h3 className="text-lg font-semibold">
                       {formatServiceName(service.service)}
                     </h3>
 
-                    <div className="text-gray-700 space-y-1">
+                    <div className="space-y-1 text-gray-700">
                       {isDaycare ? (
                         <>
-                          <p>
-                            Half day: {formatPrice(halfDayPriceCents)}
-                          </p>
-                          <p>
-                            Full day: {formatPrice(fullDayPriceCents)}
-                          </p>
+                          <p>Half day: {formatPrice(halfDayPriceCents)}</p>
+                          <p>Full day: {formatPrice(fullDayPriceCents)}</p>
                           {hasAdditionalDogPrice ? (
-                            <p>Extra dog: {formatPrice(additionalDogPriceCents)}</p>
+                            <p>
+                              Extra dog: {formatPrice(additionalDogPriceCents)}
+                            </p>
                           ) : null}
                           {service.maxDogsPerBooking ? (
                             <p>
@@ -261,7 +343,9 @@ export default function SupplierPublicProfile() {
                           ) : null}
 
                           {isBoarding && hasAdditionalDogPrice ? (
-                            <p>Extra dog: {formatPrice(additionalDogPriceCents)}</p>
+                            <p>
+                              Extra dog: {formatPrice(additionalDogPriceCents)}
+                            </p>
                           ) : null}
 
                           {service.maxDogsPerBooking ? (
@@ -317,7 +401,7 @@ export default function SupplierPublicProfile() {
             );
           })
         ) : (
-          <p className="text-gray-400 text-sm">No services listed yet</p>
+          <p className="text-sm text-gray-400">No services listed yet</p>
         )}
       </div>
 
