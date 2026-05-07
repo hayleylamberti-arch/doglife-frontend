@@ -1,6 +1,6 @@
 import VerificationBadge, {
   type VerificationBadgeType,
-} from "@/components/suppliers/VerificationBadge";
+} from "@/components/supplier/VerificationBadge";
 
 type VerificationCard = {
   type: VerificationBadgeType;
