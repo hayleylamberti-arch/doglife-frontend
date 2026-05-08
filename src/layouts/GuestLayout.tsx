@@ -1,13 +1,12 @@
 import { Outlet, Link } from "react-router-dom";
 import Brand from "@/components/Brand";
+import Footer from "@/components/Footer";
 
 export default function GuestLayout() {
   return (
-    <div className="min-h-screen bg-white">
-
+    <div className="min-h-screen bg-white flex flex-col">
       {/* NAVBAR */}
       <nav className="flex items-center justify-between px-6 py-4 border-b bg-white">
-
         {/* LEFT: BRAND */}
         <Brand />
 
@@ -27,14 +26,14 @@ export default function GuestLayout() {
             Join DogLife
           </Link>
         </div>
-
       </nav>
 
       {/* PAGE CONTENT */}
-      <main>
+      <main className="flex-1">
         <Outlet />
       </main>
 
+      <Footer />
     </div>
   );
 }

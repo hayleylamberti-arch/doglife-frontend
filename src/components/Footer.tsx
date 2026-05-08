@@ -36,8 +36,8 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-3">Contact</h3>
             <p className="text-sm text-gray-300">
-              hello@doglife.co.za
-            </p>
+              hello@doglife.app
+          </p>
           </div>
         </div>
 
