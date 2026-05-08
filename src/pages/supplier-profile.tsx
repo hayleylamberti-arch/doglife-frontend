@@ -33,6 +33,14 @@ type SupplierProfileResponse = {
   businessAddress?: string | null;
   suburb?: string | null;
   aboutServices?: string | null;
+  businessPhone?: string | null;
+  websiteUrl?: string | null;
+  policies?: string | null;
+  socialLinks?: {
+    instagram?: string | null;
+    facebook?: string | null;
+    whatsapp?: string | null;
+  } | null;
   logoUrl?: string | null;
   galleryUrls?: string[];
   operatingAreas?: Array<{
@@ -53,8 +61,16 @@ export default function BusinessProfilePage() {
 
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
+  const [businessPhone, setBusinessPhone] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [suburb, setSuburb] = useState("");
   const [aboutServices, setAboutServices] = useState("");
+  const [policies, setPolicies] = useState("");
+
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [facebookUrl, setFacebookUrl] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+
   const [operatingAreaIds, setOperatingAreaIds] = useState<string[]>([]);
   const [suburbSearch, setSuburbSearch] = useState("");
 
@@ -96,8 +112,15 @@ export default function BusinessProfilePage() {
 
     setBusinessName(profile.businessName || "");
     setBusinessAddress(profile.businessAddress || "");
+    setBusinessPhone(profile.businessPhone || "");
+    setWebsiteUrl(profile.websiteUrl || "");
     setSuburb(profile.suburb || "");
     setAboutServices(profile.aboutServices || "");
+    setPolicies(profile.policies || "");
+
+    setInstagramUrl(profile.socialLinks?.instagram || "");
+    setFacebookUrl(profile.socialLinks?.facebook || "");
+    setWhatsappNumber(profile.socialLinks?.whatsapp || "");
 
     if (profile.logoUrl) setLogoUrl(profile.logoUrl);
     else setLogoUrl(null);
@@ -147,10 +170,18 @@ export default function BusinessProfilePage() {
       await api.patch("/api/supplier/profile", {
         businessName,
         businessAddress,
+        businessPhone,
+        websiteUrl,
         suburb,
         aboutServices,
+        policies,
         logoUrl,
         operatingAreaIds,
+        socialLinks: {
+          instagram: instagramUrl || null,
+          facebook: facebookUrl || null,
+          whatsapp: whatsappNumber || null,
+        },
       });
     },
     onSuccess: () => {
@@ -227,10 +258,18 @@ export default function BusinessProfilePage() {
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Gallery</h2>
 
+        <p className="text-sm text-gray-500">
+          Add photos of your space, team, grooming setup, transport vehicle, or dogs in your care.
+        </p>
+
         <div className="flex flex-wrap gap-3">
           {gallery.map((img, i) => (
             <div key={i} className="relative">
-              <img src={img} alt={`Gallery ${i + 1}`} className="w-24 h-24 rounded-xl object-cover border" />
+              <img
+                src={img}
+                alt={`Gallery ${i + 1}`}
+                className="w-24 h-24 rounded-xl object-cover border"
+              />
 
               <button
                 type="button"
@@ -288,6 +327,13 @@ export default function BusinessProfilePage() {
 
         <input
           className="w-full border p-3 rounded-lg"
+          value={businessPhone}
+          onChange={(e) => setBusinessPhone(e.target.value)}
+          placeholder="Business phone"
+        />
+
+        <input
+          className="w-full border p-3 rounded-lg"
           value={businessAddress}
           onChange={(e) => setBusinessAddress(e.target.value)}
           placeholder="Address"
@@ -298,6 +344,13 @@ export default function BusinessProfilePage() {
           value={suburb}
           onChange={(e) => setSuburb(e.target.value)}
           placeholder="Base suburb (for display)"
+        />
+
+        <input
+          className="w-full border p-3 rounded-lg"
+          value={websiteUrl}
+          onChange={(e) => setWebsiteUrl(e.target.value)}
+          placeholder="Website URL (optional)"
         />
 
         <div className="space-y-3">
@@ -361,6 +414,38 @@ export default function BusinessProfilePage() {
       </div>
 
       {/* =========================
+         SOCIAL LINKS
+      ========================= */}
+      <div className="bg-white p-6 rounded-2xl shadow space-y-4">
+        <h2 className="text-xl font-semibold">Website & Social Links</h2>
+
+        <input
+          className="w-full border p-3 rounded-lg"
+          value={instagramUrl}
+          onChange={(e) => setInstagramUrl(e.target.value)}
+          placeholder="Instagram URL (optional)"
+        />
+
+        <input
+          className="w-full border p-3 rounded-lg"
+          value={facebookUrl}
+          onChange={(e) => setFacebookUrl(e.target.value)}
+          placeholder="Facebook URL (optional)"
+        />
+
+        <input
+          className="w-full border p-3 rounded-lg"
+          value={whatsappNumber}
+          onChange={(e) => setWhatsappNumber(e.target.value)}
+          placeholder="WhatsApp number or link (optional)"
+        />
+
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Save Links"}
+        </Button>
+      </div>
+
+      {/* =========================
          DESCRIPTION
       ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
@@ -376,6 +461,25 @@ export default function BusinessProfilePage() {
 
         <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
           {saveMutation.isPending ? "Saving..." : "Save Description"}
+        </Button>
+      </div>
+
+      {/* =========================
+         POLICIES
+      ========================= */}
+      <div className="bg-white p-6 rounded-2xl shadow space-y-4">
+        <h2 className="text-xl font-semibold">Policies & House Rules</h2>
+
+        <textarea
+          className="w-full border p-3 rounded-lg"
+          rows={5}
+          value={policies}
+          onChange={(e) => setPolicies(e.target.value)}
+          placeholder="Example: vaccination requirements, drop-off times, cancellation rules, feeding instructions, pickup policy..."
+        />
+
+        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? "Saving..." : "Save Policies"}
         </Button>
       </div>
 
