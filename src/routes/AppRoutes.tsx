@@ -17,6 +17,12 @@ import MyDogs from "@/pages/my-dogs";
 import DogProfilePage from "@/pages/dog-profile";
 import TrustAndSafetyPage from "@/pages/TrustAndSafetyPage";
 
+import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
+import TermsAndConditions from "@/pages/legal/TermsAndConditions";
+import SupplierTerms from "@/pages/legal/SupplierTerms";
+import CookiePolicy from "@/pages/legal/CookiePolicy";
+import RefundPolicy from "@/pages/legal/RefundPolicy";
+
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
 import SupplierServices from "@/pages/supplier-services";
@@ -45,6 +51,12 @@ export default function AppRoutes() {
         <Route path="search" element={<Search />} />
         <Route path="trust-and-safety" element={<TrustAndSafetyPage />} />
         <Route path="supplier/:id" element={<SupplierPublicProfile />} />
+
+        <Route path="legal/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="legal/terms" element={<TermsAndConditions />} />
+        <Route path="legal/supplier-terms" element={<SupplierTerms />} />
+        <Route path="legal/cookies" element={<CookiePolicy />} />
+        <Route path="legal/refunds" element={<RefundPolicy />} />
       </Route>
 
       <Route element={<RequireAuth />}>
