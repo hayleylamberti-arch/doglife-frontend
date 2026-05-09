@@ -6,6 +6,11 @@ export default function FAQ() {
         "Yes. Dog owners can search, compare and request bookings with local dog service providers for free.",
     },
     {
+      question: "How do payments work?",
+      answer:
+        "During DogLife’s launch phase, payments are arranged directly with the supplier once a booking is confirmed. DogLife does not currently hold customer funds or process marketplace payments.",
+    },
+    {
       question: "Are all providers verified?",
       answer:
         "Providers are reviewed before being listed on DogLife. Preferred and approved providers are marked clearly on their profiles.",
