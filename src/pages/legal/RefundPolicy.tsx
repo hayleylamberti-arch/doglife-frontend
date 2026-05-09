@@ -1,50 +1,55 @@
-import { Link } from "react-router-dom"
-
-export default function Footer() {
+export default function RefundPolicy() {
   return (
-    <footer className="bg-gray-900 text-white py-10">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="grid md:grid-cols-3 gap-8">
-          <div>
-            <h2 className="text-xl font-bold mb-3">DogLife</h2>
-            <p className="text-sm text-gray-300">
-              Trusted local dog care, starting in Gauteng.
-            </p>
-          </div>
+    <main className="max-w-4xl mx-auto px-6 py-16 text-gray-800">
+      <h1 className="text-3xl font-bold mb-6">
+        Refund & Cancellation Policy
+      </h1>
 
-          <div>
-            <h3 className="font-semibold mb-3">Legal</h3>
-            <div className="space-y-2 text-sm text-gray-300">
-              <Link to="/legal/privacy-policy" className="block hover:text-white">
-                Privacy Policy
-              </Link>
-              <Link to="/legal/terms" className="block hover:text-white">
-                Terms & Conditions
-              </Link>
-              <Link to="/legal/supplier-terms" className="block hover:text-white">
-                Supplier Terms
-              </Link>
-              <Link to="/legal/cookies" className="block hover:text-white">
-                Cookie Policy
-              </Link>
-              <Link to="/legal/refunds" className="block hover:text-white">
-                Refund & Cancellation Policy
-              </Link>
-            </div>
-          </div>
+      <p className="mb-4">
+        This policy explains how cancellations, refunds and booking issues are handled on DogLife.
+      </p>
 
-          <div>
-            <h3 className="font-semibold mb-3">Contact</h3>
-            <p className="text-sm text-gray-300">
-              hello@doglife.app
-            </p>
-          </div>
-        </div>
+      <h2 className="text-xl font-semibold mt-8 mb-3">DogLife’s role</h2>
+      <p className="mb-4">
+        DogLife is a marketplace platform that connects dog owners with independent service providers. DogLife does not directly provide dog walking, grooming, training, boarding, transport or veterinary services.
+      </p>
 
-        <p className="text-xs text-gray-400 mt-8">
-          © {new Date().getFullYear()} DogLife. All rights reserved.
-        </p>
-      </div>
-    </footer>
+      <h2 className="text-xl font-semibold mt-8 mb-3">Owner cancellations</h2>
+      <p className="mb-4">
+        Dog owners may cancel a confirmed booking free of charge up to 24 hours before the scheduled appointment.
+      </p>
+
+      <p className="mb-4">
+        Cancellations made less than 24 hours before the appointment may result in a partial cancellation fee to compensate the service provider for reserved time.
+      </p>
+
+      <p className="mb-4">
+        No-shows or same-day cancellations may be non-refundable.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Supplier cancellations</h2>
+      <p className="mb-4">
+        Service providers are expected to honour confirmed bookings. Repeated cancellations may affect supplier visibility, preferred supplier status, or approval on DogLife.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Refunds</h2>
+      <p className="mb-4">
+        Where payments are processed through DogLife, approved refunds will usually be processed within 5 to 10 business days, depending on the payment provider or bank.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Disputes</h2>
+      <p className="mb-4">
+        If there is a problem with a booking, owners or suppliers should contact DogLife with the booking details so the issue can be reviewed.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Contact</h2>
+      <p>
+        Booking, cancellation and refund questions can be sent to: hello@doglife.app
+      </p>
+
+      <p className="text-sm text-gray-500 mt-10">
+        Last updated: 9 May 2026
+      </p>
+    </main>
   )
 }
