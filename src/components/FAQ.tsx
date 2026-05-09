@@ -8,7 +8,7 @@ export default function FAQ() {
     {
       question: "How do payments work?",
       answer:
-        "During DogLife’s launch phase, payments are arranged directly with the supplier once a booking is confirmed. DogLife does not currently hold customer funds or process marketplace payments.",
+        "During DogLife's launch phase, payments are arranged directly with the supplier once a booking is confirmed. DogLife does not currently hold customer funds or process marketplace payments.",
     },
     {
       question: "Are all providers verified?",
@@ -28,7 +28,7 @@ export default function FAQ() {
     {
       question: "What if my suburb is not available yet?",
       answer:
-        "Join the neighbourhood waitlist and we’ll notify you when DogLife launches services in your area.",
+        "Join the neighbourhood waitlist and we'll notify you when DogLife launches services in your area.",
     },
   ]
 

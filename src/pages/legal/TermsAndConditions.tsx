@@ -19,7 +19,17 @@ export default function TermsAndConditions() {
 
       <h2 className="text-xl font-semibold mt-8 mb-3">Bookings</h2>
       <p className="mb-4">
-        Booking requests are subject to provider availability and confirmation. A booking is only confirmed once the relevant provider accepts it.
+        Booking requests are subject to supplier availability and confirmation. A booking is only confirmed once the relevant supplier accepts it.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Payments during launch</h2>
+      <p className="mb-4">
+        During DogLife’s launch phase, payments are arranged directly between the dog owner and the supplier once a booking is confirmed. DogLife does not currently hold customer funds or process marketplace payments.
+      </p>
+
+      <h2 className="text-xl font-semibold mt-8 mb-3">Cancellations and refunds</h2>
+      <p className="mb-4">
+        Cancellations and refunds are handled according to DogLife’s Refund & Cancellation Policy. Because payments are currently made directly to suppliers, refunds must currently be arranged directly between the dog owner and supplier.
       </p>
 
       <h2 className="text-xl font-semibold mt-8 mb-3">Service providers</h2>
@@ -42,13 +52,18 @@ export default function TermsAndConditions() {
         To the fullest extent allowed by law, DogLife is not liable for loss, injury, damage, disputes or service failures caused by independent service providers or users.
       </p>
 
+      <h2 className="text-xl font-semibold mt-8 mb-3">Future platform payments</h2>
+      <p className="mb-4">
+        DogLife may introduce secure in-app payments, deposits or platform-managed refunds in future. If payment handling changes, these Terms and related policies will be updated.
+      </p>
+
       <h2 className="text-xl font-semibold mt-8 mb-3">Contact</h2>
       <p>
-        For questions about these Terms, contact us at: hello@doglife.co.za
+        For questions about these Terms, contact us at: hello@doglife.app
       </p>
 
       <p className="text-sm text-gray-500 mt-10">
-        Last updated: 8 May 2026
+        Last updated: 9 May 2026
       </p>
     </main>
   )
