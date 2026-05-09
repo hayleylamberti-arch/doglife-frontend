@@ -1,13 +1,16 @@
+import { useNavigate } from "react-router-dom"
+
 export default function FeaturedProviders() {
+  const navigate = useNavigate()
+
   const providers = [
     {
       name: "A Floor of Dogs",
-      location: "Gauteng",
+      location: "Kyalami, Gauteng",
       service: "Preferred Supplier",
-      rating: "Preferred",
-      reviews: null,
-      price: "View services",
+      price: "Boarding, training and grooming",
       image: "/images/providers/a-floor-of-dogs.jpg",
+      profilePath: "/supplier/cmnvuhhe800012jis3k3klfk2",
       isPreferred: true,
       isPlaceholder: false,
     },
@@ -15,10 +18,9 @@ export default function FeaturedProviders() {
       name: "Dog Walking Providers",
       location: "Launching soon",
       service: "Dog Walking",
-      rating: "Coming soon",
-      reviews: null,
       price: "Join the waitlist",
       image: "/images/providers/placeholder-dog-care.jpg",
+      profilePath: null,
       isPreferred: false,
       isPlaceholder: true,
     },
@@ -26,10 +28,9 @@ export default function FeaturedProviders() {
       name: "Dog Grooming Providers",
       location: "Launching soon",
       service: "Dog Grooming",
-      rating: "Coming soon",
-      reviews: null,
       price: "Join the waitlist",
       image: "/images/providers/placeholder-grooming.jpg",
+      profilePath: null,
       isPreferred: false,
       isPlaceholder: true,
     },
@@ -85,6 +86,12 @@ export default function FeaturedProviders() {
               </p>
 
               <button
+                type="button"
+                onClick={() => {
+                  if (provider.profilePath) {
+                    navigate(provider.profilePath)
+                  }
+                }}
                 className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 disabled={provider.isPlaceholder}
               >

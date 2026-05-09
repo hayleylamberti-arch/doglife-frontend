@@ -35,6 +35,7 @@ import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 
 import AdminDashboard from "@/pages/admin-dashboard";
+import AdminSuppliersPage from "@/pages/admin-suppliers";
 
 export default function AppRoutes() {
   return (
@@ -84,8 +85,9 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route element={<RequireAuth />}>
+      <Route element={<RequireAuth allowRoles={["ADMIN"]} />}>
         <Route path="admin" element={<AdminDashboard />} />
+        <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
