@@ -9,6 +9,7 @@ import FAQ from "../components/FAQ";
 import TrustSection from "../components/TrustSection";
 import Suburbs from "../components/Suburbs";
 import InstallBanner from "../components/InstallBanner";
+import TrustStrip from "@/components/TrustStrip";
 
 export default function Landing() {
   return (
@@ -21,6 +22,7 @@ export default function Landing() {
       <InstallBanner />
 
       <Hero />
+      <TrustStrip />
       <Suburbs />
       <NeighbourhoodWaitlist />
       <ServiceCategories />
