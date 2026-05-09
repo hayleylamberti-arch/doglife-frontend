@@ -1,7 +1,33 @@
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+const FLOOR_OF_DOGS_ID = "cmnvuhhe800012jis3k3klfk2"
+
+type FeaturedSupplier = {
+  logoUrl?: string | null
+}
 
 export default function FeaturedProviders() {
   const navigate = useNavigate()
+  const [floorOfDogs, setFloorOfDogs] = useState<FeaturedSupplier | null>(null)
+
+  useEffect(() => {
+    async function loadSupplier() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/public/suppliers/${FLOOR_OF_DOGS_ID}`)
+        const data = await res.json()
+
+        if (data?.ok && data?.supplier) {
+          setFloorOfDogs(data.supplier)
+        }
+      } catch (error) {
+        console.error("Failed to load featured supplier:", error)
+      }
+    }
+
+    loadSupplier()
+  }, [])
 
   const providers = [
     {
@@ -9,8 +35,9 @@ export default function FeaturedProviders() {
       location: "Kyalami, Gauteng",
       service: "Preferred Supplier",
       price: "Boarding, training and grooming",
-      image: "/images/providers/a-floor-of-dogs.jpg",
-      profilePath: "/supplier/cmnvuhhe800012jis3k3klfk2",
+      profilePath: `/supplier/${FLOOR_OF_DOGS_ID}`,
+      logoUrl: floorOfDogs?.logoUrl,
+      fallbackIcon: "🐾",
       isPreferred: true,
       isPlaceholder: false,
     },
@@ -19,8 +46,9 @@ export default function FeaturedProviders() {
       location: "Launching soon",
       service: "Dog Walking",
       price: "Join the waitlist",
-      image: "/images/providers/placeholder-dog-care.jpg",
       profilePath: null,
+      logoUrl: null,
+      fallbackIcon: "🐕",
       isPreferred: false,
       isPlaceholder: true,
     },
@@ -29,8 +57,9 @@ export default function FeaturedProviders() {
       location: "Launching soon",
       service: "Dog Grooming",
       price: "Join the waitlist",
-      image: "/images/providers/placeholder-grooming.jpg",
       profilePath: null,
+      logoUrl: null,
+      fallbackIcon: "✂️",
       isPreferred: false,
       isPlaceholder: true,
     },
@@ -54,16 +83,20 @@ export default function FeaturedProviders() {
               className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition"
             >
               <div className="flex items-center mb-4">
-                <img
-                  src={provider.image}
-                  alt={provider.name}
-                  className="w-12 h-12 rounded-full mr-3 object-cover"
-                />
+                {provider.logoUrl ? (
+                  <img
+                    src={provider.logoUrl}
+                    alt={`${provider.name} logo`}
+                    className="w-12 h-12 rounded-full mr-3 object-cover border"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full mr-3 bg-blue-50 flex items-center justify-center text-2xl">
+                    {provider.fallbackIcon}
+                  </div>
+                )}
 
                 <div>
-                  <h3 className="text-lg font-semibold">
-                    {provider.name}
-                  </h3>
+                  <h3 className="text-lg font-semibold">{provider.name}</h3>
 
                   <p className="text-sm text-gray-500">
                     📍 {provider.location}
