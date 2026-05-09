@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE
 const FLOOR_OF_DOGS_ID = "cmnvuhhe800012jis3k3klfk2"
 
 type FeaturedSupplier = {
