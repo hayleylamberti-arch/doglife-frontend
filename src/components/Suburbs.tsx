@@ -4,13 +4,11 @@ export default function Suburbs() {
   const navigate = useNavigate();
 
   const suburbs = [
-    "Sandton",
     "Fourways",
-    "Midrand",
-    "Rosebank",
-    "Randburg",
-    "Centurion",
-    "Pretoria",
+    "Lonehill",
+    "Paulshof",
+    "Sunninghill",
+    "Kyalami",
   ];
 
   const handleClick = (suburb: string) => {
@@ -18,23 +16,23 @@ export default function Suburbs() {
   };
 
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-5xl mx-auto px-6 text-center">
-        <h2 className="text-2xl font-bold mb-3">
+    <section className="bg-white py-16">
+      <div className="mx-auto max-w-5xl px-6 text-center">
+        <h2 className="mb-3 text-2xl font-bold">
           Browse dog services in popular areas
         </h2>
 
-        <p className="text-gray-600 mb-8">
+        <p className="mb-8 text-gray-600">
           Find trusted dog walkers, groomers and trainers near you.
         </p>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {suburbs.map((suburb) => (
             <button
               key={suburb}
               type="button"
               onClick={() => handleClick(suburb)}
-              className="border rounded-lg py-3 hover:bg-gray-50 cursor-pointer transition"
+              className="cursor-pointer rounded-lg border py-3 transition hover:bg-gray-50"
             >
               {suburb}
             </button>
