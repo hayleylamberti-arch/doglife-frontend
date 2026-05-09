@@ -1,7 +1,7 @@
 export default function TrustStrip() {
   return (
-    <section className="bg-white border-y">
-      <div className="max-w-6xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm">
+    <section className="bg-blue-50 border-y border-blue-100">
+      <div className="max-w-6xl mx-auto px-6 py-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center text-sm text-gray-800">
         <div>
           <p className="font-semibold">🛡️ Verified suppliers</p>
         </div>
