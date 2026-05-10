@@ -38,6 +38,7 @@ import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import AdminDashboard from "@/pages/admin-dashboard";
 import AdminSuppliersPage from "@/pages/admin-suppliers";
 import AdminWaitlistPage from "@/pages/admin-waitlist";
+import AdminUsersPage from "@/pages/admin-users";
 
 export default function AppRoutes() {
   return (
@@ -92,6 +93,7 @@ export default function AppRoutes() {
     <Route path="admin" element={<AdminDashboard />} />
     <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
     <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
+    <Route path="admin/users" element={<AdminUsersPage />} />
   </Route>
 </Route>
 

@@ -4,6 +4,7 @@ const navItems = [
   { label: "Dashboard", to: "/admin" },
   { label: "Suppliers", to: "/admin/suppliers" },
   { label: "Waitlist", to: "/admin/waitlist" },
+  { label: "Users", to: "/admin/users" },
 ];
 
 export default function AdminLayout() {
