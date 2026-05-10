@@ -4,6 +4,7 @@ import GuestLayout from "@/layouts/GuestLayout";
 import AppLayout from "@/layouts/AppLayout";
 import OwnerLayout from "@/layouts/OwnerLayout";
 import SupplierLayout from "@/layouts/SupplierLayout";
+import AdminLayout from "@/layouts/AdminLayout";
 
 import RequireAuth from "@/components/RequireAuth";
 import RoleDashboardRedirect from "@/components/RoleDashboardRedirect";
@@ -87,10 +88,12 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<RequireAuth allowRoles={["ADMIN"]} />}>
-        <Route path="admin" element={<AdminDashboard />} />
-        <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
-        <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
-      </Route>
+  <Route element={<AdminLayout />}>
+    <Route path="admin" element={<AdminDashboard />} />
+    <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
+    <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
+  </Route>
+</Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
