@@ -282,9 +282,12 @@ export default function AdminSuppliersPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button asChild variant="outline">
-                      <Link to={`/admin/suppliers/${supplier.id}`}>View details</Link>
-                    </Button>
+                    <Link
+  to={`/admin/suppliers/${supplier.id}`}
+  className="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
+>
+  View details
+</Link>
 
                     {!isApproved ? (
                       <Button
