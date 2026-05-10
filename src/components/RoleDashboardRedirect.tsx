@@ -14,10 +14,10 @@ export default function RoleDashboardRedirect() {
     } else if (role === "OWNER") {
       navigate("/owner/dashboard", { replace: true });
     } else if (role === "ADMIN") {
-  navigate("/admin", { replace: true });
-} else {
-  navigate("/", { replace: true });
-}
+      navigate("/admin", { replace: true });
+    } else {
+      navigate("/", { replace: true });
+    }
   }, [role, isLoading, navigate]);
 
   return <div className="p-6">Redirecting...</div>;

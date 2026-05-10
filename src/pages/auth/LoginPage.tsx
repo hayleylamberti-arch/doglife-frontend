@@ -24,10 +24,11 @@ export default function LoginPage() {
   }, []);
 
   const getDashboardPath = (role?: string | null) => {
-    if (role === "SUPPLIER") return "/supplier/dashboard";
-    if (role === "OWNER") return "/owner/dashboard";
-    return "/";
-  };
+  if (role === "ADMIN") return "/admin";
+  if (role === "SUPPLIER") return "/supplier/dashboard";
+  if (role === "OWNER") return "/owner/dashboard";
+  return "/";
+};
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
