@@ -85,8 +85,8 @@ export default function AdminSupplierDetailPage() {
         {supplier.services?.length ? (
           supplier.services.map((service: any) => (
             <div key={service.id} className="flex justify-between border-b py-2 last:border-b-0">
-              <span>{service.serviceType || service.type || "Service"}</span>
-              <span>{service.active ? "Active" : "Inactive"}</span>
+              <span>{service.serviceName || service.serviceType || service.type || "Service"}</span>
+              <span>{service.isActive === false ? "Inactive" : "Active"}</span>
             </div>
           ))
         ) : (
