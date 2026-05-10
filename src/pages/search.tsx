@@ -46,8 +46,21 @@ const VALID_SERVICES = [
   "MOBILE_VET",
 ] as const;
 
-function isValidService(value: string | null): value is (typeof VALID_SERVICES)[number] {
-  return Boolean(value && VALID_SERVICES.includes(value as (typeof VALID_SERVICES)[number]));
+type ValidService = (typeof VALID_SERVICES)[number];
+
+const SERVICE_LABELS: Record<ValidService, string> = {
+  GROOMING: "Grooming",
+  BOARDING: "Boarding",
+  DAYCARE: "Daycare",
+  WALKING: "Walking",
+  TRAINING: "Training",
+  PET_SITTING: "Pet Sitting",
+  PET_TRANSPORT: "Pet Transport",
+  MOBILE_VET: "Mobile Vet",
+};
+
+function isValidService(value: string | null): value is ValidService {
+  return Boolean(value && VALID_SERVICES.includes(value as ValidService));
 }
 
 export default function SearchPage() {
@@ -55,7 +68,7 @@ export default function SearchPage() {
   const navigate = useNavigate();
 
   const serviceFromUrl = params.get("service");
-  const locationFromUrl = params.get("location") || "";
+  const suburbFromUrl = params.get("suburb") || params.get("location") || "";
 
   const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "GROOMING";
   const openedFromShortcut = isValidService(serviceFromUrl);
@@ -63,12 +76,15 @@ export default function SearchPage() {
   const [searchMode, setSearchMode] = useState<SearchMode>(
     openedFromShortcut ? "AREA" : "AREA"
   );
-  const [suburb, setSuburb] = useState(locationFromUrl);
-  const [suburbQuery, setSuburbQuery] = useState(locationFromUrl);
+  const [suburb, setSuburb] = useState(suburbFromUrl);
+  const [suburbQuery, setSuburbQuery] = useState(suburbFromUrl);
   const [suburbResults, setSuburbResults] = useState<SuburbResult[]>([]);
   const [showSuburbDropdown, setShowSuburbDropdown] = useState(false);
 
-  const [service, setService] = useState(initialService);
+  const [service, setService] = useState<ValidService>(initialService);
+  const [availableServices, setAvailableServices] = useState<ValidService[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+
   const [groomingCategory, setGroomingCategory] = useState("WASH_BRUSH");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("10:00");
@@ -82,11 +98,24 @@ export default function SearchPage() {
   const [autoLoadedShortcutResults, setAutoLoadedShortcutResults] = useState(false);
 
   const selectedServiceLabel = useMemo(() => {
-    return service
-      .toLowerCase()
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return SERVICE_LABELS[service];
   }, [service]);
+
+  const serviceOptions = useMemo(() => {
+    if (!suburb.trim()) {
+      return VALID_SERVICES.map((value) => ({
+        value,
+        label: SERVICE_LABELS[value],
+      }));
+    }
+
+    return availableServices.map((value) => ({
+      value,
+      label: SERVICE_LABELS[value],
+    }));
+  }, [availableServices, suburb]);
+
+  const hasLiveServicesForSuburb = !suburb.trim() || availableServices.length > 0;
 
   const searchSuburbs = async (value: string) => {
     setSuburbQuery(value);
@@ -95,6 +124,7 @@ export default function SearchPage() {
     if (value.trim().length < 2) {
       setSuburbResults([]);
       setShowSuburbDropdown(false);
+      setAvailableServices([]);
       return;
     }
 
@@ -109,6 +139,39 @@ export default function SearchPage() {
     } catch (err) {
       console.error("SUBURB SEARCH ERROR:", err);
       setSuburbResults([]);
+    }
+  };
+
+  const fetchLiveServices = async (selectedSuburb: string) => {
+    const trimmedSuburb = selectedSuburb.trim();
+
+    if (!trimmedSuburb) {
+      setAvailableServices([]);
+      return;
+    }
+
+    try {
+      setServicesLoading(true);
+
+      const res = await api.get(
+        `/api/suburbs/${encodeURIComponent(trimmedSuburb)}/services`
+      );
+
+      const payload = res.data?.services ?? [];
+      const nextServices = Array.isArray(payload)
+        ? payload.filter((item): item is ValidService => isValidService(item))
+        : [];
+
+      setAvailableServices(nextServices);
+
+      if (nextServices.length > 0 && !nextServices.includes(service)) {
+        setService(nextServices[0]);
+      }
+    } catch (err) {
+      console.error("LIVE SERVICES LOAD ERROR:", err);
+      setAvailableServices([]);
+    } finally {
+      setServicesLoading(false);
     }
   };
 
@@ -155,8 +218,20 @@ export default function SearchPage() {
         return;
       }
 
+      if (availableServices.length === 0) {
+        setError("No live services are available in this suburb yet.");
+        setSuppliers([]);
+        return;
+      }
+
+      if (!availableServices.includes(service)) {
+        setError("That service is not available in this suburb yet.");
+        setSuppliers([]);
+        return;
+      }
+
       if (searchMode === "AREA") {
-        await fetchAreaSuppliers(suburb, service || undefined);
+        await fetchAreaSuppliers(suburb, service);
         return;
       }
 
@@ -235,9 +310,19 @@ export default function SearchPage() {
   }, []);
 
   useEffect(() => {
+    if (!suburb.trim()) {
+      setAvailableServices([]);
+      return;
+    }
+
+    fetchLiveServices(suburb);
+  }, [suburb]);
+
+  useEffect(() => {
     if (!openedFromShortcut) return;
     if (!ownerProfileLoaded) return;
     if (autoLoadedShortcutResults) return;
+    if (servicesLoading) return;
 
     if (!suburb.trim()) {
       setError("Please select your suburb to view providers for this service.");
@@ -245,11 +330,21 @@ export default function SearchPage() {
       return;
     }
 
+    if (availableServices.length === 0) {
+      setError("No live services are available in this suburb yet.");
+      setSuppliers([]);
+      return;
+    }
+
+    const serviceToSearch = availableServices.includes(service)
+      ? service
+      : availableServices[0];
+
     const runAutoSearch = async () => {
       try {
         setLoading(true);
         setError("");
-        await fetchAreaSuppliers(suburb, service);
+        await fetchAreaSuppliers(suburb, serviceToSearch);
         setAutoLoadedShortcutResults(true);
       } catch (err) {
         console.error("SHORTCUT AUTO SEARCH ERROR:", err);
@@ -267,15 +362,17 @@ export default function SearchPage() {
     autoLoadedShortcutResults,
     suburb,
     service,
+    availableServices,
+    servicesLoading,
   ]);
 
   return (
     <div className="min-h-screen bg-doglife-gray-50">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <h1 className="text-3xl font-bold mb-6">Find Dog Services</h1>
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <h1 className="mb-6 text-3xl font-bold">Find Dog Services</h1>
 
         <Card className="mb-8">
-          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+          <CardContent className="grid grid-cols-1 gap-4 p-6 md:grid-cols-5">
             <div className="md:col-span-5 flex flex-wrap gap-3">
               <Button
                 type="button"
@@ -299,7 +396,8 @@ export default function SearchPage() {
                 {suburb.trim() ? (
                   <>
                     Showing <span className="font-semibold">{selectedServiceLabel}</span>{" "}
-                    providers in <span className="font-semibold">{suburb}</span>, with preferred providers first.
+                    providers in <span className="font-semibold">{suburb}</span>, with preferred
+                    providers first.
                   </>
                 ) : (
                   <>
@@ -321,12 +419,12 @@ export default function SearchPage() {
               />
 
               {showSuburbDropdown && suburbResults.length > 0 ? (
-                <div className="absolute z-20 mt-1 w-full rounded-md border bg-white shadow-lg overflow-hidden">
+                <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-md border bg-white shadow-lg">
                   {suburbResults.map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      className="w-full text-left px-3 py-2 hover:bg-gray-100"
+                      className="w-full px-3 py-2 text-left hover:bg-gray-100"
                       onClick={() => {
                         setSuburb(item.suburbName);
                         setSuburbQuery(item.suburbName);
@@ -344,17 +442,25 @@ export default function SearchPage() {
 
             <select
               value={service}
-              onChange={(e) => setService(e.target.value as (typeof VALID_SERVICES)[number])}
-              className="border rounded-md px-3 py-2 bg-white"
+              onChange={(e) => setService(e.target.value as ValidService)}
+              className="rounded-md border bg-white px-3 py-2"
+              disabled={!hasLiveServicesForSuburb || servicesLoading}
             >
-              <option value="GROOMING">Grooming</option>
-              <option value="BOARDING">Boarding</option>
-              <option value="DAYCARE">Daycare</option>
-              <option value="WALKING">Walking</option>
-              <option value="TRAINING">Training</option>
-              <option value="PET_SITTING">Pet Sitting</option>
-              <option value="PET_TRANSPORT">Pet Transport</option>
-              <option value="MOBILE_VET">Mobile Vet</option>
+              {!suburb.trim() ? (
+                VALID_SERVICES.map((value) => (
+                  <option key={value} value={value}>
+                    {SERVICE_LABELS[value]}
+                  </option>
+                ))
+              ) : serviceOptions.length > 0 ? (
+                serviceOptions.map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))
+              ) : (
+                <option value="">No live services in this suburb yet</option>
+              )}
             </select>
 
             {searchMode === "AVAILABLE" ? (
@@ -363,7 +469,8 @@ export default function SearchPage() {
                   <select
                     value={groomingCategory}
                     onChange={(e) => setGroomingCategory(e.target.value)}
-                    className="border rounded-md px-3 py-2 bg-white"
+                    className="rounded-md border bg-white px-3 py-2"
+                    disabled={!hasLiveServicesForSuburb}
                   >
                     <option value="WASH_BRUSH">Wash & Brush</option>
                     <option value="WASH_CUT">Wash & Cut</option>
@@ -376,12 +483,14 @@ export default function SearchPage() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
+                  disabled={!hasLiveServicesForSuburb}
                 />
 
                 <Input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
+                  disabled={!hasLiveServicesForSuburb}
                 />
               </>
             ) : (
@@ -392,28 +501,39 @@ export default function SearchPage() {
               </>
             )}
 
-            <div className="md:col-span-5">
-              <Button onClick={fetchSuppliers}>
+            <div className="md:col-span-5 flex items-center gap-3">
+              <Button onClick={fetchSuppliers} disabled={servicesLoading && Boolean(suburb.trim())}>
                 {searchMode === "AVAILABLE" ? "Check availability" : "Search"}
               </Button>
+
+              {suburb.trim() && servicesLoading ? (
+                <span className="text-sm text-gray-500">Checking live services…</span>
+              ) : null}
             </div>
           </CardContent>
         </Card>
 
+        {suburb.trim() && !servicesLoading && availableServices.length === 0 ? (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            No live services are available in {suburb} yet. Join the waitlist if you want DogLife
+            to launch there next.
+          </div>
+        ) : null}
+
         {loading ? <p>Loading suppliers...</p> : null}
         {error ? <p className="text-red-500">{error}</p> : null}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {suppliers.map((supplier) => (
-            <Card key={supplier.id} className="hover:shadow-lg transition">
-              <CardContent className="p-6 space-y-4">
+            <Card key={supplier.id} className="transition hover:shadow-lg">
+              <CardContent className="space-y-4 p-6">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     {supplier.logoUrl ? (
                       <img
                         src={supplier.logoUrl}
                         alt={supplier.businessName}
-                        className="h-14 w-14 rounded-lg object-cover border border-gray-200"
+                        className="h-14 w-14 rounded-lg border border-gray-200 object-cover"
                       />
                     ) : null}
 
@@ -423,30 +543,28 @@ export default function SearchPage() {
                       </h3>
 
                       {supplier.suburb ? (
-                        <p className="text-sm text-gray-500 mt-1">
-                          {supplier.suburb}
-                        </p>
+                        <p className="mt-1 text-sm text-gray-500">{supplier.suburb}</p>
                       ) : null}
 
-                      <div className="flex gap-2 mt-2 flex-wrap">
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {supplier.isPreferred ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
+                          <span className="rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                             Preferred
                           </span>
                         ) : null}
 
                         {supplier.usedBefore ? (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">
+                          <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
                             Used before
                           </span>
                         ) : null}
 
-                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-semibold">
+                        <span className="rounded bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-700">
                           {supplier.completedServicesCount ?? 0} completed
                         </span>
 
                         {searchMode === "AVAILABLE" && supplier.available ? (
-                          <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded font-medium">
+                          <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
                             Available
                           </span>
                         ) : null}
@@ -458,10 +576,10 @@ export default function SearchPage() {
                     type="button"
                     onClick={() => togglePreferredSupplier(supplier)}
                     disabled={savingSupplierId === supplier.id}
-                    className={`text-xs px-3 py-1 rounded border ${
+                    className={`rounded border px-3 py-1 text-xs ${
                       supplier.isPreferred
-                        ? "bg-green-100 text-green-700 border-green-200"
-                        : "bg-white text-gray-500 border-gray-300"
+                        ? "border-green-200 bg-green-100 text-green-700"
+                        : "border-gray-300 bg-white text-gray-500"
                     } disabled:opacity-50`}
                   >
                     {savingSupplierId === supplier.id
@@ -476,7 +594,7 @@ export default function SearchPage() {
                   {supplier.aboutServices || "No description provided"}
                 </p>
 
-                <div className="flex justify-between items-end pt-2">
+                <div className="flex items-end justify-between pt-2">
                   <div>
                     <p className="text-sm font-medium text-gray-900">
                       {supplier.startingPriceCents != null
@@ -514,8 +632,8 @@ export default function SearchPage() {
           ))}
         </div>
 
-        {!loading && suppliers.length === 0 ? (
-          <div className="text-center text-gray-500 mt-10">
+        {!loading && suppliers.length === 0 && availableServices.length > 0 ? (
+          <div className="mt-10 text-center text-gray-500">
             {searchMode === "AVAILABLE"
               ? "No available providers found for this search."
               : `No ${selectedServiceLabel.toLowerCase()} providers found in this area yet.`}
