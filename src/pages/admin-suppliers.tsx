@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -55,7 +56,6 @@ function formatDate(value?: string | null) {
   if (!value) return "—";
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "—";
 
   return date.toLocaleString("en-ZA", {
@@ -90,12 +90,11 @@ function getStatusBadgeClass(status: SupplierStatus) {
 }
 
 function getServiceSuburbs(supplier: SupplierItem) {
-  const suburbs =
+  return (
     supplier.operatingAreas
       ?.map((area) => area?.suburb?.suburbName)
-      .filter((value): value is string => Boolean(value)) || [];
-
-  return suburbs;
+      .filter((value): value is string => Boolean(value)) || []
+  );
 }
 
 export default function AdminSuppliersPage() {
@@ -190,7 +189,9 @@ export default function AdminSuppliersPage() {
         </div>
 
         <div className="w-full md:w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Filter by status</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Filter by status
+          </label>
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value as "ALL" | SupplierStatus)}
@@ -220,6 +221,7 @@ export default function AdminSuppliersPage() {
           {sortedSuppliers.map((supplier) => {
             const serviceSuburbs = getServiceSuburbs(supplier);
             const isBusy = activeSupplierId === supplier.id;
+            const isApproved = supplier.approvalStatus === "APPROVED";
 
             return (
               <div
@@ -229,9 +231,12 @@ export default function AdminSuppliersPage() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h2 className="text-2xl font-semibold text-gray-900">
+                      <Link
+                        to={`/admin/suppliers/${supplier.id}`}
+                        className="text-2xl font-semibold text-gray-900 hover:text-blue-600 hover:underline"
+                      >
                         {supplier.businessName || "Unnamed supplier"}
-                      </h2>
+                      </Link>
 
                       <span
                         className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
@@ -277,26 +282,34 @@ export default function AdminSuppliersPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
-                    <Button
-                      onClick={() => approveMutation.mutate(supplier.id)}
-                      disabled={isBusy}
-                    >
-                      {isBusy ? "Working..." : "Approve"}
+                    <Button asChild variant="outline">
+                      <Link to={`/admin/suppliers/${supplier.id}`}>View details</Link>
                     </Button>
+
+                    {!isApproved ? (
+                      <Button
+                        onClick={() => approveMutation.mutate(supplier.id)}
+                        disabled={isBusy}
+                      >
+                        {isBusy ? "Working..." : "Approve"}
+                      </Button>
+                    ) : null}
 
                     <Button
                       variant="outline"
                       onClick={() => handleReject(supplier)}
                       disabled={isBusy}
                     >
-                      {isBusy ? "Working..." : "Reject"}
+                      {isBusy ? "Working..." : isApproved ? "Suspend / Reject" : "Reject"}
                     </Button>
                   </div>
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-2">
                   <div className="rounded-xl border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Profile summary</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Profile summary
+                    </h3>
 
                     <div className="space-y-2 text-sm text-gray-700">
                       <p>
@@ -328,7 +341,9 @@ export default function AdminSuppliersPage() {
                   </div>
 
                   <div className="rounded-xl border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Verification status</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Verification status
+                    </h3>
 
                     <div className="flex flex-wrap gap-2">
                       <span
