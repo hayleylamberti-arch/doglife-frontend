@@ -2,6 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "@/lib/api";
 
+function formatServiceName(value?: string | null) {
+  if (!value) return "Service";
+
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export default function AdminSupplierDetailPage() {
   const { id } = useParams();
 
@@ -85,7 +95,7 @@ export default function AdminSupplierDetailPage() {
         {supplier.services?.length ? (
           supplier.services.map((service: any) => (
             <div key={service.id} className="flex justify-between border-b py-2 last:border-b-0">
-              <span>{service.service || "Service"}</span>
+              <span>{formatServiceName(service.service)}</span>
               <span>{service.isActive === false ? "Inactive" : "Active"}</span>
             </div>
           ))
