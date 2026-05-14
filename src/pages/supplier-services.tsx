@@ -60,9 +60,7 @@ function getApiErrorMessage(error: unknown) {
     );
   }
 
-  if (error instanceof Error) {
-    return error.message;
-  }
+  if (error instanceof Error) return error.message;
 
   return "Failed to save service";
 }
@@ -130,6 +128,15 @@ function formatRandFromCents(value?: number | null) {
   return `R${(((value ?? 0) as number) / 100).toFixed(0)}`;
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
@@ -158,6 +165,10 @@ export default function SupplierServicesPage() {
 
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
+
+  const [blockInputs, setBlockInputs] = useState<
+    Record<string, { startDate: string; endDate: string; reason: string }>
+  >({});
 
   const [washBrush, setWashBrush] = useState({
     small: "",
@@ -190,11 +201,48 @@ export default function SupplierServicesPage() {
     setWashCut({ small: "", medium: "", large: "", xl: "" });
   };
 
+  const createBlockMutation = useMutation({
+    mutationFn: async ({
+      serviceId,
+      startDate,
+      endDate,
+      reason,
+    }: {
+      serviceId: string;
+      startDate: string;
+      endDate: string;
+      reason: string;
+    }) => {
+      if (!startDate || !endDate) {
+        throw new Error("Start date and end date are required");
+      }
+
+      return api.post(`/api/supplierServices/${serviceId}/availability-blocks`, {
+        startAt: `${startDate}T00:00:00.000Z`,
+        endAt: `${endDate}T23:59:59.000Z`,
+        reason: reason || null,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+      setBlockInputs((prev) => ({
+        ...prev,
+        [variables.serviceId]: { startDate: "", endDate: "", reason: "" },
+      }));
+    },
+  });
+
+  const deleteBlockMutation = useMutation({
+    mutationFn: async (blockId: string) =>
+      api.delete(`/api/supplierServices/availability-blocks/${blockId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async () => {
-      if (!serviceType) {
-        throw new Error("Select a service");
-      }
+      if (!serviceType) throw new Error("Select a service");
 
       const defaults = serviceDefaults(serviceType);
       const showDogCapacity = shouldShowDogCapacity(serviceType);
@@ -246,17 +294,11 @@ export default function SupplierServicesPage() {
       }
 
       if (isDaycare) {
-        if (
-          daycareHalfDayPrice === "" ||
-          Number(daycareHalfDayPrice) < 0
-        ) {
+        if (daycareHalfDayPrice === "" || Number(daycareHalfDayPrice) < 0) {
           throw new Error("Enter a valid half day price");
         }
 
-        if (
-          daycareFullDayPrice === "" ||
-          Number(daycareFullDayPrice) < 0
-        ) {
+        if (daycareFullDayPrice === "" || Number(daycareFullDayPrice) < 0) {
           throw new Error("Enter a valid full day price");
         }
 
@@ -296,7 +338,8 @@ export default function SupplierServicesPage() {
                 ? Math.round(Number(daycareExtraDogPrice) * 100)
                 : null,
               maxDogsPerBooking: Number(maxDogsPerBooking),
-              concurrentCapacityDogs: Number(concurrentCapacityDogs || "0") || null,
+              concurrentCapacityDogs:
+                Number(concurrentCapacityDogs || "0") || null,
             },
           ],
         });
@@ -372,6 +415,112 @@ export default function SupplierServicesPage() {
   const isBoarding = serviceType === "BOARDING";
   const isDaycare = serviceType === "DAYCARE";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
+
+  const renderAvailabilityBlocks = (s: any) => {
+    const input = blockInputs[s.id] || {
+      startDate: "",
+      endDate: "",
+      reason: "",
+    };
+
+    return (
+      <div className="mt-4 rounded-lg border border-gray-200 p-3 space-y-3">
+        <p className="font-medium text-gray-700">Blocked Dates</p>
+
+        {s.availabilityBlocks?.length ? (
+          <div className="space-y-2">
+            {s.availabilityBlocks.map((block: any) => (
+              <div
+                key={block.id}
+                className="flex items-center justify-between gap-3 rounded border p-2"
+              >
+                <div>
+                  <p>
+                    {formatDate(block.startAt)} - {formatDate(block.endAt)}
+                  </p>
+                  {block.reason ? (
+                    <p className="text-xs text-gray-500">{block.reason}</p>
+                  ) : null}
+                </div>
+
+                <button
+                  onClick={() => deleteBlockMutation.mutate(block.id)}
+                  disabled={deleteBlockMutation.isPending}
+                  className="rounded border px-3 py-1 text-sm disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            No blocked dates added for this service.
+          </p>
+        )}
+
+        <div className="grid gap-2 md:grid-cols-3">
+          <input
+            type="date"
+            value={input.startDate}
+            onChange={(e) =>
+              setBlockInputs((prev) => ({
+                ...prev,
+                [s.id]: { ...input, startDate: e.target.value },
+              }))
+            }
+            className="border rounded px-3 py-2"
+          />
+
+          <input
+            type="date"
+            value={input.endDate}
+            onChange={(e) =>
+              setBlockInputs((prev) => ({
+                ...prev,
+                [s.id]: { ...input, endDate: e.target.value },
+              }))
+            }
+            className="border rounded px-3 py-2"
+          />
+
+          <input
+            type="text"
+            placeholder="Reason e.g. December holiday"
+            value={input.reason}
+            onChange={(e) =>
+              setBlockInputs((prev) => ({
+                ...prev,
+                [s.id]: { ...input, reason: e.target.value },
+              }))
+            }
+            className="border rounded px-3 py-2"
+          />
+        </div>
+
+        <button
+          onClick={() =>
+            createBlockMutation.mutate({
+              serviceId: s.id,
+              startDate: input.startDate,
+              endDate: input.endDate,
+              reason: input.reason,
+            })
+          }
+          disabled={createBlockMutation.isPending}
+          className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+        >
+          {createBlockMutation.isPending ? "Adding..." : "Add blocked dates"}
+        </button>
+
+        {createBlockMutation.isError ? (
+          <p className="text-sm text-red-600">
+            {getApiErrorMessage(createBlockMutation.error)}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -638,61 +787,66 @@ export default function SupplierServicesPage() {
           <div key={type} className="border rounded-lg p-4 mb-4 bg-white">
             <p className="font-medium">{formatService(type)}</p>
 
-            <div className="text-sm text-gray-500 mt-2 space-y-2">
+            <div className="text-sm text-gray-500 mt-2 space-y-4">
               {type !== "GROOMING" &&
                 group.map((s: any) => {
                   const halfDayPriceCents = s.pricingJson?.halfDayPriceCents;
                   const fullDayPriceCents = s.pricingJson?.fullDayPriceCents;
 
                   return (
-                    <div key={s.id} className="flex items-center justify-between gap-3">
-                      <div>
-                        {type === "DAYCARE" ? (
-                          <>
+                    <div key={s.id} className="rounded border p-3 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          {type === "DAYCARE" ? (
+                            <>
+                              <p>
+                                Half day: {formatRandFromCents(halfDayPriceCents)}
+                              </p>
+                              <p>
+                                Full day:{" "}
+                                {formatRandFromCents(
+                                  fullDayPriceCents ?? s.baseRateCents
+                                )}
+                              </p>
+                            </>
+                          ) : (
                             <p>
-                              Half day: {formatRandFromCents(halfDayPriceCents)}
+                              R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                              {getServiceUnit(type, s)}
                             </p>
+                          )}
+
+                          <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+
+                          {s.maxDogsPerBooking ? (
+                            <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+                          ) : null}
+
+                          {s.concurrentCapacityDogs ? (
                             <p>
-                              Full day: {formatRandFromCents(
-                                fullDayPriceCents ?? s.baseRateCents
-                              )}
+                              Total concurrent capacity:{" "}
+                              {s.concurrentCapacityDogs}
                             </p>
-                          </>
-                        ) : (
-                          <p>
-                            R{(s.baseRateCents / 100).toFixed(0)} {getServiceUnit(type, s)}
-                          </p>
-                        )}
+                          ) : null}
 
-                        <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+                          {(type === "BOARDING" || type === "DAYCARE") &&
+                          s.additionalDogEnabled ? (
+                            <p>
+                              Extra dog:{" "}
+                              {formatRandFromCents(s.additionalDogPriceCents)}
+                            </p>
+                          ) : null}
+                        </div>
 
-                        {s.maxDogsPerBooking ? (
-                          <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
-                        ) : null}
-
-                        {s.concurrentCapacityDogs ? (
-                          <p>Total concurrent capacity: {s.concurrentCapacityDogs}</p>
-                        ) : null}
-
-                        {type === "BOARDING" && s.additionalDogEnabled ? (
-                          <p>
-                            Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
-                          </p>
-                        ) : null}
-
-                        {type === "DAYCARE" && s.additionalDogEnabled ? (
-                          <p>
-                            Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
-                          </p>
-                        ) : null}
+                        <button
+                          onClick={() => deleteMutation.mutate(s.id)}
+                          className="rounded border px-3 py-1"
+                        >
+                          Delete
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => deleteMutation.mutate(s.id)}
-                        className="rounded border px-3 py-1"
-                      >
-                        Delete
-                      </button>
+                      {renderAvailabilityBlocks(s)}
                     </div>
                   );
                 })}
@@ -710,7 +864,7 @@ export default function SupplierServicesPage() {
                   });
 
                   return (
-                    <div key={s.id} className="space-y-2">
+                    <div key={s.id} className="rounded border p-3 space-y-3">
                       <p className="text-green-600 font-semibold">
                         Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
                       </p>
@@ -745,6 +899,8 @@ export default function SupplierServicesPage() {
                       >
                         Delete
                       </button>
+
+                      {renderAvailabilityBlocks(s)}
                     </div>
                   );
                 })}
