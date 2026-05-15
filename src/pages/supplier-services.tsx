@@ -73,6 +73,18 @@ type PricingTier = {
   priceCents: number;
 };
 
+type EditServiceForm = {
+  price: string;
+  durationMinutes: string;
+  bufferMinutes: string;
+  maxDogsPerBooking: string;
+  concurrentCapacityDogs: string;
+  additionalDogEnabled: boolean;
+  additionalDogPrice: string;
+  daycareHalfDayPrice: string;
+  daycareFullDayPrice: string;
+};
+
 function calculateGroomingPrice({
   tiers,
   selectedCategory,
@@ -137,6 +149,11 @@ function formatDate(value?: string | null) {
   });
 }
 
+function centsToRandInput(value?: number | null) {
+  if (value == null) return "";
+  return String(value / 100);
+}
+
 export default function SupplierServicesPage() {
   const queryClient = useQueryClient();
 
@@ -165,6 +182,9 @@ export default function SupplierServicesPage() {
 
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
+
+  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditServiceForm | null>(null);
 
   const [blockInputs, setBlockInputs] = useState<
     Record<string, { startDate: string; endDate: string; reason: string }>
@@ -200,6 +220,93 @@ export default function SupplierServicesPage() {
     setWashBrush({ small: "", medium: "", large: "", xl: "" });
     setWashCut({ small: "", medium: "", large: "", xl: "" });
   };
+
+  const startEditing = (s: any) => {
+    setEditingServiceId(s.id);
+    setEditForm({
+      price: centsToRandInput(s.baseRateCents),
+      durationMinutes: s.durationMinutes ? String(s.durationMinutes) : "",
+      bufferMinutes: s.bufferMinutes ? String(s.bufferMinutes) : "",
+      maxDogsPerBooking: s.maxDogsPerBooking ? String(s.maxDogsPerBooking) : "",
+      concurrentCapacityDogs: s.concurrentCapacityDogs
+        ? String(s.concurrentCapacityDogs)
+        : "",
+      additionalDogEnabled: Boolean(s.additionalDogEnabled),
+      additionalDogPrice: centsToRandInput(s.additionalDogPriceCents),
+      daycareHalfDayPrice: centsToRandInput(s.pricingJson?.halfDayPriceCents),
+      daycareFullDayPrice: centsToRandInput(
+        s.pricingJson?.fullDayPriceCents ?? s.baseRateCents
+      ),
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingServiceId(null);
+    setEditForm(null);
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ service }: { service: any }) => {
+      if (!editForm) throw new Error("Nothing to update");
+
+      const payload: any = {
+        bufferMinutes: Number(editForm.bufferMinutes || "0"),
+        maxDogsPerBooking:
+          editForm.maxDogsPerBooking === ""
+            ? null
+            : Number(editForm.maxDogsPerBooking),
+        concurrentCapacityDogs:
+          editForm.concurrentCapacityDogs === ""
+            ? null
+            : Number(editForm.concurrentCapacityDogs),
+        additionalDogEnabled: editForm.additionalDogEnabled,
+        additionalDogPriceCents: editForm.additionalDogEnabled
+          ? Math.round(Number(editForm.additionalDogPrice || "0") * 100)
+          : null,
+      };
+
+      if (service.service === "DAYCARE") {
+        if (
+          editForm.daycareHalfDayPrice === "" ||
+          editForm.daycareFullDayPrice === ""
+        ) {
+          throw new Error("Half day and full day prices are required");
+        }
+
+        payload.baseRateCents = Math.round(
+          Number(editForm.daycareFullDayPrice) * 100
+        );
+        payload.pricingJson = {
+          halfDayPriceCents: Math.round(
+            Number(editForm.daycareHalfDayPrice) * 100
+          ),
+          fullDayPriceCents: Math.round(
+            Number(editForm.daycareFullDayPrice) * 100
+          ),
+        };
+      } else {
+        if (!editForm.price || Number(editForm.price) <= 0) {
+          throw new Error("Enter a valid price");
+        }
+
+        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+      }
+
+      if (!["BOARDING", "PET_SITTING", "DAYCARE", "GROOMING"].includes(service.service)) {
+        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+          throw new Error("Enter a valid duration");
+        }
+
+        payload.durationMinutes = Number(editForm.durationMinutes);
+      }
+
+      return api.patch(`/api/supplierServices/${service.id}`, payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+      cancelEditing();
+    },
+  });
 
   const createBlockMutation = useMutation({
     mutationFn: async ({
@@ -306,21 +413,6 @@ export default function SupplierServicesPage() {
           throw new Error("Enter a valid maximum dogs per booking");
         }
 
-        if (
-          daycareExtraDogEnabled &&
-          (Number(maxDogsPerBooking) < 2 ||
-            daycareExtraDogPrice === "" ||
-            Number(daycareExtraDogPrice) < 0)
-        ) {
-          if (Number(maxDogsPerBooking) < 2) {
-            throw new Error(
-              "Maximum dogs per booking must be at least 2 when extra dog pricing is enabled"
-            );
-          }
-
-          throw new Error("Enter a valid extra dog price");
-        }
-
         return api.post("/api/supplierServices", {
           services: [
             {
@@ -415,6 +507,164 @@ export default function SupplierServicesPage() {
   const isBoarding = serviceType === "BOARDING";
   const isDaycare = serviceType === "DAYCARE";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
+
+  const renderEditForm = (s: any) => {
+    if (editingServiceId !== s.id || !editForm) return null;
+
+    const showCapacity = shouldShowDogCapacity(s.service);
+    const showDuration = !["BOARDING", "PET_SITTING", "DAYCARE", "GROOMING"].includes(
+      s.service
+    );
+
+    return (
+      <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50">
+        <p className="font-medium text-gray-700">Edit Service</p>
+
+        {s.service === "DAYCARE" ? (
+          <>
+            <input
+              type="number"
+              min="0"
+              placeholder="Half day price (R)"
+              value={editForm.daycareHalfDayPrice}
+              onChange={(e) =>
+                setEditForm({ ...editForm, daycareHalfDayPrice: e.target.value })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+            <input
+              type="number"
+              min="0"
+              placeholder="Full day price (R)"
+              value={editForm.daycareFullDayPrice}
+              onChange={(e) =>
+                setEditForm({ ...editForm, daycareFullDayPrice: e.target.value })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+          </>
+        ) : (
+          <input
+            type="number"
+            min="0"
+            placeholder="Price (R)"
+            value={editForm.price}
+            onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+            className="border rounded px-3 py-2 block w-full"
+          />
+        )}
+
+        {showDuration ? (
+          <input
+            type="number"
+            min="1"
+            placeholder="Duration minutes"
+            value={editForm.durationMinutes}
+            onChange={(e) =>
+              setEditForm({ ...editForm, durationMinutes: e.target.value })
+            }
+            className="border rounded px-3 py-2 block w-full"
+          />
+        ) : null}
+
+        <input
+          type="number"
+          min="0"
+          placeholder="Buffer minutes"
+          value={editForm.bufferMinutes}
+          onChange={(e) =>
+            setEditForm({ ...editForm, bufferMinutes: e.target.value })
+          }
+          className="border rounded px-3 py-2 block w-full"
+        />
+
+        {showCapacity ? (
+          <>
+            <input
+              type="number"
+              min="1"
+              placeholder="Maximum dogs per booking"
+              value={editForm.maxDogsPerBooking}
+              onChange={(e) =>
+                setEditForm({ ...editForm, maxDogsPerBooking: e.target.value })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+            <input
+              type="number"
+              min="1"
+              placeholder="Total concurrent dog capacity"
+              value={editForm.concurrentCapacityDogs}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  concurrentCapacityDogs: e.target.value,
+                })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+          </>
+        ) : null}
+
+        {(s.service === "BOARDING" || s.service === "DAYCARE") ? (
+          <>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={editForm.additionalDogEnabled}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    additionalDogEnabled: e.target.checked,
+                  })
+                }
+              />
+              Enable extra dog pricing
+            </label>
+
+            {editForm.additionalDogEnabled ? (
+              <input
+                type="number"
+                min="0"
+                placeholder="Extra dog price (R)"
+                value={editForm.additionalDogPrice}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    additionalDogPrice: e.target.value,
+                  })
+                }
+                className="border rounded px-3 py-2 block w-full"
+              />
+            ) : null}
+          </>
+        ) : null}
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => updateMutation.mutate({ service: s })}
+            disabled={updateMutation.isPending}
+            className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {updateMutation.isPending ? "Saving..." : "Save changes"}
+          </button>
+
+          <button
+            onClick={cancelEditing}
+            className="rounded border px-3 py-2 text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+
+        {updateMutation.isError ? (
+          <p className="text-sm text-red-600">
+            {getApiErrorMessage(updateMutation.error)}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderAvailabilityBlocks = (s: any) => {
     const input = blockInputs[s.id] || {
@@ -512,12 +762,6 @@ export default function SupplierServicesPage() {
         >
           {createBlockMutation.isPending ? "Adding..." : "Add blocked dates"}
         </button>
-
-        {createBlockMutation.isError ? (
-          <p className="text-sm text-red-600">
-            {getApiErrorMessage(createBlockMutation.error)}
-          </p>
-        ) : null}
       </div>
     );
   };
@@ -585,10 +829,6 @@ export default function SupplierServicesPage() {
               onChange={(e) => setDaycareFullDayPrice(e.target.value)}
               className="border rounded px-3 py-2 block w-full"
             />
-
-            <p className="text-sm text-gray-500">
-              Half day and full day prices are both required for daycare.
-            </p>
           </div>
         )}
 
@@ -613,11 +853,6 @@ export default function SupplierServicesPage() {
                 className="border rounded px-3 py-2 block w-full"
               />
             )}
-
-            <p className="text-sm text-gray-500">
-              Base price applies to the first dog. Extra dog price is added for
-              each additional dog in the same booking.
-            </p>
           </div>
         )}
 
@@ -642,10 +877,6 @@ export default function SupplierServicesPage() {
                 className="border rounded px-3 py-2 block w-full"
               />
             )}
-
-            <p className="text-sm text-gray-500">
-              Use this when a daycare booking includes more than one dog.
-            </p>
           </div>
         )}
 
@@ -668,11 +899,6 @@ export default function SupplierServicesPage() {
               onChange={(e) => setConcurrentCapacityDogs(e.target.value)}
               className="border rounded px-3 py-2 block w-full"
             />
-
-            <p className="text-sm text-gray-500">
-              Maximum dogs per booking limits one booking. Total concurrent dog
-              capacity limits how many dogs you can handle at the same time.
-            </p>
           </div>
         )}
 
@@ -688,73 +914,14 @@ export default function SupplierServicesPage() {
         )}
 
         {showBufferInput && serviceType !== "GROOMING" && (
-          <div className="space-y-1">
-            <input
-              type="number"
-              min="0"
-              placeholder="Time buffer (mins)"
-              value={bufferMinutes}
-              onChange={(e) => setBufferMinutes(e.target.value)}
-              className="border rounded px-3 py-2 block w-full"
-            />
-            <p className="text-sm text-gray-500">
-              Use this for travel, setup, cleanup, or admin time between bookings.
-            </p>
-          </div>
-        )}
-
-        {serviceType === "GROOMING" && (
-          <>
-            <p className="font-medium">Wash & Brush</p>
-            {["small", "medium", "large", "xl"].map((size) => (
-              <input
-                key={size}
-                type="number"
-                min="0"
-                placeholder={`${size} price`}
-                value={(washBrush as any)[size]}
-                onChange={(e) =>
-                  setWashBrush((prev) => ({
-                    ...prev,
-                    [size]: e.target.value,
-                  }))
-                }
-                className="border rounded px-3 py-2 block w-full"
-              />
-            ))}
-
-            <p className="font-medium">Wash & Cut</p>
-            {["small", "medium", "large", "xl"].map((size) => (
-              <input
-                key={size}
-                type="number"
-                min="0"
-                placeholder={`${size} price`}
-                value={(washCut as any)[size]}
-                onChange={(e) =>
-                  setWashCut((prev) => ({
-                    ...prev,
-                    [size]: e.target.value,
-                  }))
-                }
-                className="border rounded px-3 py-2 block w-full"
-              />
-            ))}
-
-            <div className="space-y-1">
-              <input
-                type="number"
-                min="0"
-                placeholder="Time buffer (mins)"
-                value={bufferMinutes}
-                onChange={(e) => setBufferMinutes(e.target.value)}
-                className="border rounded px-3 py-2 block w-full"
-              />
-              <p className="text-sm text-gray-500">
-                Use this for travel, setup, cleanup, or admin time between bookings.
-              </p>
-            </div>
-          </>
+          <input
+            type="number"
+            min="0"
+            placeholder="Time buffer (mins)"
+            value={bufferMinutes}
+            onChange={(e) => setBufferMinutes(e.target.value)}
+            className="border rounded px-3 py-2 block w-full"
+          />
         )}
 
         {serviceType && (
@@ -788,122 +955,76 @@ export default function SupplierServicesPage() {
             <p className="font-medium">{formatService(type)}</p>
 
             <div className="text-sm text-gray-500 mt-2 space-y-4">
-              {type !== "GROOMING" &&
-                group.map((s: any) => {
-                  const halfDayPriceCents = s.pricingJson?.halfDayPriceCents;
-                  const fullDayPriceCents = s.pricingJson?.fullDayPriceCents;
-
-                  return (
-                    <div key={s.id} className="rounded border p-3 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          {type === "DAYCARE" ? (
-                            <>
-                              <p>
-                                Half day: {formatRandFromCents(halfDayPriceCents)}
-                              </p>
-                              <p>
-                                Full day:{" "}
-                                {formatRandFromCents(
-                                  fullDayPriceCents ?? s.baseRateCents
-                                )}
-                              </p>
-                            </>
-                          ) : (
-                            <p>
-                              R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                              {getServiceUnit(type, s)}
-                            </p>
-                          )}
-
-                          <p>{formatBufferMinutes(s.bufferMinutes)}</p>
-
-                          {s.maxDogsPerBooking ? (
-                            <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
-                          ) : null}
-
-                          {s.concurrentCapacityDogs ? (
-                            <p>
-                              Total concurrent capacity:{" "}
-                              {s.concurrentCapacityDogs}
-                            </p>
-                          ) : null}
-
-                          {(type === "BOARDING" || type === "DAYCARE") &&
-                          s.additionalDogEnabled ? (
-                            <p>
-                              Extra dog:{" "}
-                              {formatRandFromCents(s.additionalDogPriceCents)}
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <button
-                          onClick={() => deleteMutation.mutate(s.id)}
-                          className="rounded border px-3 py-1"
-                        >
-                          Delete
-                        </button>
-                      </div>
-
-                      {renderAvailabilityBlocks(s)}
-                    </div>
-                  );
-                })}
-
-              {type === "GROOMING" &&
-                group.map((s: any) => {
-                  const tiers: PricingTier[] = s.pricingTiers || [];
-                  const brush = tiers.filter((t) => t.category === "WASH_BRUSH");
-                  const cut = tiers.filter((t) => t.category === "WASH_CUT");
-
-                  const exampleTotal = calculateGroomingPrice({
-                    tiers,
-                    selectedCategory: "WASH_BRUSH",
-                    dogs: [{ size: "SMALL" }, { size: "MEDIUM" }],
-                  });
-
-                  return (
-                    <div key={s.id} className="rounded border p-3 space-y-3">
-                      <p className="text-green-600 font-semibold">
-                        Example (2 dogs): R{(exampleTotal / 100).toFixed(0)}
-                      </p>
+              {group.map((s: any) => (
+                <div key={s.id} className="rounded border p-3 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      {type === "DAYCARE" ? (
+                        <>
+                          <p>
+                            Half day:{" "}
+                            {formatRandFromCents(
+                              s.pricingJson?.halfDayPriceCents
+                            )}
+                          </p>
+                          <p>
+                            Full day:{" "}
+                            {formatRandFromCents(
+                              s.pricingJson?.fullDayPriceCents ??
+                                s.baseRateCents
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p>
+                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                          {getServiceUnit(type, s)}
+                        </p>
+                      )}
 
                       <p>{formatBufferMinutes(s.bufferMinutes)}</p>
 
-                      {brush.length > 0 && (
-                        <>
-                          <p className="font-medium">Wash & Brush</p>
-                          {brush.map((t: any) => (
-                            <p key={t.id}>
-                              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
-                            </p>
-                          ))}
-                        </>
-                      )}
+                      {s.maxDogsPerBooking ? (
+                        <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+                      ) : null}
 
-                      {cut.length > 0 && (
-                        <>
-                          <p className="font-medium mt-2">Wash & Cut</p>
-                          {cut.map((t: any) => (
-                            <p key={t.id}>
-                              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
-                            </p>
-                          ))}
-                        </>
-                      )}
+                      {s.concurrentCapacityDogs ? (
+                        <p>
+                          Total concurrent capacity:{" "}
+                          {s.concurrentCapacityDogs}
+                        </p>
+                      ) : null}
+
+                      {(type === "BOARDING" || type === "DAYCARE") &&
+                      s.additionalDogEnabled ? (
+                        <p>
+                          Extra dog:{" "}
+                          {formatRandFromCents(s.additionalDogPriceCents)}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEditing(s)}
+                        className="rounded border px-3 py-1"
+                      >
+                        Edit
+                      </button>
 
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
-                        className="rounded border px-3 py-1 mt-2"
+                        className="rounded border px-3 py-1"
                       >
                         Delete
                       </button>
-
-                      {renderAvailabilityBlocks(s)}
                     </div>
-                  );
-                })}
+                  </div>
+
+                  {renderEditForm(s)}
+                  {renderAvailabilityBlocks(s)}
+                </div>
+              ))}
             </div>
           </div>
         ))}
