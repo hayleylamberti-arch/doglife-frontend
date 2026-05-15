@@ -924,6 +924,55 @@ export default function SupplierServicesPage() {
           />
         )}
 
+        {serviceType === "GROOMING" && (
+  <>
+    <p className="font-medium">Wash & Brush</p>
+    {["small", "medium", "large", "xl"].map((size) => (
+      <input
+        key={`wash-brush-${size}`}
+        type="number"
+        min="0"
+        placeholder={`${size} price`}
+        value={(washBrush as any)[size]}
+        onChange={(e) =>
+          setWashBrush((prev) => ({
+            ...prev,
+            [size]: e.target.value,
+          }))
+        }
+        className="border rounded px-3 py-2 block w-full"
+      />
+    ))}
+
+    <p className="font-medium">Wash & Cut</p>
+    {["small", "medium", "large", "xl"].map((size) => (
+      <input
+        key={`wash-cut-${size}`}
+        type="number"
+        min="0"
+        placeholder={`${size} price`}
+        value={(washCut as any)[size]}
+        onChange={(e) =>
+          setWashCut((prev) => ({
+            ...prev,
+            [size]: e.target.value,
+          }))
+        }
+        className="border rounded px-3 py-2 block w-full"
+      />
+    ))}
+
+    <input
+      type="number"
+      min="0"
+      placeholder="Time buffer (mins)"
+      value={bufferMinutes}
+      onChange={(e) => setBufferMinutes(e.target.value)}
+      className="border rounded px-3 py-2 block w-full"
+    />
+  </>
+)}
+
         {serviceType && (
           <button
             onClick={() => createMutation.mutate()}
