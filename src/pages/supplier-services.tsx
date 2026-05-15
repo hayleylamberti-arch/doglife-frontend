@@ -384,13 +384,17 @@ export default function SupplierServicesPage() {
       }
 
       if (serviceType === "GROOMING") {
-        return api.post("/api/supplierServices", {
+  if (!duration || Number(duration) <= 0) {
+    throw new Error("Enter a valid grooming slot length");
+  }
+
+  return api.post("/api/supplierServices", {
           services: [
             {
               service: "GROOMING",
               unit: defaults.unit,
               baseRateCents: 1,
-              durationMinutes: null,
+              durationMinutes: Number(duration),
               bufferMinutes: Number(bufferMinutes || "0"),
               groomingOptions: { washBrush, washCut },
               maxDogsPerBooking: null,
@@ -926,6 +930,15 @@ export default function SupplierServicesPage() {
 
         {serviceType === "GROOMING" && (
   <>
+    <input
+      type="number"
+      min="1"
+      placeholder="Grooming slot length (mins)"
+      value={duration}
+      onChange={(e) => setDuration(e.target.value)}
+      className="border rounded px-3 py-2 block w-full"
+    />
+
     <p className="font-medium">Wash & Brush</p>
     {["small", "medium", "large", "xl"].map((size) => (
       <input
