@@ -959,28 +959,53 @@ export default function SupplierServicesPage() {
                 <div key={s.id} className="rounded border p-3 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      {type === "DAYCARE" ? (
-                        <>
-                          <p>
-                            Half day:{" "}
-                            {formatRandFromCents(
-                              s.pricingJson?.halfDayPriceCents
-                            )}
-                          </p>
-                          <p>
-                            Full day:{" "}
-                            {formatRandFromCents(
-                              s.pricingJson?.fullDayPriceCents ??
-                                s.baseRateCents
-                            )}
-                          </p>
-                        </>
-                      ) : (
-                        <p>
-                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                          {getServiceUnit(type, s)}
-                        </p>
-                      )}
+                      {type === "GROOMING" ? (
+  <>
+    {(s.pricingTiers || []).filter((t: any) => t.category === "WASH_BRUSH").length > 0 ? (
+      <>
+        <p className="font-medium">Wash & Brush</p>
+        {(s.pricingTiers || [])
+          .filter((t: any) => t.category === "WASH_BRUSH")
+          .map((t: any) => (
+            <p key={t.id}>
+              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+            </p>
+          ))}
+      </>
+    ) : null}
+
+    {(s.pricingTiers || []).filter((t: any) => t.category === "WASH_CUT").length > 0 ? (
+      <>
+        <p className="font-medium mt-2">Wash & Cut</p>
+        {(s.pricingTiers || [])
+          .filter((t: any) => t.category === "WASH_CUT")
+          .map((t: any) => (
+            <p key={t.id}>
+              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
+            </p>
+          ))}
+      </>
+    ) : null}
+  </>
+) : type === "DAYCARE" ? (
+  <>
+    <p>
+      Half day:{" "}
+      {formatRandFromCents(s.pricingJson?.halfDayPriceCents)}
+    </p>
+    <p>
+      Full day:{" "}
+      {formatRandFromCents(
+        s.pricingJson?.fullDayPriceCents ?? s.baseRateCents
+      )}
+    </p>
+  </>
+) : (
+  <p>
+    R{(s.baseRateCents / 100).toFixed(0)}{" "}
+    {getServiceUnit(type, s)}
+  </p>
+)}
 
                       <p>{formatBufferMinutes(s.bufferMinutes)}</p>
 
@@ -1005,12 +1030,14 @@ export default function SupplierServicesPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => startEditing(s)}
-                        className="rounded border px-3 py-1"
-                      >
-                        Edit
-                      </button>
+                      {type !== "GROOMING" ? (
+  <button
+    onClick={() => startEditing(s)}
+    className="rounded border px-3 py-1"
+  >
+    Edit
+  </button>
+) : null}
 
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
