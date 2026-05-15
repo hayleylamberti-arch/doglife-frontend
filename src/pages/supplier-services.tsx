@@ -1092,14 +1092,12 @@ export default function SupplierServicesPage() {
                     </div>
 
                     <div className="flex gap-2">
-                      {type !== "GROOMING" ? (
-  <button
-    onClick={() => startEditing(s)}
-    className="rounded border px-3 py-1"
-  >
-    Edit
-  </button>
-) : null}
+                      <button
+  onClick={() => startEditing(s)}
+  className="rounded border px-3 py-1"
+>
+  Edit
+</button>
 
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
