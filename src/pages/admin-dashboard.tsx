@@ -42,11 +42,16 @@ export default function AdminDashboard() {
     ([, a], [, b]) => b - a
   );
 
+  const highestDemandSuburb = topSuburbs[0];
+  const mostRequestedService = topServices[0];
+
   return (
-    <div className="mx-auto max-w-6xl p-6 space-y-8">
+    <div className="mx-auto max-w-7xl p-6 space-y-6">
       <div>
-        <p className="text-sm font-medium text-blue-600">Admin Overview</p>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+          Admin Overview
+        </p>
+        <h1 className="mt-1 text-3xl font-bold text-gray-900">
           DogLife Operations Dashboard
         </h1>
         <p className="mt-2 text-gray-500">
@@ -56,21 +61,32 @@ export default function AdminDashboard() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-xl bg-white p-5 shadow">
-          <p className="text-sm text-gray-500">Total Waitlist Demand</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">{totalDemand}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Waitlist Demand
+          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">{totalDemand}</p>
+          <p className="mt-1 text-sm text-gray-500">Total owner requests</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
-          <p className="text-sm text-gray-500">Demand Suburbs</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Active Suburbs
+          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">
             {suburbSummary.length}
           </p>
+          <p className="mt-1 text-sm text-gray-500">Suburbs with demand</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
-          <p className="text-sm text-gray-500">Requested Services</p>
-          <p className="mt-2 text-3xl font-bold text-gray-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Services Requested
+          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">
             {topServices.length}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            Service demand captured
           </p>
         </div>
       </div>
@@ -81,13 +97,15 @@ export default function AdminDashboard() {
           Use this page to decide where DogLife needs supplier coverage next.
         </p>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Highest-demand suburb</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {topSuburbs[0]
-                ? `${topSuburbs[0].suburb}${
-                    topSuburbs[0].province ? ` (${topSuburbs[0].province})` : ""
+              {highestDemandSuburb
+                ? `${highestDemandSuburb.suburb}${
+                    highestDemandSuburb.province
+                      ? ` (${highestDemandSuburb.province})`
+                      : ""
                   }`
                 : "No suburb demand yet"}
             </p>
@@ -96,14 +114,48 @@ export default function AdminDashboard() {
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Most requested service</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {topServices[0] ? topServices[0][0] : "No service demand yet"}
+              {mostRequestedService
+                ? mostRequestedService[0]
+                : "No service demand yet"}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Recommended next action</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {highestDemandSuburb
+                ? `Review supplier coverage in ${highestDemandSuburb.suburb}`
+                : "Monitor new waitlist entries"}
             </p>
           </div>
         </div>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <a
+          href="/admin-suppliers"
+          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+        >
+          Review Suppliers
+        </a>
+
+        <a
+          href="/admin-waitlist"
+          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+        >
+          View Waitlist
+        </a>
+
+        <a
+          href="/admin-users"
+          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+        >
+          Manage Users
+        </a>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-5 shadow">
           <h2 className="font-semibold text-gray-900">Top Demand Suburbs</h2>
 
           <div className="mt-4 space-y-3">
@@ -113,39 +165,57 @@ export default function AdminDashboard() {
               topSuburbs.map((item, index) => (
                 <div
                   key={`${item.suburb}-${item.province ?? "unknown"}-${index}`}
-                  className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
                 >
                   <div>
-                    <p className="font-medium text-gray-900">{item.suburb}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                      #{index + 1}
+                    </p>
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {item.suburb}
+                    </p>
                     <p className="text-sm text-gray-500">
                       {item.province ?? "Province not captured"}
                     </p>
                   </div>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
-                    {item._count.id}
-                  </span>
+
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">
+                      {item._count.id}
+                    </p>
+                    <p className="text-xs text-gray-500">owner request</p>
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-6 shadow">
+        <div className="rounded-xl bg-white p-5 shadow">
           <h2 className="font-semibold text-gray-900">Top Requested Services</h2>
 
           <div className="mt-4 space-y-3">
             {topServices.length === 0 ? (
               <p className="text-gray-500">No service demand yet.</p>
             ) : (
-              topServices.map(([service, count]) => (
+              topServices.map(([service, count], index) => (
                 <div
                   key={service}
-                  className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
                 >
-                  <span className="font-medium text-gray-900">{service}</span>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold text-gray-700">
-                    {count}
-                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                      #{index + 1}
+                    </p>
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {service}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-gray-900">{count}</p>
+                    <p className="text-xs text-gray-500">requests</p>
+                  </div>
                 </div>
               ))
             )}
