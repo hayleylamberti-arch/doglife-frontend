@@ -1,6 +1,12 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "@/lib/api";
+
+type LeadStatus = "NEW" | "CONTACTED" | "CONVERTED" | "CLOSED";
 
 type SuburbSummaryItem = {
   suburb: string;
@@ -19,6 +25,7 @@ type WaitlistEntry = {
   userType?: string | null;
   serviceTypes?: string[];
   businessStatus?: string | null;
+  leadStatus?: LeadStatus;
   createdAt: string;
 };
 
@@ -30,6 +37,13 @@ type WaitlistSummaryResponse = {
 type WaitlistEntriesResponse = {
   waitlist: WaitlistEntry[];
 };
+
+const LEAD_STATUSES: LeadStatus[] = [
+  "NEW",
+  "CONTACTED",
+  "CONVERTED",
+  "CLOSED",
+];
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -48,6 +62,7 @@ function formatLabel(value?: string | null) {
 }
 
 export default function AdminWaitlistPage() {
+  const queryClient = useQueryClient();
   const [selectedSuburb, setSelectedSuburb] = useState<string | null>(null);
 
   const summaryQuery = useQuery<WaitlistSummaryResponse>({
@@ -63,6 +78,23 @@ export default function AdminWaitlistPage() {
     queryFn: async () => {
       const res = await api.get("/api/admin/waitlist");
       return res.data;
+    },
+  });
+
+  const updateLeadStatusMutation = useMutation({
+    mutationFn: async ({
+      id,
+      leadStatus,
+    }: {
+      id: string;
+      leadStatus: LeadStatus;
+    }) => {
+      await api.patch(`/api/admin/waitlist/${id}/status`, {
+        leadStatus,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["adminWaitlistEntries"] });
     },
   });
 
@@ -292,10 +324,11 @@ export default function AdminWaitlistPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-sm">
+          <table className="w-full min-w-[1050px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-5 py-4 font-semibold">Email / Lead</th>
+                <th className="px-5 py-4 font-semibold">Status</th>
                 <th className="px-5 py-4 font-semibold">Location</th>
                 <th className="px-5 py-4 font-semibold">Services Needed</th>
                 <th className="px-5 py-4 font-semibold">Type</th>
@@ -306,7 +339,7 @@ export default function AdminWaitlistPage() {
             <tbody className="divide-y divide-gray-100">
               {filteredEntries.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-6 text-gray-500">
+                  <td colSpan={6} className="px-5 py-6 text-gray-500">
                     No waitlist requests found.
                   </td>
                 </tr>
@@ -320,6 +353,26 @@ export default function AdminWaitlistPage() {
                       <p className="mt-1 text-xs text-gray-500">
                         Waitlist lead, not necessarily a registered user
                       </p>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <select
+                        value={entry.leadStatus ?? "NEW"}
+                        onChange={(event) =>
+                          updateLeadStatusMutation.mutate({
+                            id: entry.id,
+                            leadStatus: event.target.value as LeadStatus,
+                          })
+                        }
+                        disabled={updateLeadStatusMutation.isPending}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium"
+                      >
+                        {LEAD_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {formatLabel(status)}
+                          </option>
+                        ))}
+                      </select>
                     </td>
 
                     <td className="px-5 py-4">
