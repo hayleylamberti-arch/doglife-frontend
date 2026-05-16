@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   const mostRequestedService = topServices[0];
 
   return (
-    <div className="mx-auto max-w-7xl p-6 space-y-6">
+    <div className="mx-auto max-w-7xl px-6 pb-6 pt-10 space-y-6">
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
           Admin Overview
@@ -64,7 +64,7 @@ export default function AdminDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Waitlist Demand
           </p>
-          <p className="mt-2 text-4xl font-bold text-gray-900">{totalDemand}</p>
+          <p className="mt-2 text-4xl font-bold text-blue-600">{totalDemand}</p>
           <p className="mt-1 text-sm text-gray-500">Total owner requests</p>
         </div>
 
@@ -72,7 +72,7 @@ export default function AdminDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Active Suburbs
           </p>
-          <p className="mt-2 text-4xl font-bold text-gray-900">
+          <p className="mt-2 text-4xl font-bold text-emerald-600">
             {suburbSummary.length}
           </p>
           <p className="mt-1 text-sm text-gray-500">Suburbs with demand</p>
@@ -82,7 +82,7 @@ export default function AdminDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Services Requested
           </p>
-          <p className="mt-2 text-4xl font-bold text-gray-900">
+          <p className="mt-2 text-4xl font-bold text-amber-600">
             {topServices.length}
           </p>
           <p className="mt-1 text-sm text-gray-500">
@@ -134,21 +134,21 @@ export default function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-3">
         <a
           href="/admin-suppliers"
-          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+          className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Review Suppliers
         </a>
 
         <a
           href="/admin-waitlist"
-          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+          className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           View Waitlist
         </a>
 
         <a
           href="/admin-users"
-          className="rounded-xl border border-gray-200 bg-white p-4 font-semibold text-gray-900 shadow hover:border-blue-300 hover:text-blue-600"
+          className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Manage Users
         </a>
