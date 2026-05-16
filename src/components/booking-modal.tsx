@@ -150,21 +150,16 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     new Set(groomingTiers.map((tier) => tier.category).filter(Boolean))
   );
 
-  const [groomingCategory, setGroomingCategory] = useState("");
-  const [groomingSize, setGroomingSize] = useState("");
-const [groomingSelections, setGroomingSelections] = useState<
-  Record<string, GroomingSelection>
->({});
+  const [groomingSelections, setGroomingSelections] = useState<
+    Record<string, GroomingSelection>
+  >({});
+
   const [isMobileGrooming, setIsMobileGrooming] = useState(false);
 
-  const availableGroomingSizes = useMemo(() => {
-    return groomingTiers.filter((tier) => tier.category === groomingCategory);
-  }, [groomingTiers, groomingCategory]);
-
   const getGroomingTier = (category: string, size: string) =>
-  groomingTiers.find(
-    (tier) => tier.category === category && tier.dogSize === size
-  ) || null;
+    groomingTiers.find(
+      (tier) => tier.category === category && tier.dogSize === size
+    ) || null;
 
   const mobileOptions: string[] = Array.isArray(service?.pricingJson?.offerings)
     ? service.pricingJson.offerings
@@ -196,7 +191,9 @@ const [groomingSelections, setGroomingSelections] = useState<
 
   const boardingAdditionalDogEnabled = useMemo(() => {
     const directEnabled = toBoolean(service?.additionalDogEnabled);
-    const pricingJsonEnabled = toBoolean(service?.pricingJson?.additionalDogEnabled);
+    const pricingJsonEnabled = toBoolean(
+      service?.pricingJson?.additionalDogEnabled
+    );
     const additionalDogPriceExists =
       toNumber(service?.additionalDogPriceCents) > 0 ||
       toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
@@ -265,7 +262,9 @@ const [groomingSelections, setGroomingSelections] = useState<
 
   const daycareAdditionalDogEnabled = useMemo(() => {
     const directEnabled = toBoolean(service?.additionalDogEnabled);
-    const pricingJsonEnabled = toBoolean(service?.pricingJson?.additionalDogEnabled);
+    const pricingJsonEnabled = toBoolean(
+      service?.pricingJson?.additionalDogEnabled
+    );
     const additionalDogPriceExists =
       toNumber(service?.additionalDogPriceCents) > 0 ||
       toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
@@ -335,11 +334,14 @@ const [groomingSelections, setGroomingSelections] = useState<
     }
 
     if (isGrooming) {
-  return Object.values(groomingSelections).reduce((sum, selection) => {
-    const tier = getGroomingTier(selection.category, selection.size);
-    return sum + toNumber(tier?.priceCents);
-  }, 0);
-}
+      return selectedDogIds.reduce((sum, dogId) => {
+        const selection = groomingSelections[dogId];
+        if (!selection) return sum;
+
+        const tier = getGroomingTier(selection.category, selection.size);
+        return sum + toNumber(tier?.priceCents);
+      }, 0);
+    }
 
     return service?.baseRateCents;
   }, [
@@ -350,8 +352,9 @@ const [groomingSelections, setGroomingSelections] = useState<
     estimatedDaycareTotalCents,
     daycareBaseSessionPriceCents,
     isGrooming,
+    groomingSelections,
+    selectedDogIds,
     service?.baseRateCents,
-    selectedDogIds.length,
   ]);
 
   const displaySubtitle = useMemo(() => {
@@ -379,9 +382,11 @@ const [groomingSelections, setGroomingSelections] = useState<
     }
 
     if (isGrooming) {
-  const dogCount = Math.max(1, selectedDogIds.length || 1);
-  return `${formatPrice(displayPrice)} total • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
-}
+      const dogCount = Math.max(1, selectedDogIds.length || 1);
+      return `${formatPrice(displayPrice)} total • ${dogCount} dog${
+        dogCount > 1 ? "s" : ""
+      }`;
+    }
 
     return `${formatPrice(displayPrice)} ${
       service?.unit
@@ -438,20 +443,35 @@ const [groomingSelections, setGroomingSelections] = useState<
   }, [date, supplierId, usesTimeSlots]);
 
   useEffect(() => {
-    if (isGrooming && groomingCategories.length > 0 && !groomingCategory) {
-      setGroomingCategory(String(groomingCategories[0]));
-    }
-  }, [isGrooming, groomingCategories, groomingCategory]);
+    if (!isGrooming || groomingCategories.length === 0) return;
 
-  useEffect(() => {
-    if (
-      isGrooming &&
-      availableGroomingSizes.length > 0 &&
-      !availableGroomingSizes.some((tier) => tier.dogSize === groomingSize)
-    ) {
-      setGroomingSize(availableGroomingSizes[0].dogSize);
-    }
-  }, [isGrooming, availableGroomingSizes, groomingSize]);
+    setGroomingSelections((prev) => {
+      const next: Record<string, GroomingSelection> = {};
+
+      selectedDogIds.forEach((dogId) => {
+        const dog = dogs.find((item) => item.id === dogId);
+        const existing = prev[dogId];
+
+        const category = existing?.category || String(groomingCategories[0]);
+        const tiersForCategory = groomingTiers.filter(
+          (tier) => tier.category === category
+        );
+
+        const size =
+          existing?.size ||
+          dog?.size ||
+          tiersForCategory[0]?.dogSize ||
+          "";
+
+        next[dogId] = {
+          category,
+          size,
+        };
+      });
+
+      return next;
+    });
+  }, [isGrooming, selectedDogIds, dogs, groomingCategories, groomingTiers]);
 
   function toggleDog(id: string) {
     setSelectedDogIds((prev) =>
@@ -484,8 +504,17 @@ const [groomingSelections, setGroomingSelections] = useState<
     if (isMobileVet) parts.push(`Mobile vet service: ${mobileVetService}.`);
 
     if (isGrooming) {
-      parts.push(`Grooming option: ${groomingCategory}.`);
-      parts.push(`Size: ${groomingSize}.`);
+      selectedDogIds.forEach((dogId) => {
+        const dog = dogs.find((item) => item.id === dogId);
+        const selection = groomingSelections[dogId];
+
+        if (selection) {
+          parts.push(
+            `Grooming for ${dog?.name || dogId}: ${selection.category} ${selection.size}.`
+          );
+        }
+      });
+
       if (isMobileGrooming) parts.push("Mobile grooming.");
     }
 
@@ -538,8 +567,16 @@ const [groomingSelections, setGroomingSelections] = useState<
       return alert("Enter pickup and drop-off points");
     }
 
-    if (isGrooming && (!groomingCategory || !groomingSize)) {
-      return alert("Select grooming option and dog size");
+    if (isGrooming) {
+      const missingSelection = selectedDogIds.some(
+        (dogId) =>
+          !groomingSelections[dogId]?.category ||
+          !groomingSelections[dogId]?.size
+      );
+
+      if (missingSelection) {
+        return alert("Select grooming option and size for each dog");
+      }
     }
 
     setLoading(true);
@@ -583,8 +620,7 @@ const [groomingSelections, setGroomingSelections] = useState<
         notes: buildNotes() || undefined,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
-        groomingCategory: isGrooming ? groomingCategory : undefined,
-        groomingSize: isGrooming ? groomingSize : undefined,
+        groomingSelections: isGrooming ? groomingSelections : undefined,
         daycareType: isDaycare ? daycareSessionType : undefined,
         halfDayPeriod:
           isDaycare && daycareSessionType === "HALF_DAY"
@@ -747,7 +783,9 @@ const [groomingSelections, setGroomingSelections] = useState<
 
                 {isPetSitting ? (
                   <div className="mt-3">
-                    <p className="mb-1 text-sm font-medium">Pet sitting location</p>
+                    <p className="mb-1 text-sm font-medium">
+                      Pet sitting location
+                    </p>
                     <select
                       className="w-full rounded border px-3 py-2"
                       value={petSittingLocation}
@@ -800,7 +838,9 @@ const [groomingSelections, setGroomingSelections] = useState<
                     type="button"
                     onClick={() => setSelectedSlot(slot)}
                     className={`rounded border p-2 text-sm ${
-                      selectedSlot === slot ? "bg-blue-600 text-white" : "bg-white"
+                      selectedSlot === slot
+                        ? "bg-blue-600 text-white"
+                        : "bg-white"
                     }`}
                   >
                     {new Date(slot).toLocaleTimeString("en-ZA", {
@@ -814,32 +854,72 @@ const [groomingSelections, setGroomingSelections] = useState<
 
             {isGrooming ? (
               <div className="space-y-3 rounded-lg border border-gray-200 p-3">
-                <select
-                  className="w-full rounded border px-3 py-2"
-                  value={groomingCategory}
-                  onChange={(e) => {
-                    setGroomingCategory(e.target.value);
-                    setGroomingSize("");
-                  }}
-                >
-                  {groomingCategories.map((category) => (
-                    <option key={String(category)} value={String(category)}>
-                      {formatLabel(String(category))}
-                    </option>
-                  ))}
-                </select>
+                <p className="text-sm font-medium">Grooming options per dog</p>
 
-                <select
-                  className="w-full rounded border px-3 py-2"
-                  value={groomingSize}
-                  onChange={(e) => setGroomingSize(e.target.value)}
-                >
-                  {availableGroomingSizes.map((tier) => (
-                    <option key={tier.id} value={tier.dogSize}>
-                      {formatLabel(tier.dogSize)} — {formatPrice(tier.priceCents)}
-                    </option>
-                  ))}
-                </select>
+                {selectedDogIds.map((dogId) => {
+                  const dog = dogs.find((item) => item.id === dogId);
+                  const selection = groomingSelections[dogId] || {
+                    category: String(groomingCategories[0] || ""),
+                    size: dog?.size || "",
+                  };
+
+                  const sizesForCategory = groomingTiers.filter(
+                    (tier) => tier.category === selection.category
+                  );
+
+                  return (
+                    <div key={dogId} className="space-y-2 rounded border p-3">
+                      <p className="text-sm font-medium">
+                        {dog?.name || "Dog"}
+                      </p>
+
+                      <select
+                        className="w-full rounded border px-3 py-2"
+                        value={selection.category}
+                        onChange={(e) =>
+                          setGroomingSelections((prev) => ({
+                            ...prev,
+                            [dogId]: {
+                              category: e.target.value,
+                              size: "",
+                            },
+                          }))
+                        }
+                      >
+                        {groomingCategories.map((category) => (
+                          <option
+                            key={String(category)}
+                            value={String(category)}
+                          >
+                            {formatLabel(String(category))}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        className="w-full rounded border px-3 py-2"
+                        value={selection.size}
+                        onChange={(e) =>
+                          setGroomingSelections((prev) => ({
+                            ...prev,
+                            [dogId]: {
+                              ...selection,
+                              size: e.target.value,
+                            },
+                          }))
+                        }
+                      >
+                        <option value="">Select size</option>
+                        {sizesForCategory.map((tier) => (
+                          <option key={tier.id} value={tier.dogSize}>
+                            {formatLabel(tier.dogSize)} —{" "}
+                            {formatPrice(tier.priceCents)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })}
 
                 <label className="flex items-start gap-2 text-sm">
                   <input
