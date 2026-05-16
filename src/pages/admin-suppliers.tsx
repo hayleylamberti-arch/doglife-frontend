@@ -316,8 +316,9 @@ export default function AdminSuppliersPage() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="font-semibold text-gray-900">Action Required</h2>
           <p className="mt-1 text-sm text-gray-600">
-            {metrics.pending} supplier{metrics.pending === 1 ? "" : "s"} need
-            admin review or follow-up.
+            {metrics.pending} supplier{metrics.pending === 1 ? "" : "s"}{" "}
+            {metrics.pending === 1 ? "needs" : "need"} admin review or
+            follow-up.
           </p>
         </div>
       ) : null}
@@ -342,7 +343,7 @@ export default function AdminSuppliersPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left text-sm">
+            <table className="w-full min-w-[1280px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Supplier</th>
