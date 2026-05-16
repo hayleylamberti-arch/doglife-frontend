@@ -53,10 +53,10 @@ const STATUS_OPTIONS: Array<{ value: "ALL" | SupplierStatus; label: string }> = 
 ];
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return "Not submitted";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "Not submitted";
 
   return date.toLocaleString("en-ZA", {
     year: "numeric",
@@ -171,7 +171,9 @@ export default function AdminSuppliersPage() {
     return {
       total: suppliers.length,
       pending: suppliers.filter((supplier) =>
-        ["SUBMITTED", "UNDER_REVIEW"].includes(supplier.approvalStatus)
+        ["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(
+          supplier.approvalStatus
+        )
       ).length,
       approved: suppliers.filter(
         (supplier) => supplier.approvalStatus === "APPROVED"
@@ -310,6 +312,16 @@ export default function AdminSuppliersPage() {
         </div>
       </div>
 
+      {metrics.pending > 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <h2 className="font-semibold text-gray-900">Action Required</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            {metrics.pending} supplier{metrics.pending === 1 ? "" : "s"} need
+            admin review or follow-up.
+          </p>
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="rounded-xl bg-white p-6 shadow">Loading suppliers...</div>
       ) : error ? (
@@ -330,7 +342,7 @@ export default function AdminSuppliersPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] text-left text-sm">
+            <table className="w-full min-w-[1100px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-3 font-semibold">Supplier</th>
@@ -379,7 +391,10 @@ export default function AdminSuppliersPage() {
                         </span>
 
                         {supplier.rejectionReason ? (
-                          <p className="mt-2 max-w-xs text-xs text-red-600">
+                          <p
+                            className="mt-1 max-w-[180px] truncate text-xs text-red-600"
+                            title={supplier.rejectionReason}
+                          >
                             {supplier.rejectionReason}
                           </p>
                         ) : null}
@@ -425,7 +440,7 @@ export default function AdminSuppliersPage() {
                       </td>
 
                       <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
                           <Link
                             to={`/admin/suppliers/${supplier.id}`}
                             className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
