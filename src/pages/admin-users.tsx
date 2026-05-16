@@ -10,6 +10,7 @@ type UserInsight = {
   role: string;
   createdAt: string;
   lastLoginAt?: string | null;
+  lastBookingAt?: string | null;
   isActive: boolean;
   activityStatus: string;
   ownerBookingCount: number;
@@ -33,14 +34,18 @@ type UserInsight = {
 type UsersInsightsResponse = {
   ok: boolean;
   users: UserInsight[];
+  marketplace?: {
+    mostBookedService?: string | null;
+    topDemandSuburb?: string | null;
+    highestValueOwner?: UserInsight | null;
+    topSupplier?: UserInsight | null;
+  };
 };
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-
   return date.toLocaleDateString("en-ZA");
 }
 
@@ -57,8 +62,15 @@ function formatLabel(value?: string | null) {
   return value.replace(/_/g, " ");
 }
 
+function getUserName(user?: UserInsight | null) {
+  if (!user) return "—";
+  return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+}
+
 function getActivityBadgeClass(status: string) {
   switch (status) {
+    case "HOT":
+      return "bg-red-100 text-red-700";
     case "VERY_ACTIVE":
       return "bg-green-100 text-green-700";
     case "ACTIVE":
@@ -81,6 +93,7 @@ export default function AdminUsersPage() {
   });
 
   const users = data?.users ?? [];
+  const marketplace = data?.marketplace;
 
   const metrics = useMemo(() => {
     return {
@@ -88,7 +101,7 @@ export default function AdminUsersPage() {
       owners: users.filter((user) => user.role === "OWNER").length,
       suppliers: users.filter((user) => user.role === "SUPPLIER").length,
       active: users.filter((user) =>
-        ["VERY_ACTIVE", "ACTIVE"].includes(user.activityStatus)
+        ["HOT", "VERY_ACTIVE", "ACTIVE"].includes(user.activityStatus)
       ).length,
     };
   }, [users]);
@@ -146,11 +159,45 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h2 className="font-semibold text-gray-900">Marketplace Insights</h2>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Most booked service</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {formatLabel(marketplace?.mostBookedService)}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Top demand suburb</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {formatLabel(marketplace?.topDemandSuburb)}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Highest value owner</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {getUserName(marketplace?.highestValueOwner)}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Top supplier</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {getUserName(marketplace?.topSupplier)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-xl bg-white shadow">
         <div className="border-b border-gray-100 px-5 py-4">
           <h2 className="font-semibold text-gray-900">User Insights</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Activity is calculated from login and booking behaviour.
+            Activity is calculated from booking behaviour and recent usage.
           </p>
         </div>
 
@@ -182,8 +229,7 @@ export default function AdminUsersPage() {
                   <tr key={user.id} className="align-top hover:bg-gray-50">
                     <td className="px-5 py-4">
                       <p className="font-semibold text-gray-900">
-                        {[user.firstName, user.lastName].filter(Boolean).join(" ") ||
-                          "Unnamed user"}
+                        {getUserName(user)}
                       </p>
                       <p className="mt-1 text-gray-500">{user.email}</p>
                     </td>
@@ -203,7 +249,7 @@ export default function AdminUsersPage() {
                         {formatLabel(user.activityStatus)}
                       </span>
                       <p className="mt-1 text-xs text-gray-500">
-                        Last login: {formatDate(user.lastLoginAt)}
+                        Last booking: {formatDate(user.lastBookingAt)}
                       </p>
                     </td>
 
