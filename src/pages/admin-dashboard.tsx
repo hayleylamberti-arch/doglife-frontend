@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -14,8 +15,51 @@ type WaitlistSummaryResponse = {
   serviceSummary: Record<string, number>;
 };
 
+type SupplierItem = {
+  id: string;
+  approvalStatus: string;
+  isPublicVisible?: boolean;
+};
+
+type SuppliersResponse = {
+  ok: boolean;
+  suppliers: SupplierItem[];
+};
+
+type UserInsight = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  activityStatus: string;
+  ownerSpendCents: number;
+  supplierBookingCount: number;
+};
+
+type UsersInsightsResponse = {
+  ok: boolean;
+  users: UserInsight[];
+  marketplace?: {
+    mostBookedService?: string | null;
+    topDemandSuburb?: string | null;
+    highestValueOwner?: UserInsight | null;
+    topSupplier?: UserInsight | null;
+  };
+};
+
+function formatLabel(value?: string | null) {
+  if (!value) return "—";
+  return value.replace(/_/g, " ");
+}
+
+function getUserName(user?: UserInsight | null) {
+  if (!user) return "—";
+  return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
+}
+
 export default function AdminDashboard() {
-  const { data, isLoading } = useQuery<WaitlistSummaryResponse>({
+  const waitlistQuery = useQuery<WaitlistSummaryResponse>({
     queryKey: ["waitlistSummary"],
     queryFn: async () => {
       const res = await api.get("/api/admin/waitlist-summary");
@@ -23,27 +67,79 @@ export default function AdminDashboard() {
     },
   });
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
-  if (!data) return <div className="p-6">No data</div>;
+  const suppliersQuery = useQuery<SuppliersResponse>({
+    queryKey: ["admin-suppliers-dashboard"],
+    queryFn: async () => {
+      const res = await api.get("/api/admin/suppliers");
+      return res.data;
+    },
+  });
 
-  const suburbSummary = data.suburbSummary ?? [];
-  const serviceSummary = data.serviceSummary ?? {};
+  const usersQuery = useQuery<UsersInsightsResponse>({
+    queryKey: ["adminUserInsights"],
+    queryFn: async () => {
+      const res = await api.get("/api/admin/users/insights");
+      return res.data;
+    },
+  });
+
+  const suburbSummary = waitlistQuery.data?.suburbSummary ?? [];
+  const serviceSummary = waitlistQuery.data?.serviceSummary ?? {};
+  const suppliers = suppliersQuery.data?.suppliers ?? [];
+  const users = usersQuery.data?.users ?? [];
+  const marketplace = usersQuery.data?.marketplace;
+
+  const topSuburbs = useMemo(() => {
+    return [...suburbSummary].sort((a, b) => b._count.id - a._count.id);
+  }, [suburbSummary]);
+
+  const topServices = useMemo(() => {
+    return Object.entries(serviceSummary).sort(([, a], [, b]) => b - a);
+  }, [serviceSummary]);
 
   const totalDemand = suburbSummary.reduce(
     (sum, suburb) => sum + suburb._count.id,
     0
   );
 
-  const topSuburbs = [...suburbSummary].sort(
-    (a, b) => b._count.id - a._count.id
-  );
+  const supplierMetrics = useMemo(() => {
+    return {
+      total: suppliers.length,
+      needsReview: suppliers.filter((supplier) =>
+        ["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(
+          supplier.approvalStatus
+        )
+      ).length,
+      approved: suppliers.filter(
+        (supplier) => supplier.approvalStatus === "APPROVED"
+      ).length,
+      visible: suppliers.filter((supplier) => supplier.isPublicVisible).length,
+    };
+  }, [suppliers]);
 
-  const topServices = Object.entries(serviceSummary).sort(
-    ([, a], [, b]) => b - a
-  );
+  const userMetrics = useMemo(() => {
+    return {
+      total: users.length,
+      active: users.filter((user) =>
+        ["HOT", "VERY_ACTIVE", "ACTIVE"].includes(user.activityStatus)
+      ).length,
+    };
+  }, [users]);
 
   const highestDemandSuburb = topSuburbs[0];
   const mostRequestedService = topServices[0];
+
+  const isLoading =
+    waitlistQuery.isLoading || suppliersQuery.isLoading || usersQuery.isLoading;
+
+  const hasError =
+    waitlistQuery.error || suppliersQuery.error || usersQuery.error;
+
+  if (isLoading) return <div className="p-6">Loading dashboard...</div>;
+
+  if (hasError) {
+    return <div className="p-6 text-red-600">Unable to load dashboard.</div>;
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-6 pb-6 pt-10 space-y-6">
@@ -55,38 +151,50 @@ export default function AdminDashboard() {
           DogLife Operations Dashboard
         </h1>
         <p className="mt-2 text-gray-500">
-          Track demand, identify supply gaps, and prioritise admin actions.
+          Track demand, supplier coverage, user activity and marketplace health.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Waitlist Demand
           </p>
           <p className="mt-2 text-4xl font-bold text-blue-600">{totalDemand}</p>
-          <p className="mt-1 text-sm text-gray-500">Total owner requests</p>
+          <p className="mt-1 text-sm text-gray-500">Lead requests</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Active Suburbs
+            Suppliers
           </p>
           <p className="mt-2 text-4xl font-bold text-emerald-600">
-            {suburbSummary.length}
+            {supplierMetrics.approved}
           </p>
-          <p className="mt-1 text-sm text-gray-500">Suburbs with demand</p>
+          <p className="mt-1 text-sm text-gray-500">
+            {supplierMetrics.visible} publicly visible
+          </p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Services Requested
+            Needs Review
           </p>
           <p className="mt-2 text-4xl font-bold text-amber-600">
-            {topServices.length}
+            {supplierMetrics.needsReview}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">Supplier follow-ups</p>
+        </div>
+
+        <div className="rounded-xl bg-white p-5 shadow">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Active Users
+          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">
+            {userMetrics.active}
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Service demand captured
+            Of {userMetrics.total} users
           </p>
         </div>
       </div>
@@ -94,10 +202,11 @@ export default function AdminDashboard() {
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-lg font-semibold text-gray-900">Action Required</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Use this page to decide where DogLife needs supplier coverage next.
+          Use this dashboard to prioritise supplier review, suburb coverage and
+          demand conversion.
         </p>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Highest-demand suburb</p>
             <p className="mt-1 font-semibold text-gray-900">
@@ -112,20 +221,27 @@ export default function AdminDashboard() {
           </div>
 
           <div className="rounded-lg bg-white p-4">
-            <p className="text-sm text-gray-500">Most requested service</p>
+            <p className="text-sm text-gray-500">Most booked service</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {mostRequestedService
-                ? mostRequestedService[0]
-                : "No service demand yet"}
+              {formatLabel(marketplace?.mostBookedService)}
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-white p-4">
+            <p className="text-sm text-gray-500">Top supplier</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {getUserName(marketplace?.topSupplier)}
             </p>
           </div>
 
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Recommended next action</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {highestDemandSuburb
-                ? `Review supplier coverage in ${highestDemandSuburb.suburb}`
-                : "Monitor new waitlist entries"}
+              {supplierMetrics.needsReview > 0
+                ? "Review supplier applications"
+                : highestDemandSuburb
+                  ? `Review coverage in ${highestDemandSuburb.suburb}`
+                  : "Monitor new demand"}
             </p>
           </div>
         </div>
@@ -137,6 +253,9 @@ export default function AdminDashboard() {
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Review Suppliers
+          <p className="mt-1 text-sm font-normal text-gray-500">
+            {supplierMetrics.needsReview} need follow-up
+          </p>
         </a>
 
         <a
@@ -144,6 +263,9 @@ export default function AdminDashboard() {
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           View Waitlist
+          <p className="mt-1 text-sm font-normal text-gray-500">
+            {totalDemand} lead requests
+          </p>
         </a>
 
         <a
@@ -151,10 +273,13 @@ export default function AdminDashboard() {
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Manage Users
+          <p className="mt-1 text-sm font-normal text-gray-500">
+            {userMetrics.active} active users
+          </p>
         </a>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-xl bg-white p-5 shadow">
           <h2 className="font-semibold text-gray-900">Top Demand Suburbs</h2>
 
@@ -162,7 +287,7 @@ export default function AdminDashboard() {
             {topSuburbs.length === 0 ? (
               <p className="text-gray-500">No suburb demand yet.</p>
             ) : (
-              topSuburbs.map((item, index) => (
+              topSuburbs.slice(0, 5).map((item, index) => (
                 <div
                   key={`${item.suburb}-${item.province ?? "unknown"}-${index}`}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
@@ -183,7 +308,7 @@ export default function AdminDashboard() {
                     <p className="text-2xl font-bold text-gray-900">
                       {item._count.id}
                     </p>
-                    <p className="text-xs text-gray-500">owner request</p>
+                    <p className="text-xs text-gray-500">lead request</p>
                   </div>
                 </div>
               ))
@@ -198,7 +323,7 @@ export default function AdminDashboard() {
             {topServices.length === 0 ? (
               <p className="text-gray-500">No service demand yet.</p>
             ) : (
-              topServices.map(([service, count], index) => (
+              topServices.slice(0, 5).map(([service, count], index) => (
                 <div
                   key={service}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
@@ -208,7 +333,7 @@ export default function AdminDashboard() {
                       #{index + 1}
                     </p>
                     <p className="mt-1 font-semibold text-gray-900">
-                      {service}
+                      {formatLabel(service)}
                     </p>
                   </div>
 
@@ -221,7 +346,34 @@ export default function AdminDashboard() {
             )}
           </div>
         </div>
+
+        <div className="rounded-xl bg-white p-5 shadow">
+          <h2 className="font-semibold text-gray-900">Marketplace Highlights</h2>
+
+          <div className="mt-4 space-y-3">
+            <div className="rounded-lg border border-gray-100 p-4">
+              <p className="text-sm text-gray-500">Top demand suburb</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {formatLabel(marketplace?.topDemandSuburb)}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-gray-100 p-4">
+              <p className="text-sm text-gray-500">Highest value owner</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {getUserName(marketplace?.highestValueOwner)}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-gray-100 p-4">
+              <p className="text-sm text-gray-500">Most booked service</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {formatLabel(marketplace?.mostBookedService)}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+} 
