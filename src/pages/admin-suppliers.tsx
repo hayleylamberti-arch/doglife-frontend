@@ -27,6 +27,10 @@ type SupplierItem = {
   user?: {
     email?: string | null;
   } | null;
+  services?: Array<{
+    service: string;
+    isActive?: boolean;
+  }>;
   operatingAreas?: Array<{
     suburb?: {
       id: string;
@@ -45,21 +49,12 @@ const STATUS_OPTIONS: Array<{ value: "ALL" | SupplierStatus; label: string }> = 
   { value: "SUSPENDED", label: "Suspended" },
 ];
 
-function formatDate(value?: string | null) {
-  if (!value) return "—";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return date.toLocaleString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
-}
-
 function formatStatus(status: SupplierStatus) {
   return status.replace(/_/g, " ");
+}
+
+function formatServiceName(value: string) {
+  return value.replace(/_/g, " ");
 }
 
 function getStatusBadgeClass(status: SupplierStatus) {
@@ -85,6 +80,10 @@ function getServiceSuburbs(supplier: SupplierItem) {
       ?.map((area) => area?.suburb?.suburbName)
       .filter((value): value is string => Boolean(value)) || []
   );
+}
+
+function getActiveServices(supplier: SupplierItem) {
+  return supplier.services?.filter((service) => service.isActive !== false) || [];
 }
 
 function getVerificationScore(supplier: SupplierItem) {
@@ -128,6 +127,7 @@ export default function AdminSuppliersPage() {
           supplier.businessPhone,
           supplier.suburb,
           ...getServiceSuburbs(supplier),
+          ...getActiveServices(supplier).map((service) => service.service),
         ]
           .filter(Boolean)
           .join(" ")
@@ -328,13 +328,14 @@ export default function AdminSuppliersPage() {
                   <th className="px-5 py-4 font-semibold">Visibility</th>
                   <th className="px-5 py-4 font-semibold">Verification</th>
                   <th className="px-5 py-4 font-semibold">Coverage</th>
-                  <th className="px-5 py-4 font-semibold">Submitted</th>
+                  <th className="px-5 py-4 font-semibold">Services</th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-gray-100">
                 {filteredSuppliers.map((supplier) => {
                   const serviceSuburbs = getServiceSuburbs(supplier);
+                  const activeServices = getActiveServices(supplier);
                   const verificationScore = getVerificationScore(supplier);
                   const isBusy = activeSupplierId === supplier.id;
                   const isApproved = supplier.approvalStatus === "APPROVED";
@@ -438,8 +439,21 @@ export default function AdminSuppliersPage() {
                         </p>
                       </td>
 
-                      <td className="px-5 py-4 text-gray-600">
-                        {formatDate(supplier.submittedAt)}
+                      <td className="px-5 py-4">
+                        {activeServices.length > 0 ? (
+                          <div className="flex max-w-xs flex-wrap gap-1">
+                            {activeServices.map((service) => (
+                              <span
+                                key={service.service}
+                                className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"
+                              >
+                                {formatServiceName(service.service)}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">No services</span>
+                        )}
                       </td>
                     </tr>
                   );
