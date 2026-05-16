@@ -499,11 +499,14 @@ export default function SupplierServicesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-    },
-  });
+  mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+  },
+  onError: (error) => {
+    alert(getApiErrorMessage(error));
+  },
+});
 
   const groupedServices = services.reduce((acc: any, service: any) => {
     if (!acc[service.service]) acc[service.service] = [];
