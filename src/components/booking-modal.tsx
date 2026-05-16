@@ -17,7 +17,13 @@ interface Dog {
   id: string;
   name: string;
   breed?: string | null;
+  size?: string | null;
 }
+
+type GroomingSelection = {
+  category: string;
+  size: string;
+};
 
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
@@ -146,20 +152,19 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [groomingCategory, setGroomingCategory] = useState("");
   const [groomingSize, setGroomingSize] = useState("");
+const [groomingSelections, setGroomingSelections] = useState<
+  Record<string, GroomingSelection>
+>({});
   const [isMobileGrooming, setIsMobileGrooming] = useState(false);
 
   const availableGroomingSizes = useMemo(() => {
     return groomingTiers.filter((tier) => tier.category === groomingCategory);
   }, [groomingTiers, groomingCategory]);
 
-  const selectedGroomingTier = useMemo(() => {
-    return (
-      groomingTiers.find(
-        (tier) =>
-          tier.category === groomingCategory && tier.dogSize === groomingSize
-      ) || null
-    );
-  }, [groomingTiers, groomingCategory, groomingSize]);
+  const getGroomingTier = (category: string, size: string) =>
+  groomingTiers.find(
+    (tier) => tier.category === category && tier.dogSize === size
+  ) || null;
 
   const mobileOptions: string[] = Array.isArray(service?.pricingJson?.offerings)
     ? service.pricingJson.offerings
@@ -329,11 +334,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       return estimatedDaycareTotalCents ?? daycareBaseSessionPriceCents;
     }
 
-    if (isGrooming && selectedGroomingTier?.priceCents) {
-  return (
-    selectedGroomingTier.priceCents *
-    Math.max(1, selectedDogIds.length || 1)
-  );
+    if (isGrooming) {
+  return Object.values(groomingSelections).reduce((sum, selection) => {
+    const tier = getGroomingTier(selection.category, selection.size);
+    return sum + toNumber(tier?.priceCents);
+  }, 0);
 }
 
     return service?.baseRateCents;
@@ -345,7 +350,6 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     estimatedDaycareTotalCents,
     daycareBaseSessionPriceCents,
     isGrooming,
-    selectedGroomingTier,
     service?.baseRateCents,
     selectedDogIds.length,
   ]);
