@@ -320,7 +320,7 @@ export default function AdminSuppliersPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1280px] text-left text-sm">
+            <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-4 font-semibold">Supplier</th>
@@ -329,7 +329,6 @@ export default function AdminSuppliersPage() {
                   <th className="px-5 py-4 font-semibold">Verification</th>
                   <th className="px-5 py-4 font-semibold">Coverage</th>
                   <th className="px-5 py-4 font-semibold">Submitted</th>
-                  <th className="px-5 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
 
@@ -357,6 +356,32 @@ export default function AdminSuppliersPage() {
                         <p className="mt-1 text-gray-500">
                           {supplier.businessPhone || "No phone captured"}
                         </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Link
+                            to={`/admin/suppliers/${supplier.id}`}
+                            className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                          >
+                            View
+                          </Link>
+
+                          {!isApproved ? (
+                            <Button
+                              onClick={() => approveMutation.mutate(supplier.id)}
+                              disabled={isBusy}
+                            >
+                              {isBusy ? "Working..." : "Approve"}
+                            </Button>
+                          ) : null}
+
+                          <Button
+                            variant="outline"
+                            onClick={() => handleReject(supplier)}
+                            disabled={isBusy}
+                          >
+                            {isBusy ? "Working..." : isApproved ? "Suspend" : "Reject"}
+                          </Button>
+                        </div>
                       </td>
 
                       <td className="px-5 py-4">
@@ -415,40 +440,6 @@ export default function AdminSuppliersPage() {
 
                       <td className="px-5 py-4 text-gray-600">
                         {formatDate(supplier.submittedAt)}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex min-w-[180px] flex-col items-end gap-2 lg:min-w-[220px] lg:flex-row lg:justify-end">
-                          <Link
-                            to={`/admin/suppliers/${supplier.id}`}
-                            className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
-                          >
-                            View
-                          </Link>
-
-                          {!isApproved ? (
-                            <Button
-                              onClick={() =>
-                                approveMutation.mutate(supplier.id)
-                              }
-                              disabled={isBusy}
-                            >
-                              {isBusy ? "Working..." : "Approve"}
-                            </Button>
-                          ) : null}
-
-                          <Button
-                            variant="outline"
-                            onClick={() => handleReject(supplier)}
-                            disabled={isBusy}
-                          >
-                            {isBusy
-                              ? "Working..."
-                              : isApproved
-                                ? "Suspend"
-                                : "Reject"}
-                          </Button>
-                        </div>
                       </td>
                     </tr>
                   );
