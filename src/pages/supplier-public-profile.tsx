@@ -328,7 +328,7 @@ export default function SupplierPublicProfile() {
                         </>
                       ) : (
                         <>
-                          {service.baseRateCents > 0 ? (
+                          {hasGroomingTiers ? null : service.baseRateCents > 0 ? (
                             <p>
                               From {formatPrice(service.baseRateCents)}
                               {formatUnit(service.unit)

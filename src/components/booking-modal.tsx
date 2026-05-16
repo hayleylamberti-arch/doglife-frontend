@@ -330,8 +330,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
 
     if (isGrooming && selectedGroomingTier?.priceCents) {
-      return selectedGroomingTier.priceCents;
-    }
+  return (
+    selectedGroomingTier.priceCents *
+    Math.max(1, selectedDogIds.length || 1)
+  );
+}
 
     return service?.baseRateCents;
   }, [
@@ -344,6 +347,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isGrooming,
     selectedGroomingTier,
     service?.baseRateCents,
+    selectedDogIds.length,
   ]);
 
   const displaySubtitle = useMemo(() => {
@@ -370,6 +374,11 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       }`;
     }
 
+    if (isGrooming) {
+  const dogCount = Math.max(1, selectedDogIds.length || 1);
+  return `${formatPrice(displayPrice)} total • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
+}
+
     return `${formatPrice(displayPrice)} ${
       service?.unit
         ? `per ${String(service.unit).toLowerCase().replace(/^per_/, "")}`
@@ -386,6 +395,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     isDaycare,
     daycareSessionType,
     halfDayPeriod,
+    isGrooming,
     service?.unit,
   ]);
 
