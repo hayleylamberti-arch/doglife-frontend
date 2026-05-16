@@ -89,15 +89,15 @@ export default function AdminDashboard() {
   const users = usersQuery.data?.users ?? [];
   const marketplace = usersQuery.data?.marketplace;
 
-  const topSuburbs = useMemo(() => {
+  const topWaitlistSuburbs = useMemo(() => {
     return [...suburbSummary].sort((a, b) => b._count.id - a._count.id);
   }, [suburbSummary]);
 
-  const topServices = useMemo(() => {
+  const topWaitlistServices = useMemo(() => {
     return Object.entries(serviceSummary).sort(([, a], [, b]) => b - a);
   }, [serviceSummary]);
 
-  const totalDemand = suburbSummary.reduce(
+  const totalWaitlistDemand = suburbSummary.reduce(
     (sum, suburb) => sum + suburb._count.id,
     0
   );
@@ -105,7 +105,7 @@ export default function AdminDashboard() {
   const supplierMetrics = useMemo(() => {
     return {
       total: suppliers.length,
-      needsReview: suppliers.filter((supplier) =>
+      supplierQueue: suppliers.filter((supplier) =>
         ["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(
           supplier.approvalStatus
         )
@@ -126,8 +126,8 @@ export default function AdminDashboard() {
     };
   }, [users]);
 
-  const highestDemandSuburb = topSuburbs[0];
-  const mostRequestedService = topServices[0];
+  const highestWaitlistDemand = topWaitlistSuburbs[0];
+  const topWaitlistService = topWaitlistServices[0];
 
   const isLoading =
     waitlistQuery.isLoading || suppliersQuery.isLoading || usersQuery.isLoading;
@@ -160,30 +160,32 @@ export default function AdminDashboard() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Waitlist Demand
           </p>
-          <p className="mt-2 text-4xl font-bold text-blue-600">{totalDemand}</p>
+          <p className="mt-2 text-4xl font-bold text-blue-600">
+            {totalWaitlistDemand}
+          </p>
           <p className="mt-1 text-sm text-gray-500">Lead requests</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Suppliers
+            Visible Suppliers
           </p>
           <p className="mt-2 text-4xl font-bold text-emerald-600">
-            {supplierMetrics.approved}
+            {supplierMetrics.visible}
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            {supplierMetrics.visible} publicly visible
+            {supplierMetrics.approved} approved
           </p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Needs Review
+            Supplier Queue
           </p>
           <p className="mt-2 text-4xl font-bold text-amber-600">
-            {supplierMetrics.needsReview}
+            {supplierMetrics.supplierQueue}
           </p>
-          <p className="mt-1 text-sm text-gray-500">Supplier follow-ups</p>
+          <p className="mt-1 text-sm text-gray-500">Need follow-up</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
@@ -202,18 +204,17 @@ export default function AdminDashboard() {
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <h2 className="text-lg font-semibold text-gray-900">Action Required</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Use this dashboard to prioritise supplier review, suburb coverage and
-          demand conversion.
+          Prioritise supplier review, suburb coverage and demand conversion.
         </p>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-4">
           <div className="rounded-lg bg-white p-4">
-            <p className="text-sm text-gray-500">Highest-demand suburb</p>
+            <p className="text-sm text-gray-500">Highest waitlist demand</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {highestDemandSuburb
-                ? `${highestDemandSuburb.suburb}${
-                    highestDemandSuburb.province
-                      ? ` (${highestDemandSuburb.province})`
+              {highestWaitlistDemand
+                ? `${highestWaitlistDemand.suburb}${
+                    highestWaitlistDemand.province
+                      ? ` (${highestWaitlistDemand.province})`
                       : ""
                   }`
                 : "No suburb demand yet"}
@@ -237,10 +238,10 @@ export default function AdminDashboard() {
           <div className="rounded-lg bg-white p-4">
             <p className="text-sm text-gray-500">Recommended next action</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {supplierMetrics.needsReview > 0
-                ? "Review supplier applications"
-                : highestDemandSuburb
-                  ? `Review coverage in ${highestDemandSuburb.suburb}`
+              {supplierMetrics.supplierQueue > 0
+                ? "Review supplier queue"
+                : highestWaitlistDemand
+                  ? `Review coverage in ${highestWaitlistDemand.suburb}`
                   : "Monitor new demand"}
             </p>
           </div>
@@ -254,7 +255,7 @@ export default function AdminDashboard() {
         >
           Review Suppliers
           <p className="mt-1 text-sm font-normal text-gray-500">
-            {supplierMetrics.needsReview} need follow-up
+            {supplierMetrics.supplierQueue} need follow-up
           </p>
         </a>
 
@@ -264,7 +265,7 @@ export default function AdminDashboard() {
         >
           View Waitlist
           <p className="mt-1 text-sm font-normal text-gray-500">
-            {totalDemand} lead requests
+            {totalWaitlistDemand} lead requests
           </p>
         </a>
 
@@ -279,15 +280,49 @@ export default function AdminDashboard() {
         </a>
       </div>
 
+      <div className="rounded-xl bg-white p-5 shadow">
+        <h2 className="font-semibold text-gray-900">Marketplace Health</h2>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <div className="rounded-lg border border-gray-100 p-4">
+            <p className="text-sm text-gray-500">Supplier visibility</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {supplierMetrics.visible} / {supplierMetrics.approved} approved
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-100 p-4">
+            <p className="text-sm text-gray-500">Most booked suburb</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {formatLabel(marketplace?.topDemandSuburb)}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-100 p-4">
+            <p className="text-sm text-gray-500">Highest value owner</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {getUserName(marketplace?.highestValueOwner)}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-gray-100 p-4">
+            <p className="text-sm text-gray-500">Active user ratio</p>
+            <p className="mt-1 font-semibold text-gray-900">
+              {userMetrics.active} / {userMetrics.total}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="rounded-xl bg-white p-5 shadow">
-          <h2 className="font-semibold text-gray-900">Top Demand Suburbs</h2>
+          <h2 className="font-semibold text-gray-900">Waitlist Demand Suburbs</h2>
 
           <div className="mt-4 space-y-3">
-            {topSuburbs.length === 0 ? (
+            {topWaitlistSuburbs.length === 0 ? (
               <p className="text-gray-500">No suburb demand yet.</p>
             ) : (
-              topSuburbs.slice(0, 5).map((item, index) => (
+              topWaitlistSuburbs.slice(0, 5).map((item, index) => (
                 <div
                   key={`${item.suburb}-${item.province ?? "unknown"}-${index}`}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
@@ -317,13 +352,13 @@ export default function AdminDashboard() {
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
-          <h2 className="font-semibold text-gray-900">Top Requested Services</h2>
+          <h2 className="font-semibold text-gray-900">Waitlist Service Demand</h2>
 
           <div className="mt-4 space-y-3">
-            {topServices.length === 0 ? (
-              <p className="text-gray-500">No service demand yet.</p>
+            {topWaitlistServices.length === 0 ? (
+              <p className="text-gray-500">No waitlist service demand yet.</p>
             ) : (
-              topServices.slice(0, 5).map(([service, count], index) => (
+              topWaitlistServices.slice(0, 5).map(([service, count], index) => (
                 <div
                   key={service}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
@@ -348,27 +383,31 @@ export default function AdminDashboard() {
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
-          <h2 className="font-semibold text-gray-900">Marketplace Highlights</h2>
+          <h2 className="font-semibold text-gray-900">Growth Opportunities</h2>
 
           <div className="mt-4 space-y-3">
             <div className="rounded-lg border border-gray-100 p-4">
-              <p className="text-sm text-gray-500">Top demand suburb</p>
+              <p className="text-sm text-gray-500">Hot area to review</p>
               <p className="mt-1 font-semibold text-gray-900">
-                {formatLabel(marketplace?.topDemandSuburb)}
+                {highestWaitlistDemand
+                  ? highestWaitlistDemand.suburb
+                  : "No waitlist suburb yet"}
               </p>
             </div>
 
             <div className="rounded-lg border border-gray-100 p-4">
-              <p className="text-sm text-gray-500">Highest value owner</p>
-              <p className="mt-1 font-semibold text-gray-900">
-                {getUserName(marketplace?.highestValueOwner)}
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-gray-100 p-4">
-              <p className="text-sm text-gray-500">Most booked service</p>
+              <p className="text-sm text-gray-500">Booked service strength</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {formatLabel(marketplace?.mostBookedService)}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-gray-100 p-4">
+              <p className="text-sm text-gray-500">Waitlist service signal</p>
+              <p className="mt-1 font-semibold text-gray-900">
+                {topWaitlistService
+                  ? formatLabel(topWaitlistService[0])
+                  : "No service captured yet"}
               </p>
             </div>
           </div>
@@ -376,4 +415,4 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
-} 
+}
