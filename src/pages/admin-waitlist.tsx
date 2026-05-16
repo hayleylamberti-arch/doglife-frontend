@@ -123,7 +123,7 @@ export default function AdminWaitlistPage() {
             Total Waitlist
           </p>
           <p className="mt-2 text-4xl font-bold text-blue-600">{totalDemand}</p>
-          <p className="mt-1 text-sm text-gray-500">Owner requests</p>
+          <p className="mt-1 text-sm text-gray-500">Lead requests</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
@@ -225,7 +225,7 @@ export default function AdminWaitlistPage() {
                     <p className="text-2xl font-bold text-gray-900">
                       {item._count.id}
                     </p>
-                    <p className="text-xs text-gray-500">owner request</p>
+                    <p className="text-xs text-gray-500">lead request</p>
                   </div>
                 </button>
               ))
@@ -241,7 +241,7 @@ export default function AdminWaitlistPage() {
               <div>
                 <p className="text-gray-500">No service demand captured yet.</p>
                 <p className="mt-1 text-sm text-gray-400">
-                  As owners join the waitlist, service trends will appear here.
+                  As leads join the waitlist, service trends will appear here.
                 </p>
               </div>
             ) : (
@@ -295,7 +295,7 @@ export default function AdminWaitlistPage() {
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
               <tr>
-                <th className="px-5 py-4 font-semibold">Owner</th>
+                <th className="px-5 py-4 font-semibold">Email / Lead</th>
                 <th className="px-5 py-4 font-semibold">Location</th>
                 <th className="px-5 py-4 font-semibold">Services Needed</th>
                 <th className="px-5 py-4 font-semibold">Type</th>
@@ -316,6 +316,9 @@ export default function AdminWaitlistPage() {
                     <td className="px-5 py-4">
                       <p className="font-semibold text-gray-900">
                         {entry.email}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Waitlist lead, not necessarily a registered user
                       </p>
                     </td>
 
