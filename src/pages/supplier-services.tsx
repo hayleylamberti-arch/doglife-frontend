@@ -14,6 +14,8 @@ const SERVICE_TYPES = [
   "MOBILE_VET",
 ];
 
+const DOG_SIZES = ["small", "medium", "large", "xl"];
+
 function formatService(service: string) {
   const map: Record<string, string> = {
     WALKING: "🐕 Dog Walking",
@@ -25,6 +27,7 @@ function formatService(service: string) {
     PET_TRANSPORT: "🚗 Transport",
     MOBILE_VET: "🩺 Mobile Vet",
   };
+
   return map[service] ?? service;
 }
 
@@ -65,48 +68,27 @@ function getApiErrorMessage(error: unknown) {
   return "Failed to save service";
 }
 
-type DogSize = "SMALL" | "MEDIUM" | "LARGE" | "XL";
+function shouldShowDogCapacity(serviceType: string) {
+  return ["BOARDING", "DAYCARE", "PET_SITTING", "WALKING"].includes(serviceType);
+}
 
-type PricingTier = {
-  category: string;
-  dogSize: DogSize;
-  priceCents: number;
-};
+function formatRandFromCents(value?: number | null) {
+  return `R${(((value ?? 0) as number) / 100).toFixed(0)}`;
+}
 
-type EditServiceForm = {
-  price: string;
-  durationMinutes: string;
-  bufferMinutes: string;
-  maxDogsPerBooking: string;
-  concurrentCapacityDogs: string;
-  additionalDogEnabled: boolean;
-  additionalDogPrice: string;
-  daycareHalfDayPrice: string;
-  daycareFullDayPrice: string;
-};
+function formatDate(value?: string | null) {
+  if (!value) return "";
 
-function calculateGroomingPrice({
-  tiers,
-  selectedCategory,
-  dogs,
-}: {
-  tiers: PricingTier[];
-  selectedCategory: string;
-  dogs: { size: DogSize }[];
-}) {
-  let total = 0;
-
-  dogs.forEach((dog) => {
-    const match = tiers.find(
-      (t) => t.category === selectedCategory && t.dogSize === dog.size
-    );
-
-    if (!match) return;
-
-    total += match.priceCents;
+  return new Date(value).toLocaleDateString("en-ZA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
   });
+}
 
-  return total;
+function centsToRandInput(value?: number | null) {
+  if (value == null) return "";
+  return String(value / 100);
 }
 
 function serviceDefaults(serviceType: string) {
@@ -132,26 +114,33 @@ function serviceDefaults(serviceType: string) {
   }
 }
 
-function shouldShowDogCapacity(serviceType: string) {
-  return ["BOARDING", "DAYCARE", "PET_SITTING", "WALKING"].includes(serviceType);
+type EditServiceForm = {
+  price: string;
+  durationMinutes: string;
+  bufferMinutes: string;
+  maxDogsPerBooking: string;
+  concurrentCapacityDogs: string;
+  additionalDogEnabled: boolean;
+  additionalDogPrice: string;
+  daycareHalfDayPrice: string;
+  daycareFullDayPrice: string;
+};
+
+function emptyGroomingPrices() {
+  return {
+    small: "",
+    medium: "",
+    large: "",
+    xl: "",
+  };
 }
 
-function formatRandFromCents(value?: number | null) {
-  return `R${(((value ?? 0) as number) / 100).toFixed(0)}`;
-}
+function getTierPrice(tiers: any[], category: string, dogSize: string) {
+  const match = tiers.find(
+    (tier) => tier.category === category && tier.dogSize === dogSize
+  );
 
-function formatDate(value?: string | null) {
-  if (!value) return "";
-  return new Date(value).toLocaleDateString("en-ZA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function centsToRandInput(value?: number | null) {
-  if (value == null) return "";
-  return String(value / 100);
+  return match ? centsToRandInput(match.priceCents) : "";
 }
 
 export default function SupplierServicesPage() {
@@ -190,19 +179,8 @@ export default function SupplierServicesPage() {
     Record<string, { startDate: string; endDate: string; reason: string }>
   >({});
 
-  const [washBrush, setWashBrush] = useState({
-    small: "",
-    medium: "",
-    large: "",
-    xl: "",
-  });
-
-  const [washCut, setWashCut] = useState({
-    small: "",
-    medium: "",
-    large: "",
-    xl: "",
-  });
+  const [washBrush, setWashBrush] = useState(emptyGroomingPrices());
+  const [washCut, setWashCut] = useState(emptyGroomingPrices());
 
   const resetForm = () => {
     setServiceType("");
@@ -217,11 +195,29 @@ export default function SupplierServicesPage() {
     setDaycareExtraDogPrice("");
     setMaxDogsPerBooking("");
     setConcurrentCapacityDogs("");
-    setWashBrush({ small: "", medium: "", large: "", xl: "" });
-    setWashCut({ small: "", medium: "", large: "", xl: "" });
+    setWashBrush(emptyGroomingPrices());
+    setWashCut(emptyGroomingPrices());
   };
 
   const startEditing = (s: any) => {
+    const tiers = s.pricingTiers || [];
+
+    if (s.service === "GROOMING") {
+      setWashBrush({
+        small: getTierPrice(tiers, "WASH_BRUSH", "SMALL"),
+        medium: getTierPrice(tiers, "WASH_BRUSH", "MEDIUM"),
+        large: getTierPrice(tiers, "WASH_BRUSH", "LARGE"),
+        xl: getTierPrice(tiers, "WASH_BRUSH", "XL"),
+      });
+
+      setWashCut({
+        small: getTierPrice(tiers, "WASH_CUT", "SMALL"),
+        medium: getTierPrice(tiers, "WASH_CUT", "MEDIUM"),
+        large: getTierPrice(tiers, "WASH_CUT", "LARGE"),
+        xl: getTierPrice(tiers, "WASH_CUT", "XL"),
+      });
+    }
+
     setEditingServiceId(s.id);
     setEditForm({
       price: centsToRandInput(s.baseRateCents),
@@ -265,6 +261,18 @@ export default function SupplierServicesPage() {
           : null,
       };
 
+      if (service.service === "GROOMING") {
+        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+          throw new Error("Enter a valid grooming slot length");
+        }
+
+        payload.durationMinutes = Number(editForm.durationMinutes);
+        payload.baseRateCents = 1;
+        payload.groomingOptions = { washBrush, washCut };
+
+        return api.patch(`/api/supplierServices/${service.id}`, payload);
+      }
+
       if (service.service === "DAYCARE") {
         if (
           editForm.daycareHalfDayPrice === "" ||
@@ -292,7 +300,7 @@ export default function SupplierServicesPage() {
         payload.baseRateCents = Math.round(Number(editForm.price) * 100);
       }
 
-      if (!["BOARDING", "PET_SITTING", "DAYCARE", "GROOMING"].includes(service.service)) {
+      if (!["BOARDING", "PET_SITTING", "DAYCARE"].includes(service.service)) {
         if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
           throw new Error("Enter a valid duration");
         }
@@ -384,11 +392,11 @@ export default function SupplierServicesPage() {
       }
 
       if (serviceType === "GROOMING") {
-  if (!duration || Number(duration) <= 0) {
-    throw new Error("Enter a valid grooming slot length");
-  }
+        if (!duration || Number(duration) <= 0) {
+          throw new Error("Enter a valid grooming slot length");
+        }
 
-  return api.post("/api/supplierServices", {
+        return api.post("/api/supplierServices", {
           services: [
             {
               service: "GROOMING",
@@ -524,7 +532,59 @@ export default function SupplierServicesPage() {
       <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50">
         <p className="font-medium text-gray-700">Edit Service</p>
 
-        {s.service === "DAYCARE" ? (
+        {s.service === "GROOMING" ? (
+          <>
+            <input
+              type="number"
+              min="1"
+              placeholder="Grooming slot length (mins)"
+              value={editForm.durationMinutes}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  durationMinutes: e.target.value,
+                })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="font-medium">Wash & Brush</p>
+            {DOG_SIZES.map((size) => (
+              <input
+                key={`edit-wash-brush-${size}`}
+                type="number"
+                min="0"
+                placeholder={`${size} price`}
+                value={(washBrush as any)[size]}
+                onChange={(e) =>
+                  setWashBrush((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
+                }
+                className="border rounded px-3 py-2 block w-full"
+              />
+            ))}
+
+            <p className="font-medium">Wash & Cut</p>
+            {DOG_SIZES.map((size) => (
+              <input
+                key={`edit-wash-cut-${size}`}
+                type="number"
+                min="0"
+                placeholder={`${size} price`}
+                value={(washCut as any)[size]}
+                onChange={(e) =>
+                  setWashCut((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
+                }
+                className="border rounded px-3 py-2 block w-full"
+              />
+            ))}
+          </>
+        ) : s.service === "DAYCARE" ? (
           <>
             <input
               type="number"
@@ -610,7 +670,7 @@ export default function SupplierServicesPage() {
           </>
         ) : null}
 
-        {(s.service === "BOARDING" || s.service === "DAYCARE") ? (
+        {s.service === "BOARDING" || s.service === "DAYCARE" ? (
           <>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
@@ -653,10 +713,7 @@ export default function SupplierServicesPage() {
             {updateMutation.isPending ? "Saving..." : "Save changes"}
           </button>
 
-          <button
-            onClick={cancelEditing}
-            className="rounded border px-3 py-2 text-sm"
-          >
+          <button onClick={cancelEditing} className="rounded border px-3 py-2 text-sm">
             Cancel
           </button>
         </div>
@@ -792,6 +849,8 @@ export default function SupplierServicesPage() {
             setDaycareExtraDogPrice("");
             setMaxDogsPerBooking("");
             setConcurrentCapacityDogs("");
+            setWashBrush(emptyGroomingPrices());
+            setWashCut(emptyGroomingPrices());
           }}
           className="border rounded px-3 py-2 w-full"
         >
@@ -803,7 +862,7 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {serviceType && serviceType !== "GROOMING" && serviceType !== "DAYCARE" && (
+        {serviceType && serviceType !== "GROOMING" && serviceType !== "DAYCARE" ? (
           <input
             type="number"
             min="0"
@@ -812,9 +871,9 @@ export default function SupplierServicesPage() {
             onChange={(e) => setPrice(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
-        )}
+        ) : null}
 
-        {isDaycare && (
+        {isDaycare ? (
           <div className="space-y-3 rounded-lg border border-gray-200 p-4">
             <input
               type="number"
@@ -834,9 +893,9 @@ export default function SupplierServicesPage() {
               className="border rounded px-3 py-2 block w-full"
             />
           </div>
-        )}
+        ) : null}
 
-        {isBoarding && (
+        {isBoarding ? (
           <div className="space-y-3 rounded-lg border border-gray-200 p-4">
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
@@ -847,7 +906,7 @@ export default function SupplierServicesPage() {
               Enable extra dog pricing
             </label>
 
-            {boardingExtraDogEnabled && (
+            {boardingExtraDogEnabled ? (
               <input
                 type="number"
                 min="0"
@@ -856,11 +915,11 @@ export default function SupplierServicesPage() {
                 onChange={(e) => setBoardingExtraDogPrice(e.target.value)}
                 className="border rounded px-3 py-2 block w-full"
               />
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
 
-        {isDaycare && (
+        {isDaycare ? (
           <div className="space-y-3 rounded-lg border border-gray-200 p-4">
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
@@ -871,7 +930,7 @@ export default function SupplierServicesPage() {
               Enable extra dog pricing
             </label>
 
-            {daycareExtraDogEnabled && (
+            {daycareExtraDogEnabled ? (
               <input
                 type="number"
                 min="0"
@@ -880,11 +939,11 @@ export default function SupplierServicesPage() {
                 onChange={(e) => setDaycareExtraDogPrice(e.target.value)}
                 className="border rounded px-3 py-2 block w-full"
               />
-            )}
+            ) : null}
           </div>
-        )}
+        ) : null}
 
-        {showDogCapacityInput && (
+        {showDogCapacityInput ? (
           <div className="space-y-3 rounded-lg border border-gray-200 p-4">
             <input
               type="number"
@@ -904,9 +963,9 @@ export default function SupplierServicesPage() {
               className="border rounded px-3 py-2 block w-full"
             />
           </div>
-        )}
+        ) : null}
 
-        {showDurationInput && (
+        {showDurationInput ? (
           <input
             type="number"
             min="1"
@@ -915,9 +974,9 @@ export default function SupplierServicesPage() {
             onChange={(e) => setDuration(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
-        )}
+        ) : null}
 
-        {showBufferInput && serviceType !== "GROOMING" && (
+        {showBufferInput && serviceType !== "GROOMING" ? (
           <input
             type="number"
             min="0"
@@ -926,67 +985,67 @@ export default function SupplierServicesPage() {
             onChange={(e) => setBufferMinutes(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
-        )}
+        ) : null}
 
-        {serviceType === "GROOMING" && (
-  <>
-    <input
-      type="number"
-      min="1"
-      placeholder="Grooming slot length (mins)"
-      value={duration}
-      onChange={(e) => setDuration(e.target.value)}
-      className="border rounded px-3 py-2 block w-full"
-    />
+        {serviceType === "GROOMING" ? (
+          <>
+            <input
+              type="number"
+              min="1"
+              placeholder="Grooming slot length (mins)"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
 
-    <p className="font-medium">Wash & Brush</p>
-    {["small", "medium", "large", "xl"].map((size) => (
-      <input
-        key={`wash-brush-${size}`}
-        type="number"
-        min="0"
-        placeholder={`${size} price`}
-        value={(washBrush as any)[size]}
-        onChange={(e) =>
-          setWashBrush((prev) => ({
-            ...prev,
-            [size]: e.target.value,
-          }))
-        }
-        className="border rounded px-3 py-2 block w-full"
-      />
-    ))}
+            <p className="font-medium">Wash & Brush</p>
+            {DOG_SIZES.map((size) => (
+              <input
+                key={`wash-brush-${size}`}
+                type="number"
+                min="0"
+                placeholder={`${size} price`}
+                value={(washBrush as any)[size]}
+                onChange={(e) =>
+                  setWashBrush((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
+                }
+                className="border rounded px-3 py-2 block w-full"
+              />
+            ))}
 
-    <p className="font-medium">Wash & Cut</p>
-    {["small", "medium", "large", "xl"].map((size) => (
-      <input
-        key={`wash-cut-${size}`}
-        type="number"
-        min="0"
-        placeholder={`${size} price`}
-        value={(washCut as any)[size]}
-        onChange={(e) =>
-          setWashCut((prev) => ({
-            ...prev,
-            [size]: e.target.value,
-          }))
-        }
-        className="border rounded px-3 py-2 block w-full"
-      />
-    ))}
+            <p className="font-medium">Wash & Cut</p>
+            {DOG_SIZES.map((size) => (
+              <input
+                key={`wash-cut-${size}`}
+                type="number"
+                min="0"
+                placeholder={`${size} price`}
+                value={(washCut as any)[size]}
+                onChange={(e) =>
+                  setWashCut((prev) => ({
+                    ...prev,
+                    [size]: e.target.value,
+                  }))
+                }
+                className="border rounded px-3 py-2 block w-full"
+              />
+            ))}
 
-    <input
-      type="number"
-      min="0"
-      placeholder="Time buffer (mins)"
-      value={bufferMinutes}
-      onChange={(e) => setBufferMinutes(e.target.value)}
-      className="border rounded px-3 py-2 block w-full"
-    />
-  </>
-)}
+            <input
+              type="number"
+              min="0"
+              placeholder="Time buffer (mins)"
+              value={bufferMinutes}
+              onChange={(e) => setBufferMinutes(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+          </>
+        ) : null}
 
-        {serviceType && (
+        {serviceType ? (
           <button
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending}
@@ -994,7 +1053,7 @@ export default function SupplierServicesPage() {
           >
             {createMutation.isPending ? "Saving..." : "Add Service"}
           </button>
-        )}
+        ) : null}
 
         {createMutation.isError ? (
           <p className="text-sm text-red-600">
@@ -1022,52 +1081,59 @@ export default function SupplierServicesPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       {type === "GROOMING" ? (
-  <>
-    {(s.pricingTiers || []).filter((t: any) => t.category === "WASH_BRUSH").length > 0 ? (
-      <>
-        <p className="font-medium">Wash & Brush</p>
-        {(s.pricingTiers || [])
-          .filter((t: any) => t.category === "WASH_BRUSH")
-          .map((t: any) => (
-            <p key={t.id}>
-              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
-            </p>
-          ))}
-      </>
-    ) : null}
+                        <>
+                          {(s.pricingTiers || []).filter(
+                            (t: any) => t.category === "WASH_BRUSH"
+                          ).length > 0 ? (
+                            <>
+                              <p className="font-medium">Wash & Brush</p>
+                              {(s.pricingTiers || [])
+                                .filter((t: any) => t.category === "WASH_BRUSH")
+                                .map((t: any) => (
+                                  <p key={t.id}>
+                                    {t.dogSize.toLowerCase()}: R
+                                    {t.priceCents / 100}
+                                  </p>
+                                ))}
+                            </>
+                          ) : null}
 
-    {(s.pricingTiers || []).filter((t: any) => t.category === "WASH_CUT").length > 0 ? (
-      <>
-        <p className="font-medium mt-2">Wash & Cut</p>
-        {(s.pricingTiers || [])
-          .filter((t: any) => t.category === "WASH_CUT")
-          .map((t: any) => (
-            <p key={t.id}>
-              {t.dogSize.toLowerCase()}: R{t.priceCents / 100}
-            </p>
-          ))}
-      </>
-    ) : null}
-  </>
-) : type === "DAYCARE" ? (
-  <>
-    <p>
-      Half day:{" "}
-      {formatRandFromCents(s.pricingJson?.halfDayPriceCents)}
-    </p>
-    <p>
-      Full day:{" "}
-      {formatRandFromCents(
-        s.pricingJson?.fullDayPriceCents ?? s.baseRateCents
-      )}
-    </p>
-  </>
-) : (
-  <p>
-    R{(s.baseRateCents / 100).toFixed(0)}{" "}
-    {getServiceUnit(type, s)}
-  </p>
-)}
+                          {(s.pricingTiers || []).filter(
+                            (t: any) => t.category === "WASH_CUT"
+                          ).length > 0 ? (
+                            <>
+                              <p className="font-medium mt-2">Wash & Cut</p>
+                              {(s.pricingTiers || [])
+                                .filter((t: any) => t.category === "WASH_CUT")
+                                .map((t: any) => (
+                                  <p key={t.id}>
+                                    {t.dogSize.toLowerCase()}: R
+                                    {t.priceCents / 100}
+                                  </p>
+                                ))}
+                            </>
+                          ) : null}
+                        </>
+                      ) : type === "DAYCARE" ? (
+                        <>
+                          <p>
+                            Half day:{" "}
+                            {formatRandFromCents(s.pricingJson?.halfDayPriceCents)}
+                          </p>
+                          <p>
+                            Full day:{" "}
+                            {formatRandFromCents(
+                              s.pricingJson?.fullDayPriceCents ??
+                                s.baseRateCents
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p>
+                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                          {getServiceUnit(type, s)}
+                        </p>
+                      )}
 
                       <p>{formatBufferMinutes(s.bufferMinutes)}</p>
 
@@ -1077,27 +1143,25 @@ export default function SupplierServicesPage() {
 
                       {s.concurrentCapacityDogs ? (
                         <p>
-                          Total concurrent capacity:{" "}
-                          {s.concurrentCapacityDogs}
+                          Total concurrent capacity: {s.concurrentCapacityDogs}
                         </p>
                       ) : null}
 
                       {(type === "BOARDING" || type === "DAYCARE") &&
                       s.additionalDogEnabled ? (
                         <p>
-                          Extra dog:{" "}
-                          {formatRandFromCents(s.additionalDogPriceCents)}
+                          Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
                         </p>
                       ) : null}
                     </div>
 
                     <div className="flex gap-2">
                       <button
-  onClick={() => startEditing(s)}
-  className="rounded border px-3 py-1"
->
-  Edit
-</button>
+                        onClick={() => startEditing(s)}
+                        className="rounded border px-3 py-1"
+                      >
+                        Edit
+                      </button>
 
                       <button
                         onClick={() => deleteMutation.mutate(s.id)}
