@@ -62,8 +62,6 @@ function formatDate(value?: string | null) {
     year: "numeric",
     month: "short",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -97,9 +95,20 @@ function getServiceSuburbs(supplier: SupplierItem) {
   );
 }
 
+function getVerificationScore(supplier: SupplierItem) {
+  return [
+    supplier.identityVerified,
+    supplier.backgroundCheckVerified,
+    supplier.premisesVerified,
+  ].filter(Boolean).length;
+}
+
 export default function AdminSuppliersPage() {
   const queryClient = useQueryClient();
-  const [selectedStatus, setSelectedStatus] = useState<"ALL" | SupplierStatus>("ALL");
+  const [selectedStatus, setSelectedStatus] = useState<"ALL" | SupplierStatus>(
+    "ALL"
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [activeSupplierId, setActiveSupplierId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -113,17 +122,62 @@ export default function AdminSuppliersPage() {
     },
   });
 
-  const suppliers: SupplierItem[] = Array.isArray(data?.suppliers) ? data.suppliers : [];
+  const suppliers: SupplierItem[] = Array.isArray(data?.suppliers)
+    ? data.suppliers
+    : [];
 
-  const sortedSuppliers = useMemo(() => {
-    return [...suppliers].sort((a, b) => {
-      const aSubmitted = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-      const bSubmitted = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+  const filteredSuppliers = useMemo(() => {
+    const normalisedSearch = searchTerm.trim().toLowerCase();
 
-      if (bSubmitted !== aSubmitted) return bSubmitted - aSubmitted;
+    return suppliers
+      .filter((supplier) => {
+        if (!normalisedSearch) return true;
 
-      return String(a.businessName || "").localeCompare(String(b.businessName || ""));
-    });
+        const searchableText = [
+          supplier.businessName,
+          supplier.user?.email,
+          supplier.businessPhone,
+          supplier.suburb,
+          ...getServiceSuburbs(supplier),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return searchableText.includes(normalisedSearch);
+      })
+      .sort((a, b) => {
+        const priority: Record<SupplierStatus, number> = {
+          SUBMITTED: 1,
+          UNDER_REVIEW: 2,
+          REJECTED: 3,
+          DRAFT: 4,
+          APPROVED: 5,
+          SUSPENDED: 6,
+        };
+
+        if (priority[a.approvalStatus] !== priority[b.approvalStatus]) {
+          return priority[a.approvalStatus] - priority[b.approvalStatus];
+        }
+
+        const aSubmitted = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+        const bSubmitted = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+
+        return bSubmitted - aSubmitted;
+      });
+  }, [suppliers, searchTerm]);
+
+  const metrics = useMemo(() => {
+    return {
+      total: suppliers.length,
+      pending: suppliers.filter((supplier) =>
+        ["SUBMITTED", "UNDER_REVIEW"].includes(supplier.approvalStatus)
+      ).length,
+      approved: suppliers.filter(
+        (supplier) => supplier.approvalStatus === "APPROVED"
+      ).length,
+      visible: suppliers.filter((supplier) => supplier.isPublicVisible).length,
+    };
   }, [suppliers]);
 
   const approveMutation = useMutation({
@@ -179,23 +233,35 @@ export default function AdminSuppliersPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="mx-auto max-w-7xl px-6 pb-6 pt-10 space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Supplier Review</h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Review supplier profiles, approve listings, and manage rejections.
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+            Supplier Operations
+          </p>
+          <h1 className="mt-1 text-3xl font-bold text-gray-900">
+            Supplier Review
+          </h1>
+          <p className="mt-2 text-gray-500">
+            Review suppliers, approve public listings, and manage marketplace
+            visibility.
           </p>
         </div>
 
-        <div className="w-full md:w-64">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Filter by status
-          </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search suppliers..."
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+          />
+
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as "ALL" | SupplierStatus)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+            onChange={(event) =>
+              setSelectedStatus(event.target.value as "ALL" | SupplierStatus)
+            }
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -206,191 +272,197 @@ export default function AdminSuppliersPage() {
         </div>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-xl bg-white p-5 shadow">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Total Suppliers
+          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">
+            {metrics.total}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-white p-5 shadow">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Needs Review
+          </p>
+          <p className="mt-2 text-4xl font-bold text-amber-600">
+            {metrics.pending}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-white p-5 shadow">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Approved
+          </p>
+          <p className="mt-2 text-4xl font-bold text-emerald-600">
+            {metrics.approved}
+          </p>
+        </div>
+
+        <div className="rounded-xl bg-white p-5 shadow">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Publicly Visible
+          </p>
+          <p className="mt-2 text-4xl font-bold text-blue-600">
+            {metrics.visible}
+          </p>
+        </div>
+      </div>
+
       {isLoading ? (
-        <div className="rounded-2xl bg-white p-6 shadow">Loading suppliers...</div>
+        <div className="rounded-xl bg-white p-6 shadow">Loading suppliers...</div>
       ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-700">
           Failed to load suppliers.
         </div>
-      ) : sortedSuppliers.length === 0 ? (
-        <div className="rounded-2xl bg-white p-6 shadow text-gray-500">
-          No suppliers found for this status.
+      ) : filteredSuppliers.length === 0 ? (
+        <div className="rounded-xl bg-white p-6 text-gray-500 shadow">
+          No suppliers found.
         </div>
       ) : (
-        <div className="space-y-5">
-          {sortedSuppliers.map((supplier) => {
-            const serviceSuburbs = getServiceSuburbs(supplier);
-            const isBusy = activeSupplierId === supplier.id;
-            const isApproved = supplier.approvalStatus === "APPROVED";
+        <div className="overflow-hidden rounded-xl bg-white shadow">
+          <div className="border-b border-gray-100 px-5 py-4">
+            <h2 className="font-semibold text-gray-900">Supplier Pipeline</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Prioritised by review status and most recent submission.
+            </p>
+          </div>
 
-            return (
-              <div
-                key={supplier.id}
-                className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-5"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Link
-                        to={`/admin/suppliers/${supplier.id}`}
-                        className="text-2xl font-semibold text-gray-900 hover:text-blue-600 hover:underline"
-                      >
-                        {supplier.businessName || "Unnamed supplier"}
-                      </Link>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-left text-sm">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-5 py-3 font-semibold">Supplier</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold">Visibility</th>
+                  <th className="px-5 py-3 font-semibold">Verification</th>
+                  <th className="px-5 py-3 font-semibold">Coverage</th>
+                  <th className="px-5 py-3 font-semibold">Submitted</th>
+                  <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
 
-                      <span
-                        className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
-                          supplier.approvalStatus
-                        )}`}
-                      >
-                        {formatStatus(supplier.approvalStatus)}
-                      </span>
+              <tbody className="divide-y divide-gray-100">
+                {filteredSuppliers.map((supplier) => {
+                  const serviceSuburbs = getServiceSuburbs(supplier);
+                  const verificationScore = getVerificationScore(supplier);
+                  const isBusy = activeSupplierId === supplier.id;
+                  const isApproved = supplier.approvalStatus === "APPROVED";
 
-                      {supplier.isPublicVisible ? (
-                        <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-                          Publicly visible
+                  return (
+                    <tr key={supplier.id} className="align-top hover:bg-gray-50">
+                      <td className="px-5 py-4">
+                        <Link
+                          to={`/admin/suppliers/${supplier.id}`}
+                          className="font-semibold text-gray-900 hover:text-blue-600 hover:underline"
+                        >
+                          {supplier.businessName || "Unnamed supplier"}
+                        </Link>
+
+                        <p className="mt-1 text-gray-500">
+                          {supplier.user?.email || "No email captured"}
+                        </p>
+
+                        <p className="mt-1 text-gray-500">
+                          {supplier.businessPhone || "No phone captured"}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${getStatusBadgeClass(
+                            supplier.approvalStatus
+                          )}`}
+                        >
+                          {formatStatus(supplier.approvalStatus)}
                         </span>
-                      ) : (
-                        <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
-                          Hidden
-                        </span>
-                      )}
-                    </div>
 
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <p>
-                        <span className="font-medium">Email:</span>{" "}
-                        {supplier.user?.email || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Phone:</span>{" "}
-                        {supplier.businessPhone || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Base suburb:</span>{" "}
-                        {supplier.suburb || "—"}
-                      </p>
-                      <p>
-                        <span className="font-medium">Submitted:</span>{" "}
-                        {formatDate(supplier.submittedAt)}
-                      </p>
-                      <p>
-                        <span className="font-medium">Approved:</span>{" "}
-                        {formatDate(supplier.approvedAt)}
-                      </p>
-                    </div>
-                  </div>
+                        {supplier.rejectionReason ? (
+                          <p className="mt-2 max-w-xs text-xs text-red-600">
+                            {supplier.rejectionReason}
+                          </p>
+                        ) : null}
+                      </td>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Link
-  to={`/admin/suppliers/${supplier.id}`}
-  className="inline-flex items-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50"
->
-  View details
-</Link>
-
-                    {!isApproved ? (
-                      <Button
-                        onClick={() => approveMutation.mutate(supplier.id)}
-                        disabled={isBusy}
-                      >
-                        {isBusy ? "Working..." : "Approve"}
-                      </Button>
-                    ) : null}
-
-                    <Button
-                      variant="outline"
-                      onClick={() => handleReject(supplier)}
-                      disabled={isBusy}
-                    >
-                      {isBusy ? "Working..." : isApproved ? "Suspend / Reject" : "Reject"}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Profile summary
-                    </h3>
-
-                    <div className="space-y-2 text-sm text-gray-700">
-                      <p>
-                        <span className="font-medium">About:</span>{" "}
-                        {supplier.aboutServices || "—"}
-                      </p>
-
-                      <p>
-                        <span className="font-medium">Website:</span>{" "}
-                        {supplier.websiteUrl ? (
-                          <a
-                            href={supplier.websiteUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-blue-600 hover:underline"
-                          >
-                            {supplier.websiteUrl}
-                          </a>
+                      <td className="px-5 py-4">
+                        {supplier.isPublicVisible ? (
+                          <span className="inline-flex rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
+                            Public
+                          </span>
                         ) : (
-                          "—"
+                          <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
+                            Hidden
+                          </span>
                         )}
-                      </p>
+                      </td>
 
-                      <p>
-                        <span className="font-medium">Service suburbs:</span>{" "}
-                        {serviceSuburbs.length > 0 ? serviceSuburbs.join(", ") : "—"}
-                      </p>
-                    </div>
-                  </div>
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-gray-900">
+                          {verificationScore}/3 complete
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          ID, background, premises
+                        </p>
+                      </td>
 
-                  <div className="rounded-xl border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Verification status
-                    </h3>
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-gray-900">
+                          {supplier.suburb || "No base suburb"}
+                        </p>
+                        <p className="mt-1 max-w-xs text-xs text-gray-500">
+                          {serviceSuburbs.length > 0
+                            ? serviceSuburbs.slice(0, 3).join(", ")
+                            : "No service suburbs"}
+                          {serviceSuburbs.length > 3
+                            ? ` +${serviceSuburbs.length - 3} more`
+                            : ""}
+                        </p>
+                      </td>
 
-                    <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          supplier.identityVerified
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        Identity {supplier.identityVerified ? "Verified" : "Not verified"}
-                      </span>
+                      <td className="px-5 py-4 text-gray-600">
+                        {formatDate(supplier.submittedAt)}
+                      </td>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          supplier.backgroundCheckVerified
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        Background {supplier.backgroundCheckVerified ? "Verified" : "Not verified"}
-                      </span>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            to={`/admin/suppliers/${supplier.id}`}
+                            className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                          >
+                            View
+                          </Link>
 
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          supplier.premisesVerified
-                            ? "bg-green-100 text-green-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        Premises {supplier.premisesVerified ? "Verified" : "Not verified"}
-                      </span>
-                    </div>
+                          {!isApproved ? (
+                            <Button
+                              onClick={() =>
+                                approveMutation.mutate(supplier.id)
+                              }
+                              disabled={isBusy}
+                            >
+                              {isBusy ? "Working..." : "Approve"}
+                            </Button>
+                          ) : null}
 
-                    {supplier.rejectionReason ? (
-                      <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                        <span className="font-medium">Rejection reason:</span>{" "}
-                        {supplier.rejectionReason}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                          <Button
+                            variant="outline"
+                            onClick={() => handleReject(supplier)}
+                            disabled={isBusy}
+                          >
+                            {isBusy
+                              ? "Working..."
+                              : isApproved
+                                ? "Suspend"
+                                : "Reject"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
