@@ -17,27 +17,20 @@ type SupplierItem = {
   businessName?: string | null;
   suburb?: string | null;
   businessPhone?: string | null;
-  websiteUrl?: string | null;
-  aboutServices?: string | null;
   approvalStatus: SupplierStatus;
   isPublicVisible?: boolean;
-  approvedAt?: string | null;
   submittedAt?: string | null;
   rejectionReason?: string | null;
   identityVerified?: boolean;
   backgroundCheckVerified?: boolean;
   premisesVerified?: boolean;
   user?: {
-    firstName?: string | null;
-    lastName?: string | null;
     email?: string | null;
   } | null;
   operatingAreas?: Array<{
     suburb?: {
       id: string;
       suburbName: string;
-      city?: string | null;
-      province?: string | null;
     } | null;
   }>;
 };
@@ -53,10 +46,10 @@ const STATUS_OPTIONS: Array<{ value: "ALL" | SupplierStatus; label: string }> = 
 ];
 
 function formatDate(value?: string | null) {
-  if (!value) return "Not submitted";
+  if (!value) return "—";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not submitted";
+  if (Number.isNaN(date.getTime())) return "—";
 
   return date.toLocaleString("en-ZA", {
     year: "numeric",
@@ -81,7 +74,6 @@ function getStatusBadgeClass(status: SupplierStatus) {
       return "bg-red-100 text-red-700 border-red-200";
     case "SUSPENDED":
       return "bg-gray-200 text-gray-800 border-gray-300";
-    case "DRAFT":
     default:
       return "bg-gray-100 text-gray-700 border-gray-200";
   }
@@ -105,9 +97,7 @@ function getVerificationScore(supplier: SupplierItem) {
 
 export default function AdminSuppliersPage() {
   const queryClient = useQueryClient();
-  const [selectedStatus, setSelectedStatus] = useState<"ALL" | SupplierStatus>(
-    "ALL"
-  );
+  const [selectedStatus, setSelectedStatus] = useState<"ALL" | SupplierStatus>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeSupplierId, setActiveSupplierId] = useState<string | null>(null);
 
@@ -117,7 +107,6 @@ export default function AdminSuppliersPage() {
       const res = await api.get("/api/admin/suppliers", {
         params: selectedStatus === "ALL" ? {} : { status: selectedStatus },
       });
-
       return res.data;
     },
   });
@@ -186,15 +175,11 @@ export default function AdminSuppliersPage() {
     mutationFn: async (supplierId: string) => {
       await api.post(`/api/admin/suppliers/${supplierId}/approve`);
     },
-    onMutate: (supplierId) => {
-      setActiveSupplierId(supplierId);
-    },
+    onMutate: (supplierId) => setActiveSupplierId(supplierId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
     },
-    onSettled: () => {
-      setActiveSupplierId(null);
-    },
+    onSettled: () => setActiveSupplierId(null),
   });
 
   const rejectMutation = useMutation({
@@ -205,19 +190,13 @@ export default function AdminSuppliersPage() {
       supplierId: string;
       reason?: string;
     }) => {
-      await api.post(`/api/admin/suppliers/${supplierId}/reject`, {
-        reason,
-      });
+      await api.post(`/api/admin/suppliers/${supplierId}/reject`, { reason });
     },
-    onMutate: ({ supplierId }) => {
-      setActiveSupplierId(supplierId);
-    },
+    onMutate: ({ supplierId }) => setActiveSupplierId(supplierId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
     },
-    onSettled: () => {
-      setActiveSupplierId(null);
-    },
+    onSettled: () => setActiveSupplierId(null),
   });
 
   function handleReject(supplier: SupplierItem) {
@@ -279,9 +258,7 @@ export default function AdminSuppliersPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Total Suppliers
           </p>
-          <p className="mt-2 text-4xl font-bold text-gray-900">
-            {metrics.total}
-          </p>
+          <p className="mt-2 text-4xl font-bold text-gray-900">{metrics.total}</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
@@ -346,13 +323,13 @@ export default function AdminSuppliersPage() {
             <table className="w-full min-w-[1280px] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
-                  <th className="px-5 py-3 font-semibold">Supplier</th>
-                  <th className="px-5 py-3 font-semibold">Status</th>
-                  <th className="px-5 py-3 font-semibold">Visibility</th>
-                  <th className="px-5 py-3 font-semibold">Verification</th>
-                  <th className="px-5 py-3 font-semibold">Coverage</th>
-                  <th className="px-5 py-3 font-semibold">Submitted</th>
-                  <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                  <th className="px-5 py-4 font-semibold">Supplier</th>
+                  <th className="px-5 py-4 font-semibold">Status</th>
+                  <th className="px-5 py-4 font-semibold">Visibility</th>
+                  <th className="px-5 py-4 font-semibold">Verification</th>
+                  <th className="px-5 py-4 font-semibold">Coverage</th>
+                  <th className="px-5 py-4 font-semibold">Submitted</th>
+                  <th className="px-5 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
 
@@ -393,7 +370,7 @@ export default function AdminSuppliersPage() {
 
                         {supplier.rejectionReason ? (
                           <p
-                            className="mt-1 max-w-[180px] truncate text-xs text-red-600"
+                            className="mt-1 max-w-[180px] truncate text-xs text-gray-500"
                             title={supplier.rejectionReason}
                           >
                             {supplier.rejectionReason}
@@ -441,7 +418,7 @@ export default function AdminSuppliersPage() {
                       </td>
 
                       <td className="px-5 py-4">
-                        <div className="flex min-w-[220px] flex-wrap justify-end gap-2">
+                        <div className="flex min-w-[180px] flex-col items-end gap-2 lg:min-w-[220px] lg:flex-row lg:justify-end">
                           <Link
                             to={`/admin/suppliers/${supplier.id}`}
                             className="inline-flex items-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50"
