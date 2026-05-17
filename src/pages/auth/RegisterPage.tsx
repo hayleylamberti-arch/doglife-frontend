@@ -40,6 +40,7 @@ export default function RegisterPage() {
     confirmPassword: "",
     role: "OWNER" as RegisterRole,
     mobilePhone: "",
+    acceptedTerms: false,
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -53,8 +54,10 @@ export default function RegisterPage() {
   );
 
   const passwordIsStrong = Object.values(passwordChecks).every(Boolean);
+
   const passwordsMatch =
-    form.password.length > 0 && form.password === form.confirmPassword;
+    form.password.length > 0 &&
+    form.password === form.confirmPassword;
 
   const formIsValid =
     form.firstName.trim().length > 0 &&
@@ -62,7 +65,8 @@ export default function RegisterPage() {
     form.email.trim().length > 0 &&
     form.mobilePhone.trim().length > 0 &&
     passwordIsStrong &&
-    passwordsMatch;
+    passwordsMatch &&
+    form.acceptedTerms;
 
   const getPasswordErrorMessage = () => {
     if (!passwordChecks.minLength) {
@@ -89,25 +93,34 @@ export default function RegisterPage() {
       return "Passwords do not match.";
     }
 
+    if (!form.acceptedTerms) {
+      return "Please accept the Terms & Conditions and Privacy Policy.";
+    }
+
     return "Please complete all required fields.";
   };
 
   const getRegisterErrorMessage = (registerError: any) => {
     const responseData = registerError?.response?.data;
 
-    if (Array.isArray(responseData?.details) && responseData.details.length > 0) {
+    if (
+      Array.isArray(responseData?.details) &&
+      responseData.details.length > 0
+    ) {
       return responseData.details.join(" ");
     }
 
     return (
-  registerError?.message ||
-  responseData?.message ||
-  responseData?.error ||
-  "Unable to register. Please check your details and try again."
-);
+      registerError?.message ||
+      responseData?.message ||
+      responseData?.error ||
+      "Unable to register. Please check your details and try again."
+    );
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
     setError(null);
 
@@ -122,16 +135,20 @@ export default function RegisterPage() {
       const result = await register({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
-        email: form.email.trim(),
+        email: form.email.trim().toLowerCase(),
         password: form.password,
         role: form.role,
         mobilePhone: form.mobilePhone.trim(),
       });
 
       if (result.user.role === "SUPPLIER") {
-        navigate("/supplier/dashboard", { replace: true });
+        navigate("/supplier/dashboard", {
+          replace: true,
+        });
       } else {
-        navigate("/owner/dashboard", { replace: true });
+        navigate("/owner/dashboard", {
+          replace: true,
+        });
       }
     } catch (registerError: any) {
       setError(getRegisterErrorMessage(registerError));
@@ -142,9 +159,13 @@ export default function RegisterPage() {
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-xl bg-white p-6 shadow-sm">
-      <h1 className="mb-1 text-2xl font-semibold">Join DogLife</h1>
+      <h1 className="mb-1 text-2xl font-semibold">
+        Join DogLife
+      </h1>
+
       <p className="mb-6 text-sm text-gray-600">
-        Create your account. Use a strong password to help keep your account safe.
+        Create your account. Use a strong password to help
+        keep your account safe.
       </p>
 
       <form
@@ -157,7 +178,10 @@ export default function RegisterPage() {
           required
           value={form.firstName}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, firstName: e.target.value }))
+            setForm((prev) => ({
+              ...prev,
+              firstName: e.target.value,
+            }))
           }
         />
 
@@ -167,7 +191,10 @@ export default function RegisterPage() {
           required
           value={form.lastName}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, lastName: e.target.value }))
+            setForm((prev) => ({
+              ...prev,
+              lastName: e.target.value,
+            }))
           }
         />
 
@@ -178,7 +205,10 @@ export default function RegisterPage() {
           required
           value={form.email}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, email: e.target.value }))
+            setForm((prev) => ({
+              ...prev,
+              email: e.target.value,
+            }))
           }
         />
 
@@ -195,13 +225,18 @@ export default function RegisterPage() {
               required
               value={form.password}
               onChange={(e) =>
-                setForm((prev) => ({ ...prev, password: e.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  password: e.target.value,
+                }))
               }
             />
 
             <button
               type="button"
-              onClick={() => setShowPassword((current) => !current)}
+              onClick={() =>
+                setShowPassword((current) => !current)
+              }
               className="border-l px-3 text-sm font-medium text-gray-600"
             >
               {showPassword ? "Hide" : "Show"}
@@ -240,7 +275,11 @@ export default function RegisterPage() {
           <div className="flex rounded border">
             <input
               className="min-w-0 flex-1 rounded-l px-3 py-2 outline-none"
-              type={showConfirmPassword ? "text" : "password"}
+              type={
+                showConfirmPassword
+                  ? "text"
+                  : "password"
+              }
               placeholder="Confirm password"
               required
               value={form.confirmPassword}
@@ -254,7 +293,11 @@ export default function RegisterPage() {
 
             <button
               type="button"
-              onClick={() => setShowConfirmPassword((current) => !current)}
+              onClick={() =>
+                setShowConfirmPassword(
+                  (current) => !current
+                )
+              }
               className="border-l px-3 text-sm font-medium text-gray-600"
             >
               {showConfirmPassword ? "Hide" : "Show"}
@@ -264,10 +307,14 @@ export default function RegisterPage() {
           {form.confirmPassword.length > 0 ? (
             <p
               className={`mt-2 text-xs ${
-                passwordsMatch ? "text-green-700" : "text-red-600"
+                passwordsMatch
+                  ? "text-green-700"
+                  : "text-red-600"
               }`}
             >
-              {passwordsMatch ? "✓ Passwords match" : "Passwords do not match"}
+              {passwordsMatch
+                ? "✓ Passwords match"
+                : "Passwords do not match"}
             </p>
           ) : null}
         </div>
@@ -278,13 +325,17 @@ export default function RegisterPage() {
           required
           value={form.mobilePhone}
           onChange={(e) =>
-            setForm((prev) => ({ ...prev, mobilePhone: e.target.value }))
+            setForm((prev) => ({
+              ...prev,
+              mobilePhone: e.target.value,
+            }))
           }
         />
 
         <p className="text-xs text-gray-500 md:col-span-2">
-  Use a South African mobile number, for example 0821234567 or +27821234567.
-</p>
+          Use a South African mobile number, for example
+          0821234567 or +27821234567.
+        </p>
 
         <select
           className="rounded border px-3 py-2 md:col-span-2"
@@ -300,6 +351,40 @@ export default function RegisterPage() {
           <option value="SUPPLIER">Supplier</option>
         </select>
 
+        <label className="flex items-start gap-3 text-sm text-gray-700 md:col-span-2">
+          <input
+            type="checkbox"
+            checked={form.acceptedTerms}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                acceptedTerms: e.target.checked,
+              }))
+            }
+            className="mt-1 h-4 w-4 rounded border-gray-300"
+          />
+
+          <span>
+            I agree to the{" "}
+            <Link
+              to="/legal/terms"
+              target="_blank"
+              className="text-orange-600 underline"
+            >
+              Terms & Conditions
+            </Link>{" "}
+            and{" "}
+            <Link
+              to="/legal/privacy"
+              target="_blank"
+              className="text-orange-600 underline"
+            >
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+
         {error ? (
           <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 md:col-span-2">
             {error}
@@ -308,16 +393,23 @@ export default function RegisterPage() {
 
         <button
           className="rounded bg-orange-500 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
-          disabled={isSubmitting || !formIsValid}
+          disabled={
+            isSubmitting || !formIsValid
+          }
           type="submit"
         >
-          {isSubmitting ? "Creating account..." : "Create account"}
+          {isSubmitting
+            ? "Creating account..."
+            : "Create account"}
         </button>
       </form>
 
       <p className="mt-4 text-sm">
         Already have an account?{" "}
-        <Link className="text-orange-600" to="/auth/login">
+        <Link
+          className="text-orange-600"
+          to="/auth/login"
+        >
           Login
         </Link>
       </p>

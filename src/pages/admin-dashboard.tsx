@@ -1,13 +1,12 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 type SuburbSummaryItem = {
   suburb: string;
   province?: string;
-  _count: {
-    id: number;
-  };
+  _count: { id: number };
 };
 
 type WaitlistSummaryResponse = {
@@ -58,6 +57,12 @@ function getUserName(user?: UserInsight | null) {
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 }
 
+function getUrgencyClass(count: number) {
+  if (count >= 5) return "border-red-300 bg-red-50";
+  if (count > 0) return "border-amber-300 bg-amber-50";
+  return "border-gray-200 bg-white";
+}
+
 export default function AdminDashboard() {
   const waitlistQuery = useQuery<WaitlistSummaryResponse>({
     queryKey: ["waitlistSummary"],
@@ -89,13 +94,15 @@ export default function AdminDashboard() {
   const users = usersQuery.data?.users ?? [];
   const marketplace = usersQuery.data?.marketplace;
 
-  const topWaitlistSuburbs = useMemo(() => {
-    return [...suburbSummary].sort((a, b) => b._count.id - a._count.id);
-  }, [suburbSummary]);
+  const topWaitlistSuburbs = useMemo(
+    () => [...suburbSummary].sort((a, b) => b._count.id - a._count.id),
+    [suburbSummary]
+  );
 
-  const topWaitlistServices = useMemo(() => {
-    return Object.entries(serviceSummary).sort(([, a], [, b]) => b - a);
-  }, [serviceSummary]);
+  const topWaitlistServices = useMemo(
+    () => Object.entries(serviceSummary).sort(([, a], [, b]) => b - a),
+    [serviceSummary]
+  );
 
   const totalWaitlistDemand = suburbSummary.reduce(
     (sum, suburb) => sum + suburb._count.id,
@@ -103,6 +110,10 @@ export default function AdminDashboard() {
   );
 
   const supplierMetrics = useMemo(() => {
+    const approved = suppliers.filter(
+      (supplier) => supplier.approvalStatus === "APPROVED"
+    );
+
     return {
       total: suppliers.length,
       supplierQueue: suppliers.filter((supplier) =>
@@ -110,10 +121,10 @@ export default function AdminDashboard() {
           supplier.approvalStatus
         )
       ).length,
-      approved: suppliers.filter(
-        (supplier) => supplier.approvalStatus === "APPROVED"
-      ).length,
+      approved: approved.length,
       visible: suppliers.filter((supplier) => supplier.isPublicVisible).length,
+      hiddenApproved: approved.filter((supplier) => !supplier.isPublicVisible)
+        .length,
     };
   }, [suppliers]);
 
@@ -155,8 +166,8 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-xl bg-white p-5 shadow">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Link to="/admin-waitlist" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Waitlist Demand
           </p>
@@ -164,9 +175,9 @@ export default function AdminDashboard() {
             {totalWaitlistDemand}
           </p>
           <p className="mt-1 text-sm text-gray-500">Lead requests</p>
-        </div>
+        </Link>
 
-        <div className="rounded-xl bg-white p-5 shadow">
+        <Link to="/admin-suppliers" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Visible Suppliers
           </p>
@@ -176,9 +187,14 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm text-gray-500">
             {supplierMetrics.approved} approved
           </p>
-        </div>
+        </Link>
 
-        <div className="rounded-xl bg-white p-5 shadow">
+        <Link
+          to="/admin-suppliers"
+          className={`rounded-xl border p-5 shadow ${getUrgencyClass(
+            supplierMetrics.supplierQueue
+          )}`}
+        >
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Supplier Queue
           </p>
@@ -186,9 +202,9 @@ export default function AdminDashboard() {
             {supplierMetrics.supplierQueue}
           </p>
           <p className="mt-1 text-sm text-gray-500">Need follow-up</p>
-        </div>
+        </Link>
 
-        <div className="rounded-xl bg-white p-5 shadow">
+        <Link to="/admin-users" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Active Users
           </p>
@@ -198,7 +214,7 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm text-gray-500">
             Of {userMetrics.total} users
           </p>
-        </div>
+        </Link>
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
@@ -249,41 +265,41 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <a
-          href="/admin-suppliers"
+        <Link
+          to="/admin-suppliers"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Review Suppliers
           <p className="mt-1 text-sm font-normal text-gray-500">
             {supplierMetrics.supplierQueue} need follow-up
           </p>
-        </a>
+        </Link>
 
-        <a
-          href="/admin-waitlist"
+        <Link
+          to="/admin-waitlist"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           View Waitlist
           <p className="mt-1 text-sm font-normal text-gray-500">
             {totalWaitlistDemand} lead requests
           </p>
-        </a>
+        </Link>
 
-        <a
-          href="/admin-users"
+        <Link
+          to="/admin-users"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Manage Users
           <p className="mt-1 text-sm font-normal text-gray-500">
             {userMetrics.active} active users
           </p>
-        </a>
+        </Link>
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow">
         <h2 className="font-semibold text-gray-900">Marketplace Health</h2>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg border border-gray-100 p-4">
             <p className="text-sm text-gray-500">Supplier visibility</p>
             <p className="mt-1 font-semibold text-gray-900">
@@ -291,17 +307,21 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="rounded-lg border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">Most booked suburb</p>
+          <div
+            className={`rounded-lg border p-4 ${getUrgencyClass(
+              supplierMetrics.hiddenApproved
+            )}`}
+          >
+            <p className="text-sm text-gray-500">Hidden approved suppliers</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {formatLabel(marketplace?.topDemandSuburb)}
+              {supplierMetrics.hiddenApproved}
             </p>
           </div>
 
           <div className="rounded-lg border border-gray-100 p-4">
-            <p className="text-sm text-gray-500">Highest value owner</p>
+            <p className="text-sm text-gray-500">Most booked suburb</p>
             <p className="mt-1 font-semibold text-gray-900">
-              {getUserName(marketplace?.highestValueOwner)}
+              {formatLabel(marketplace?.topDemandSuburb)}
             </p>
           </div>
 
@@ -323,9 +343,10 @@ export default function AdminDashboard() {
               <p className="text-gray-500">No suburb demand yet.</p>
             ) : (
               topWaitlistSuburbs.slice(0, 5).map((item, index) => (
-                <div
+                <Link
+                  to="/admin-waitlist"
                   key={`${item.suburb}-${item.province ?? "unknown"}-${index}`}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
                 >
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
@@ -345,7 +366,7 @@ export default function AdminDashboard() {
                     </p>
                     <p className="text-xs text-gray-500">lead request</p>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
@@ -359,9 +380,10 @@ export default function AdminDashboard() {
               <p className="text-gray-500">No waitlist service demand yet.</p>
             ) : (
               topWaitlistServices.slice(0, 5).map(([service, count], index) => (
-                <div
+                <Link
+                  to="/admin-waitlist"
                   key={service}
-                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4"
+                  className="flex items-center justify-between rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
                 >
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
@@ -376,7 +398,7 @@ export default function AdminDashboard() {
                     <p className="text-2xl font-bold text-gray-900">{count}</p>
                     <p className="text-xs text-gray-500">requests</p>
                   </div>
-                </div>
+                </Link>
               ))
             )}
           </div>
@@ -386,30 +408,41 @@ export default function AdminDashboard() {
           <h2 className="font-semibold text-gray-900">Growth Opportunities</h2>
 
           <div className="mt-4 space-y-3">
-            <div className="rounded-lg border border-gray-100 p-4">
+            <Link
+              to="/admin-waitlist"
+              className={`block rounded-lg border p-4 hover:border-blue-200 hover:bg-gray-50 ${getUrgencyClass(
+                highestWaitlistDemand?._count.id ?? 0
+              )}`}
+            >
               <p className="text-sm text-gray-500">Hot area to review</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {highestWaitlistDemand
                   ? highestWaitlistDemand.suburb
                   : "No waitlist suburb yet"}
               </p>
-            </div>
+            </Link>
 
-            <div className="rounded-lg border border-gray-100 p-4">
+            <Link
+              to="/admin-users"
+              className="block rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
+            >
               <p className="text-sm text-gray-500">Booked service strength</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {formatLabel(marketplace?.mostBookedService)}
               </p>
-            </div>
+            </Link>
 
-            <div className="rounded-lg border border-gray-100 p-4">
+            <Link
+              to="/admin-waitlist"
+              className="block rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
+            >
               <p className="text-sm text-gray-500">Waitlist service signal</p>
               <p className="mt-1 font-semibold text-gray-900">
                 {topWaitlistService
                   ? formatLabel(topWaitlistService[0])
                   : "No service captured yet"}
               </p>
-            </div>
+            </Link>
           </div>
         </div>
       </div>

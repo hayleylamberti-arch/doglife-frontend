@@ -24,22 +24,51 @@ export default function LoginPage() {
   }, []);
 
   const getDashboardPath = (role?: string | null) => {
-  if (role === "ADMIN") return "/admin";
-  if (role === "SUPPLIER") return "/supplier/dashboard";
-  if (role === "OWNER") return "/owner/dashboard";
-  return "/";
-};
+    if (role === "ADMIN") return "/admin";
+    if (role === "SUPPLIER") return "/supplier/dashboard";
+    if (role === "OWNER") return "/owner/dashboard";
+    return "/";
+  };
+
+  const getLoginErrorMessage = (loginError: any) => {
+    const apiError =
+      loginError?.response?.data?.error ||
+      loginError?.response?.data?.message;
+
+    if (apiError === "Invalid email or password") {
+      return "Incorrect email or password.";
+    }
+
+    if (apiError) {
+      return apiError;
+    }
+
+    return "Unable to sign in. Please try again.";
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    if (!password) {
+      setError("Please enter your password.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const result = await login({ email, password });
+      const result = await login({ email: normalizedEmail, password });
 
       if (rememberMe) {
-        localStorage.setItem("doglife_remembered_email", email);
+        localStorage.setItem("doglife_remembered_email", normalizedEmail);
       } else {
         localStorage.removeItem("doglife_remembered_email");
       }
@@ -57,7 +86,7 @@ export default function LoginPage() {
 
       navigate(dashboardPath, { replace: true });
     } catch (loginError: any) {
-      setError(loginError?.response?.data?.message ?? "Unable to sign in.");
+      setError(getLoginErrorMessage(loginError));
     } finally {
       setIsSubmitting(false);
     }
