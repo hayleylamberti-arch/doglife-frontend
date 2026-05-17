@@ -14,13 +14,7 @@ function getPasswordChecks(password: string) {
   };
 }
 
-function PasswordCheckItem({
-  valid,
-  label,
-}: {
-  valid: boolean;
-  label: string;
-}) {
+function PasswordCheckItem({ valid, label }: { valid: boolean; label: string }) {
   return (
     <li className={valid ? "text-green-700" : "text-gray-500"}>
       {valid ? "✓" : "•"} {label}
@@ -41,6 +35,7 @@ export default function RegisterPage() {
     role: "OWNER" as RegisterRole,
     mobilePhone: "",
     acceptedTerms: false,
+    marketingOptIn: false,
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -54,10 +49,8 @@ export default function RegisterPage() {
   );
 
   const passwordIsStrong = Object.values(passwordChecks).every(Boolean);
-
   const passwordsMatch =
-    form.password.length > 0 &&
-    form.password === form.confirmPassword;
+    form.password.length > 0 && form.password === form.confirmPassword;
 
   const formIsValid =
     form.firstName.trim().length > 0 &&
@@ -69,44 +62,20 @@ export default function RegisterPage() {
     form.acceptedTerms;
 
   const getPasswordErrorMessage = () => {
-    if (!passwordChecks.minLength) {
-      return "Password must be at least 8 characters.";
-    }
-
-    if (!passwordChecks.uppercase) {
-      return "Password must include at least one uppercase letter.";
-    }
-
-    if (!passwordChecks.lowercase) {
-      return "Password must include at least one lowercase letter.";
-    }
-
-    if (!passwordChecks.number) {
-      return "Password must include at least one number.";
-    }
-
-    if (!passwordChecks.special) {
-      return "Password must include at least one special character.";
-    }
-
-    if (!passwordsMatch) {
-      return "Passwords do not match.";
-    }
-
-    if (!form.acceptedTerms) {
-      return "Please accept the Terms & Conditions and Privacy Policy.";
-    }
-
+    if (!passwordChecks.minLength) return "Password must be at least 8 characters.";
+    if (!passwordChecks.uppercase) return "Password must include at least one uppercase letter.";
+    if (!passwordChecks.lowercase) return "Password must include at least one lowercase letter.";
+    if (!passwordChecks.number) return "Password must include at least one number.";
+    if (!passwordChecks.special) return "Password must include at least one special character.";
+    if (!passwordsMatch) return "Passwords do not match.";
+    if (!form.acceptedTerms) return "Please accept the Terms & Conditions and Privacy Policy.";
     return "Please complete all required fields.";
   };
 
   const getRegisterErrorMessage = (registerError: any) => {
     const responseData = registerError?.response?.data;
 
-    if (
-      Array.isArray(responseData?.details) &&
-      responseData.details.length > 0
-    ) {
+    if (Array.isArray(responseData?.details) && responseData.details.length > 0) {
       return responseData.details.join(" ");
     }
 
@@ -118,9 +87,7 @@ export default function RegisterPage() {
     );
   };
 
-  const handleSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
@@ -139,16 +106,13 @@ export default function RegisterPage() {
         password: form.password,
         role: form.role,
         mobilePhone: form.mobilePhone.trim(),
+        marketingOptIn: form.marketingOptIn,
       });
 
       if (result.user.role === "SUPPLIER") {
-        navigate("/supplier/dashboard", {
-          replace: true,
-        });
+        navigate("/supplier/dashboard", { replace: true });
       } else {
-        navigate("/owner/dashboard", {
-          replace: true,
-        });
+        navigate("/owner/dashboard", { replace: true });
       }
     } catch (registerError: any) {
       setError(getRegisterErrorMessage(registerError));
@@ -159,30 +123,19 @@ export default function RegisterPage() {
 
   return (
     <section className="mx-auto w-full max-w-xl rounded-xl bg-white p-6 shadow-sm">
-      <h1 className="mb-1 text-2xl font-semibold">
-        Join DogLife
-      </h1>
+      <h1 className="mb-1 text-2xl font-semibold">Join DogLife</h1>
 
       <p className="mb-6 text-sm text-gray-600">
-        Create your account. Use a strong password to help
-        keep your account safe.
+        Create your account. Use a strong password to help keep your account safe.
       </p>
 
-      <form
-        className="grid grid-cols-1 gap-4 md:grid-cols-2"
-        onSubmit={handleSubmit}
-      >
+      <form className="grid grid-cols-1 gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
         <input
           className="rounded border px-3 py-2"
           placeholder="First name"
           required
           value={form.firstName}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              firstName: e.target.value,
-            }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, firstName: e.target.value }))}
         />
 
         <input
@@ -190,12 +143,7 @@ export default function RegisterPage() {
           placeholder="Last name"
           required
           value={form.lastName}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              lastName: e.target.value,
-            }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, lastName: e.target.value }))}
         />
 
         <input
@@ -204,12 +152,7 @@ export default function RegisterPage() {
           placeholder="Email"
           required
           value={form.email}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              email: e.target.value,
-            }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
         />
 
         <div className="md:col-span-2">
@@ -224,19 +167,12 @@ export default function RegisterPage() {
               placeholder="Password"
               required
               value={form.password}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  password: e.target.value,
-                }))
-              }
+              onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
             />
 
             <button
               type="button"
-              onClick={() =>
-                setShowPassword((current) => !current)
-              }
+              onClick={() => setShowPassword((current) => !current)}
               className="border-l px-3 text-sm font-medium text-gray-600"
             >
               {showPassword ? "Hide" : "Show"}
@@ -244,26 +180,11 @@ export default function RegisterPage() {
           </div>
 
           <ul className="mt-2 space-y-1 text-xs">
-            <PasswordCheckItem
-              valid={passwordChecks.minLength}
-              label="At least 8 characters"
-            />
-            <PasswordCheckItem
-              valid={passwordChecks.uppercase}
-              label="One uppercase letter"
-            />
-            <PasswordCheckItem
-              valid={passwordChecks.lowercase}
-              label="One lowercase letter"
-            />
-            <PasswordCheckItem
-              valid={passwordChecks.number}
-              label="One number"
-            />
-            <PasswordCheckItem
-              valid={passwordChecks.special}
-              label="One special character"
-            />
+            <PasswordCheckItem valid={passwordChecks.minLength} label="At least 8 characters" />
+            <PasswordCheckItem valid={passwordChecks.uppercase} label="One uppercase letter" />
+            <PasswordCheckItem valid={passwordChecks.lowercase} label="One lowercase letter" />
+            <PasswordCheckItem valid={passwordChecks.number} label="One number" />
+            <PasswordCheckItem valid={passwordChecks.special} label="One special character" />
           </ul>
         </div>
 
@@ -275,29 +196,18 @@ export default function RegisterPage() {
           <div className="flex rounded border">
             <input
               className="min-w-0 flex-1 rounded-l px-3 py-2 outline-none"
-              type={
-                showConfirmPassword
-                  ? "text"
-                  : "password"
-              }
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm password"
               required
               value={form.confirmPassword}
               onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  confirmPassword: e.target.value,
-                }))
+                setForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
               }
             />
 
             <button
               type="button"
-              onClick={() =>
-                setShowConfirmPassword(
-                  (current) => !current
-                )
-              }
+              onClick={() => setShowConfirmPassword((current) => !current)}
               className="border-l px-3 text-sm font-medium text-gray-600"
             >
               {showConfirmPassword ? "Hide" : "Show"}
@@ -305,16 +215,8 @@ export default function RegisterPage() {
           </div>
 
           {form.confirmPassword.length > 0 ? (
-            <p
-              className={`mt-2 text-xs ${
-                passwordsMatch
-                  ? "text-green-700"
-                  : "text-red-600"
-              }`}
-            >
-              {passwordsMatch
-                ? "✓ Passwords match"
-                : "Passwords do not match"}
+            <p className={`mt-2 text-xs ${passwordsMatch ? "text-green-700" : "text-red-600"}`}>
+              {passwordsMatch ? "✓ Passwords match" : "Passwords do not match"}
             </p>
           ) : null}
         </div>
@@ -324,27 +226,18 @@ export default function RegisterPage() {
           placeholder="Mobile phone e.g. 0821234567 or +27821234567"
           required
           value={form.mobilePhone}
-          onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              mobilePhone: e.target.value,
-            }))
-          }
+          onChange={(e) => setForm((prev) => ({ ...prev, mobilePhone: e.target.value }))}
         />
 
         <p className="text-xs text-gray-500 md:col-span-2">
-          Use a South African mobile number, for example
-          0821234567 or +27821234567.
+          Use a South African mobile number, for example 0821234567 or +27821234567.
         </p>
 
         <select
           className="rounded border px-3 py-2 md:col-span-2"
           value={form.role}
           onChange={(e) =>
-            setForm((prev) => ({
-              ...prev,
-              role: e.target.value as RegisterRole,
-            }))
+            setForm((prev) => ({ ...prev, role: e.target.value as RegisterRole }))
           }
         >
           <option value="OWNER">Owner</option>
@@ -356,32 +249,37 @@ export default function RegisterPage() {
             type="checkbox"
             checked={form.acceptedTerms}
             onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                acceptedTerms: e.target.checked,
-              }))
+              setForm((prev) => ({ ...prev, acceptedTerms: e.target.checked }))
             }
             className="mt-1 h-4 w-4 rounded border-gray-300"
           />
 
           <span>
             I agree to the{" "}
-            <Link
-              to="/legal/terms"
-              target="_blank"
-              className="text-orange-600 underline"
-            >
+            <Link to="/legal/terms" target="_blank" className="text-orange-600 underline">
               Terms & Conditions
             </Link>{" "}
             and{" "}
-            <Link
-              to="/legal/privacy"
-              target="_blank"
-              className="text-orange-600 underline"
-            >
+            <Link to="/legal/privacy" target="_blank" className="text-orange-600 underline">
               Privacy Policy
             </Link>
             .
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3 text-sm text-gray-700 md:col-span-2">
+          <input
+            type="checkbox"
+            checked={form.marketingOptIn}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, marketingOptIn: e.target.checked }))
+            }
+            className="mt-1 h-4 w-4 rounded border-gray-300"
+          />
+
+          <span>
+            I’d like to receive DogLife updates, launch news, service reminders and
+            special offers by email or WhatsApp.
           </span>
         </label>
 
@@ -393,23 +291,16 @@ export default function RegisterPage() {
 
         <button
           className="rounded bg-orange-500 px-4 py-2 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 md:col-span-2"
-          disabled={
-            isSubmitting || !formIsValid
-          }
+          disabled={isSubmitting || !formIsValid}
           type="submit"
         >
-          {isSubmitting
-            ? "Creating account..."
-            : "Create account"}
+          {isSubmitting ? "Creating account..." : "Create account"}
         </button>
       </form>
 
       <p className="mt-4 text-sm">
         Already have an account?{" "}
-        <Link
-          className="text-orange-600"
-          to="/auth/login"
-        >
+        <Link className="text-orange-600" to="/auth/login">
           Login
         </Link>
       </p>

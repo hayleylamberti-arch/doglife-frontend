@@ -10,6 +10,8 @@ type BeforeInstallPromptEvent = Event & {
   }>;
 };
 
+type BrowserType = "ios-safari" | "ios-chrome" | "ios-edge" | "ios-firefox" | "chrome" | "edge" | "firefox" | "other";
+
 function isStandaloneMode(): boolean {
   if (typeof window === "undefined") return false;
 
@@ -23,40 +25,43 @@ function isStandaloneMode(): boolean {
   );
 }
 
-function getBrowser(): "ios" | "edge" | "chrome" | "firefox" | "other" {
+function getBrowser(): BrowserType {
   if (typeof window === "undefined") return "other";
 
-  const ua = window.navigator.userAgent.toLowerCase();
+  const ua = window.navigator.userAgent;
+  const lowerUa = ua.toLowerCase();
 
-  if (/iphone|ipad|ipod/.test(ua)) return "ios";
-  if (ua.includes("edg/")) return "edge";
-  if (ua.includes("chrome") && !ua.includes("edg/")) return "chrome";
-  if (ua.includes("firefox")) return "firefox";
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  if (isIOS && /CriOS/i.test(ua)) return "ios-chrome";
+  if (isIOS && /EdgiOS/i.test(ua)) return "ios-edge";
+  if (isIOS && /FxiOS/i.test(ua)) return "ios-firefox";
+  if (isIOS && /Safari/i.test(ua)) return "ios-safari";
+
+  if (lowerUa.includes("edg/")) return "edge";
+  if (lowerUa.includes("chrome")) return "chrome";
+  if (lowerUa.includes("firefox")) return "firefox";
 
   return "other";
 }
 
 export default function InstallBanner() {
-  const [installEvent, setInstallEvent] =
-    useState<BeforeInstallPromptEvent | null>(null);
-
-  const [browser, setBrowser] =
-    useState<"ios" | "edge" | "chrome" | "firefox" | "other">("other");
-
-  const [dismissed, setDismissed] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [browser, setBrowser] = useState<BrowserType>("other");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    setBrowser(getBrowser());
-
     if (isStandaloneMode()) return;
 
-    const alreadyDismissed = localStorage.getItem(DISMISS_KEY);
-    if (alreadyDismissed === "true") {
-      setDismissed(true);
-      return;
-    }
+    const dismissed = localStorage.getItem(DISMISS_KEY) === "true";
+    if (dismissed) return;
+
+    setBrowser(getBrowser());
+    setVisible(true);
 
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
@@ -66,10 +71,7 @@ export default function InstallBanner() {
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
-      );
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
   }, []);
 
@@ -79,17 +81,35 @@ export default function InstallBanner() {
     await installEvent.prompt();
     await installEvent.userChoice;
 
-    setInstallEvent(null);
-    setDismissed(true);
     localStorage.setItem(DISMISS_KEY, "true");
+    setVisible(false);
+    setInstallEvent(null);
   };
 
   const handleDismiss = () => {
-    setDismissed(true);
     localStorage.setItem(DISMISS_KEY, "true");
+    setVisible(false);
   };
 
-  if (dismissed || isStandaloneMode()) return null;
+  if (!visible) return null;
+
+  const instruction = installEvent
+    ? "Install DogLife for quicker access from your device."
+    : browser === "ios-safari"
+    ? "On iPhone or iPad, tap the Share icon in Safari, then tap Add to Home Screen."
+    : browser === "ios-chrome"
+    ? "On iPhone or iPad in Chrome, tap the Share icon, then tap Add to Home Screen."
+    : browser === "ios-edge"
+    ? "On iPhone or iPad in Edge, tap the menu or Share icon, then choose Add to Home Screen if available."
+    : browser === "ios-firefox"
+    ? "On iPhone or iPad in Firefox, open the menu or Share options and look for Add to Home Screen."
+    : browser === "chrome"
+    ? "In Chrome, use the Install button or open the browser menu and choose Install app."
+    : browser === "edge"
+    ? "In Edge, use the Install button or open the browser menu and choose Apps, then Install this site."
+    : browser === "firefox"
+    ? "In Firefox, open the browser menu and look for Add to Home screen or Install."
+    : "Open your browser menu and look for Install app or Add to Home Screen.";
 
   return (
     <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
@@ -98,34 +118,11 @@ export default function InstallBanner() {
           <p className="text-sm font-semibold text-amber-900">
             Install DogLife on your Home Screen
           </p>
-
-          {installEvent ? (
-            <p className="mt-1 text-sm text-amber-800">
-              Install DogLife for quicker access from your device.
-            </p>
-          ) : browser === "ios" ? (
-            <p className="mt-1 text-sm text-amber-800">
-              On iPhone or iPad, tap the{" "}
-              <span className="font-semibold">Share</span> icon in Safari, then
-              tap <span className="font-semibold">Add to Home Screen</span>.
-            </p>
-          ) : browser === "firefox" ? (
-            <p className="mt-1 text-sm text-amber-800">
-              Open your browser menu and look for{" "}
-              <span className="font-semibold">Add to Home screen</span> or{" "}
-              <span className="font-semibold">Install</span>.
-            </p>
-          ) : (
-            <p className="mt-1 text-sm text-amber-800">
-              Open your browser menu and choose{" "}
-              <span className="font-semibold">Install app</span> or{" "}
-              <span className="font-semibold">Add to Home screen</span>.
-            </p>
-          )}
+          <p className="mt-1 text-sm text-amber-800">{instruction}</p>
         </div>
 
         <div className="flex items-center gap-2">
-          {installEvent && (
+          {installEvent ? (
             <button
               type="button"
               onClick={handleInstall}
@@ -133,7 +130,7 @@ export default function InstallBanner() {
             >
               Install
             </button>
-          )}
+          ) : null}
 
           <button
             type="button"

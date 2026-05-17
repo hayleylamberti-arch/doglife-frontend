@@ -54,6 +54,7 @@ export interface RegisterData {
   password: string;
   role: "OWNER" | "SUPPLIER";
   mobilePhone: string;
+  marketingOptIn?: boolean;
 }
 
 interface AuthResponse {
