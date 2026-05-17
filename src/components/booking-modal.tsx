@@ -126,6 +126,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
 
   const [notes, setNotes] = useState("");
+  const [accessInstructions, setAccessInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
@@ -618,6 +619,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         dogCount: selectedDogIds.length,
         kennelType: isBoarding ? kennelType : undefined,
         notes: buildNotes() || undefined,
+        accessInstructions: accessInstructions.trim() || undefined,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
         groomingSelections: isGrooming ? groomingSelections : undefined,
@@ -993,6 +995,13 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
                 ))}
               </select>
             ) : null}
+
+            <textarea
+  className="min-h-[90px] w-full rounded border px-3 py-2"
+  placeholder="Access instructions: gate code, estate access, directions & parking etc."
+  value={accessInstructions}
+  onChange={(e) => setAccessInstructions(e.target.value)}
+/>
 
             <textarea
               className="min-h-[100px] w-full rounded border px-3 py-2"
