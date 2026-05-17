@@ -625,6 +625,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         kennelType: isBoarding ? kennelType : undefined,
         notes: buildNotes() || undefined,
         accessInstructions: accessInstructions.trim() || undefined,
+        healthSafetyAccepted: acceptedHealthSafety,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
         groomingSelections: isGrooming ? groomingSelections : undefined,
@@ -1027,7 +1028,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
   <span>
     I confirm my pet information is accurate, vaccinations are up to date where required, and I agree to the{" "}
     <a
-      href="/legal/health-safety-policy"
+      href="/legal/health-safety"
       target="_blank"
       rel="noreferrer"
       className="text-blue-600 underline"
