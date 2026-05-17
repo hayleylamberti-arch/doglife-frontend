@@ -127,6 +127,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
 
   const [notes, setNotes] = useState("");
   const [accessInstructions, setAccessInstructions] = useState("");
+  const [acceptedHealthSafety, setAcceptedHealthSafety] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
@@ -580,6 +581,10 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
       }
     }
 
+    if (!acceptedHealthSafety) {
+  return alert("Please confirm the Health & Safety Policy before requesting a booking.");
+}
+
     setLoading(true);
 
     try {
@@ -1012,6 +1017,26 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
           </div>
 
           <div className="shrink-0 border-t bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+            <label className="mb-3 flex items-start gap-2 text-xs text-gray-600">
+  <input
+    type="checkbox"
+    checked={acceptedHealthSafety}
+    onChange={(e) => setAcceptedHealthSafety(e.target.checked)}
+    className="mt-1"
+  />
+  <span>
+    I confirm my pet information is accurate, vaccinations are up to date where required, and I agree to the{" "}
+    <a
+      href="/legal/health-safety-policy"
+      target="_blank"
+      rel="noreferrer"
+      className="text-blue-600 underline"
+    >
+      Health & Safety Policy
+    </a>
+    .
+  </span>
+</label>
             <button
               onClick={handleBooking}
               disabled={loading}
