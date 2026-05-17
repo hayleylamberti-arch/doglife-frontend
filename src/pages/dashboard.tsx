@@ -18,16 +18,6 @@ function formatTime(date: string) {
   });
 }
 
-function formatDateTime(date?: string | null) {
-  if (!date) return "—";
-  return new Date(date).toLocaleString("en-ZA", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function formatPrice(cents?: number | null) {
   if (!cents) return "—";
   return `R${(cents / 100).toFixed(0)}`;
@@ -140,13 +130,13 @@ function parseBookingNotes(notes?: string | null) {
     }
 
     if (
-  lower.startsWith("service location:") ||
-  lower.startsWith("training location:") ||
-  lower === "owner home" ||
-  lower === "supplier location"
-) {
-  return;
-}
+      lower.startsWith("service location:") ||
+      lower.startsWith("training location:") ||
+      lower === "owner home" ||
+      lower === "supplier location"
+    ) {
+      return;
+    }
 
     general.push(part);
   });
@@ -226,22 +216,45 @@ const SERVICE_SHORTCUTS = [
   { key: "MOBILE_VET", label: "Mobile Vet", icon: "🩺", href: "/search?service=MOBILE_VET" },
 ];
 
-function ServiceShortcuts() {
+function DogProfilePrompt() {
+  return (
+    <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
+      <h2 className="text-xl font-semibold text-orange-900">
+        Add your dog profile before booking 🐶
+      </h2>
+      <p className="mt-2 text-sm text-orange-800">
+        Suppliers need your dog’s size, health notes, behaviour notes and care
+        details before they can accept a booking.
+      </p>
+
+      <Link
+        to="/my-dogs"
+        className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
+      >
+        Add Dog Profile
+      </Link>
+    </div>
+  );
+}
+
+function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Book a service</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Preferred providers first, then providers in your suburb.
+            {hasDogs
+              ? "Preferred providers first, then providers in your suburb."
+              : "Add your dog profile first, then you can book trusted services."}
           </p>
         </div>
 
         <Link
-          to="/search"
+          to={hasDogs ? "/search" : "/my-dogs"}
           className="hidden text-sm font-medium text-blue-600 hover:text-blue-700 md:inline"
         >
-          View all
+          {hasDogs ? "View all" : "Add dog"}
         </Link>
       </div>
 
@@ -250,14 +263,16 @@ function ServiceShortcuts() {
           {SERVICE_SHORTCUTS.map((service) => (
             <Link
               key={service.key}
-              to={service.href}
-              className="group flex w-20 md:w-24 shrink-0 flex-col items-center text-center"
+              to={hasDogs ? service.href : "/my-dogs"}
+              className={`group flex w-20 shrink-0 flex-col items-center text-center md:w-24 ${
+                hasDogs ? "" : "opacity-70"
+              }`}
             >
-              <div className="flex h-12 w-12 md:h-20 md:w-20 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-2xl md:text-4xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:bg-white group-hover:shadow-md">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-2xl shadow-sm transition group-hover:-translate-y-0.5 group-hover:bg-white group-hover:shadow-md md:h-20 md:w-20 md:text-4xl">
                 <span aria-hidden="true">{service.icon}</span>
               </div>
 
-              <span className="mt-2 text-xs md:text-sm font-medium leading-tight text-gray-800">
+              <span className="mt-2 text-xs font-medium leading-tight text-gray-800 md:text-sm">
                 {service.label}
               </span>
             </Link>
@@ -291,6 +306,17 @@ export default function Dashboard() {
       return res.data.bookings;
     },
   });
+
+  const { data: dogsData, isLoading: isDogsLoading } = useQuery({
+    queryKey: ["owner-dogs"],
+    queryFn: async () => {
+      const res = await api.get("/api/owner/dogs");
+      return res.data;
+    },
+  });
+
+  const dogs = dogsData?.dogs || [];
+  const hasDogs = dogs.length > 0;
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -620,15 +646,17 @@ export default function Dashboard() {
           </div>
 
           <Link
-            to="/search"
+            to={hasDogs ? "/search" : "/my-dogs"}
             className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            Make a booking
+            {hasDogs ? "Make a booking" : "Add Dog Profile"}
           </Link>
         </div>
       </div>
 
-      <ServiceShortcuts />
+      {!isDogsLoading && !hasDogs ? <DogProfilePrompt /> : null}
+
+      <ServiceShortcuts hasDogs={hasDogs} />
 
       {notifications.length > 0 && (
         <div className="space-y-2">

@@ -16,6 +16,78 @@ const SERVICE_TYPES = [
 
 const DOG_SIZES = ["small", "medium", "large", "xl"];
 
+const MOBILE_VET_SERVICES = [
+  { key: "CHECK_UP", label: "Check-up / consultation" },
+  { key: "VACCINATION", label: "Vaccination / inoculation" },
+  { key: "DEWORMING", label: "Deworming" },
+  { key: "MICROCHIPPING", label: "Microchipping" },
+  { key: "MINOR_TREATMENT", label: "Minor treatment" },
+  { key: "FOLLOW_UP", label: "Follow-up visit" },
+  { key: "EUTHANASIA", label: "Euthanasia" },
+  { key: "OTHER", label: "Other mobile vet service" },
+];
+
+function emptyMobileVetPrices() {
+  return MOBILE_VET_SERVICES.reduce((acc, item) => {
+    acc[item.key] = "";
+    return acc;
+  }, {} as Record<string, string>);
+}
+
+function getMobileVetPricesFromService(service: any) {
+  const prices = emptyMobileVetPrices();
+  const savedServices = service?.pricingJson?.mobileVetServices || [];
+
+  savedServices.forEach((item: any) => {
+    if (item?.key && item?.priceCents != null) {
+      prices[item.key] = centsToRandInput(item.priceCents);
+    }
+  });
+
+  return prices;
+}
+
+function getLowestMobileVetPriceCents(prices: Record<string, string>) {
+  const validPrices = Object.values(prices)
+    .map((value) => Number(value))
+    .filter((value) => !Number.isNaN(value) && value > 0);
+
+  if (validPrices.length === 0) return null;
+
+  return Math.round(Math.min(...validPrices) * 100);
+}
+
+function buildMobileVetPricingJson(prices: Record<string, string>) {
+  const enabledServices = MOBILE_VET_SERVICES.map((item) => {
+    const rawPrice = prices[item.key];
+
+    if (rawPrice === "" || Number(rawPrice) < 0) return null;
+
+    return {
+      key: item.key,
+      label: item.label,
+      priceCents: Math.round(Number(rawPrice) * 100),
+    };
+  }).filter(Boolean);
+
+  return {
+    mobileVetServices: enabledServices,
+  };
+}
+
+function formatPetSittingLocation(value?: string | null) {
+  switch (value) {
+    case "OWNER_HOME":
+      return "Owner’s home only";
+    case "SITTER_HOME":
+      return "Sitter’s home only";
+    case "BOTH":
+      return "Owner’s home or sitter’s home";
+    default:
+      return "Location not set";
+  }
+}
+
 function formatService(service: string) {
   const map: Record<string, string> = {
     WALKING: "🐕 Dog Walking",
@@ -124,6 +196,8 @@ type EditServiceForm = {
   additionalDogPrice: string;
   daycareHalfDayPrice: string;
   daycareFullDayPrice: string;
+  petSittingLocation: string;
+  mobileVetPrices: Record<string, string>;
 };
 
 function emptyGroomingPrices() {
@@ -169,6 +243,9 @@ export default function SupplierServicesPage() {
   const [daycareExtraDogEnabled, setDaycareExtraDogEnabled] = useState(false);
   const [daycareExtraDogPrice, setDaycareExtraDogPrice] = useState("");
 
+  const [petSittingLocation, setPetSittingLocation] = useState("BOTH");
+  const [mobileVetPrices, setMobileVetPrices] = useState(emptyMobileVetPrices());
+
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
 
@@ -193,6 +270,8 @@ export default function SupplierServicesPage() {
     setDaycareFullDayPrice("");
     setDaycareExtraDogEnabled(false);
     setDaycareExtraDogPrice("");
+    setPetSittingLocation("BOTH");
+    setMobileVetPrices(emptyMobileVetPrices());
     setMaxDogsPerBooking("");
     setConcurrentCapacityDogs("");
     setWashBrush(emptyGroomingPrices());
@@ -233,6 +312,8 @@ export default function SupplierServicesPage() {
       daycareFullDayPrice: centsToRandInput(
         s.pricingJson?.fullDayPriceCents ?? s.baseRateCents
       ),
+      petSittingLocation: s.pricingJson?.petSittingLocation || "BOTH",
+      mobileVetPrices: getMobileVetPricesFromService(s),
     });
   };
 
@@ -292,6 +373,30 @@ export default function SupplierServicesPage() {
             Number(editForm.daycareFullDayPrice) * 100
           ),
         };
+      } else if (service.service === "PET_SITTING") {
+        if (!editForm.price || Number(editForm.price) <= 0) {
+          throw new Error("Enter a valid pet sitting price");
+        }
+
+        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+        payload.pricingJson = {
+          ...(service.pricingJson || {}),
+          petSittingLocation: editForm.petSittingLocation || "BOTH",
+        };
+      } else if (service.service === "MOBILE_VET") {
+        const lowestPrice = getLowestMobileVetPriceCents(editForm.mobileVetPrices);
+
+        if (!lowestPrice) {
+          throw new Error("Add at least one mobile vet service price");
+        }
+
+        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+          throw new Error("Enter a valid mobile vet duration");
+        }
+
+        payload.baseRateCents = lowestPrice;
+        payload.durationMinutes = Number(editForm.durationMinutes);
+        payload.pricingJson = buildMobileVetPricingJson(editForm.mobileVetPrices);
       } else {
         if (!editForm.price || Number(editForm.price) <= 0) {
           throw new Error("Enter a valid price");
@@ -300,7 +405,11 @@ export default function SupplierServicesPage() {
         payload.baseRateCents = Math.round(Number(editForm.price) * 100);
       }
 
-      if (!["BOARDING", "PET_SITTING", "DAYCARE"].includes(service.service)) {
+      if (
+        !["BOARDING", "PET_SITTING", "DAYCARE", "MOBILE_VET"].includes(
+          service.service
+        )
+      ) {
         if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
           throw new Error("Enter a valid duration");
         }
@@ -363,6 +472,8 @@ export default function SupplierServicesPage() {
       const showDogCapacity = shouldShowDogCapacity(serviceType);
       const isDaycare = serviceType === "DAYCARE";
       const isBoarding = serviceType === "BOARDING";
+      const isPetSitting = serviceType === "PET_SITTING";
+      const isMobileVet = serviceType === "MOBILE_VET";
 
       if (
         showDogCapacity &&
@@ -449,6 +560,33 @@ export default function SupplierServicesPage() {
         });
       }
 
+      if (isMobileVet) {
+        const lowestPrice = getLowestMobileVetPriceCents(mobileVetPrices);
+
+        if (!lowestPrice) {
+          throw new Error("Add at least one mobile vet service price");
+        }
+
+        if (!duration || Number(duration) <= 0) {
+          throw new Error("Enter a valid mobile vet visit length");
+        }
+
+        return api.post("/api/supplierServices", {
+          services: [
+            {
+              service: serviceType,
+              unit: defaults.unit,
+              baseRateCents: lowestPrice,
+              durationMinutes: Number(duration),
+              bufferMinutes: Number(bufferMinutes || "0"),
+              pricingJson: buildMobileVetPricingJson(mobileVetPrices),
+              maxDogsPerBooking: null,
+              concurrentCapacityDogs: null,
+            },
+          ],
+        });
+      }
+
       if (!price || Number(price) <= 0) {
         throw new Error("Enter a valid price");
       }
@@ -482,6 +620,9 @@ export default function SupplierServicesPage() {
               isBoarding && boardingExtraDogEnabled
                 ? Math.round(Number(boardingExtraDogPrice) * 100)
                 : null,
+            pricingJson: isPetSitting
+              ? { petSittingLocation }
+              : null,
             maxDogsPerBooking: showDogCapacity
               ? Number(maxDogsPerBooking || "0") || null
               : null,
@@ -499,14 +640,14 @@ export default function SupplierServicesPage() {
   });
 
   const deleteMutation = useMutation({
-  mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
-  },
-  onError: (error) => {
-    alert(getApiErrorMessage(error));
-  },
-});
+    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+    },
+    onError: (error) => {
+      alert(getApiErrorMessage(error));
+    },
+  });
 
   const groupedServices = services.reduce((acc: any, service: any) => {
     if (!acc[service.service]) acc[service.service] = [];
@@ -521,6 +662,8 @@ export default function SupplierServicesPage() {
   const showBufferInput = Boolean(serviceType);
   const isBoarding = serviceType === "BOARDING";
   const isDaycare = serviceType === "DAYCARE";
+  const isPetSitting = serviceType === "PET_SITTING";
+  const isMobileVet = serviceType === "MOBILE_VET";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
 
   const renderEditForm = (s: any) => {
@@ -543,10 +686,7 @@ export default function SupplierServicesPage() {
               placeholder="Grooming slot length (mins)"
               value={editForm.durationMinutes}
               onChange={(e) =>
-                setEditForm({
-                  ...editForm,
-                  durationMinutes: e.target.value,
-                })
+                setEditForm({ ...editForm, durationMinutes: e.target.value })
               }
               className="border rounded px-3 py-2 block w-full"
             />
@@ -560,10 +700,7 @@ export default function SupplierServicesPage() {
                 placeholder={`${size} price`}
                 value={(washBrush as any)[size]}
                 onChange={(e) =>
-                  setWashBrush((prev) => ({
-                    ...prev,
-                    [size]: e.target.value,
-                  }))
+                  setWashBrush((prev) => ({ ...prev, [size]: e.target.value }))
                 }
                 className="border rounded px-3 py-2 block w-full"
               />
@@ -578,10 +715,7 @@ export default function SupplierServicesPage() {
                 placeholder={`${size} price`}
                 value={(washCut as any)[size]}
                 onChange={(e) =>
-                  setWashCut((prev) => ({
-                    ...prev,
-                    [size]: e.target.value,
-                  }))
+                  setWashCut((prev) => ({ ...prev, [size]: e.target.value }))
                 }
                 className="border rounded px-3 py-2 block w-full"
               />
@@ -610,6 +744,43 @@ export default function SupplierServicesPage() {
               className="border rounded px-3 py-2 block w-full"
             />
           </>
+        ) : s.service === "MOBILE_VET" ? (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-3">
+            <input
+              type="number"
+              min="1"
+              placeholder="Visit length (mins)"
+              value={editForm.durationMinutes}
+              onChange={(e) =>
+                setEditForm({ ...editForm, durationMinutes: e.target.value })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="font-medium">Mobile vet services</p>
+
+            {MOBILE_VET_SERVICES.map((vetService) => (
+              <div key={`edit-${vetService.key}`} className="grid gap-2 md:grid-cols-2">
+                <label className="text-sm text-gray-700">{vetService.label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Price (R)"
+                  value={editForm.mobileVetPrices[vetService.key] || ""}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      mobileVetPrices: {
+                        ...editForm.mobileVetPrices,
+                        [vetService.key]: e.target.value,
+                      },
+                    })
+                  }
+                  className="border rounded px-3 py-2 block w-full"
+                />
+              </div>
+            ))}
+          </div>
         ) : (
           <input
             type="number"
@@ -620,6 +791,20 @@ export default function SupplierServicesPage() {
             className="border rounded px-3 py-2 block w-full"
           />
         )}
+
+        {s.service === "PET_SITTING" ? (
+          <select
+            value={editForm.petSittingLocation}
+            onChange={(e) =>
+              setEditForm({ ...editForm, petSittingLocation: e.target.value })
+            }
+            className="border rounded px-3 py-2 block w-full"
+          >
+            <option value="BOTH">Owner home or sitter home</option>
+            <option value="OWNER_HOME">Owner’s home only</option>
+            <option value="SITTER_HOME">Sitter’s home only</option>
+          </select>
+        ) : null}
 
         {showDuration ? (
           <input
@@ -850,6 +1035,8 @@ export default function SupplierServicesPage() {
             setDaycareFullDayPrice("");
             setDaycareExtraDogEnabled(false);
             setDaycareExtraDogPrice("");
+            setPetSittingLocation("BOTH");
+            setMobileVetPrices(emptyMobileVetPrices());
             setMaxDogsPerBooking("");
             setConcurrentCapacityDogs("");
             setWashBrush(emptyGroomingPrices());
@@ -865,7 +1052,10 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
-        {serviceType && serviceType !== "GROOMING" && serviceType !== "DAYCARE" ? (
+        {serviceType &&
+        serviceType !== "GROOMING" &&
+        serviceType !== "DAYCARE" &&
+        serviceType !== "MOBILE_VET" ? (
           <input
             type="number"
             min="0"
@@ -874,6 +1064,57 @@ export default function SupplierServicesPage() {
             onChange={(e) => setPrice(e.target.value)}
             className="border rounded px-3 py-2 block w-full"
           />
+        ) : null}
+
+        {isPetSitting ? (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <p className="font-medium">Pet sitting location</p>
+            <select
+              value={petSittingLocation}
+              onChange={(e) => setPetSittingLocation(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            >
+              <option value="BOTH">Owner home or sitter home</option>
+              <option value="OWNER_HOME">Owner’s home only</option>
+              <option value="SITTER_HOME">Sitter’s home only</option>
+            </select>
+          </div>
+        ) : null}
+
+        {isMobileVet ? (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <p className="font-medium">Mobile vet services</p>
+
+            <input
+              type="number"
+              min="1"
+              placeholder="Visit length (mins)"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            {MOBILE_VET_SERVICES.map((vetService) => (
+              <div key={vetService.key} className="grid gap-2 md:grid-cols-2">
+                <label className="text-sm text-gray-700">
+                  {vetService.label}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Price (R)"
+                  value={mobileVetPrices[vetService.key]}
+                  onChange={(e) =>
+                    setMobileVetPrices((prev) => ({
+                      ...prev,
+                      [vetService.key]: e.target.value,
+                    }))
+                  }
+                  className="border rounded px-3 py-2 block w-full"
+                />
+              </div>
+            ))}
+          </div>
         ) : null}
 
         {isDaycare ? (
@@ -968,7 +1209,7 @@ export default function SupplierServicesPage() {
           </div>
         ) : null}
 
-        {showDurationInput ? (
+        {showDurationInput && !isMobileVet ? (
           <input
             type="number"
             min="1"
@@ -1130,6 +1371,34 @@ export default function SupplierServicesPage() {
                                 s.baseRateCents
                             )}
                           </p>
+                        </>
+                      ) : type === "PET_SITTING" ? (
+                        <>
+                          <p>
+                            R{(s.baseRateCents / 100).toFixed(0)}{" "}
+                            {getServiceUnit(type, s)}
+                          </p>
+                          <p>
+                            Location:{" "}
+                            {formatPetSittingLocation(
+                              s.pricingJson?.petSittingLocation
+                            )}
+                          </p>
+                        </>
+                      ) : type === "MOBILE_VET" ? (
+                        <>
+                          {s.pricingJson?.mobileVetServices?.length ? (
+                            s.pricingJson.mobileVetServices.map((item: any) => (
+                              <p key={item.key}>
+                                {item.label}: {formatRandFromCents(item.priceCents)}
+                              </p>
+                            ))
+                          ) : (
+                            <p>
+                              From {formatRandFromCents(s.baseRateCents)}{" "}
+                              {getServiceUnit(type, s)}
+                            </p>
+                          )}
                         </>
                       ) : (
                         <p>
