@@ -30,6 +30,9 @@ export default function Footer() {
               <Link to="/legal/refunds" className="block hover:text-white">
                 Refund & Cancellation Policy
               </Link>
+              <Link to="/legal/health-safety" className="block hover:text-white">
+  Health & Safety Policy
+</Link>
             </div>
           </div>
 

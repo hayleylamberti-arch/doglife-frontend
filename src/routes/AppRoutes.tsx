@@ -23,6 +23,7 @@ import TermsAndConditions from "@/pages/legal/TermsAndConditions";
 import SupplierTerms from "@/pages/legal/SupplierTerms";
 import CookiePolicy from "@/pages/legal/CookiePolicy";
 import RefundPolicy from "@/pages/legal/RefundPolicy";
+import HealthSafetyPolicy from "@/pages/legal/HealthSafetyPolicy";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
@@ -62,6 +63,7 @@ export default function AppRoutes() {
         <Route path="legal/supplier-terms" element={<SupplierTerms />} />
         <Route path="legal/cookies" element={<CookiePolicy />} />
         <Route path="legal/refunds" element={<RefundPolicy />} />
+        <Route path="legal/health-safety" element={<HealthSafetyPolicy />} />
       </Route>
 
       <Route element={<RequireAuth />}>
