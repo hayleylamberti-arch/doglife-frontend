@@ -380,6 +380,14 @@ export default function SupplierDashboardPage() {
     },
   });
 
+  const { data: completionData } = useQuery({
+    queryKey: ["supplier-profile-completion"],
+    queryFn: async () => {
+      const res = await api.get("/api/supplier/profile-completion");
+      return res.data;
+    },
+  });
+
   const { data: notificationsData } = useQuery({
     queryKey: ["notifications"],
     queryFn: async () => {
@@ -402,6 +410,19 @@ export default function SupplierDashboardPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+
+  const submitForReviewMutation = useMutation({
+    mutationFn: async () => {
+      await api.post("/api/supplier/submit-for-review");
+    },
+    onSuccess: () => {
+      alert("Profile submitted for DogLife review.");
+      queryClient.invalidateQueries({ queryKey: ["supplier-profile-completion"] });
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.error || "Failed to submit profile for review");
     },
   });
 
@@ -575,9 +596,7 @@ export default function SupplierDashboardPage() {
       ""
     );
 
-    if (message === null) {
-      return;
-    }
+    if (message === null) return;
 
     declineMutation.mutate({
       bookingId: booking.id,
@@ -594,8 +613,7 @@ export default function SupplierDashboardPage() {
               Welcome to DogLife 🐾
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              Easily manage your bookings, keep your availability updated, and
-              stay on top of your day.
+              Complete your supplier setup so dog owners can find and book you.
             </p>
           </div>
 
@@ -613,6 +631,75 @@ export default function SupplierDashboardPage() {
             >
               Update Availability
             </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Complete your supplier setup
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-600">
+              Before your profile can appear in owner searches, complete these steps.
+            </p>
+
+            <div className="mt-4 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
+              <div>✅ Create your business profile</div>
+              <div>✅ Define your service suburbs</div>
+              <div>✅ Add services and pricing</div>
+              <div>✅ Set your availability hours</div>
+              <div>⬜ Submit for DogLife review</div>
+            </div>
+
+            <p className="mt-4 text-sm font-medium text-gray-800">
+              Profile completion: {completionData?.completionPercent ?? 0}%
+            </p>
+
+            {completionData?.missing?.length ? (
+              <p className="mt-2 text-sm text-red-600">
+                Missing: {completionData.missing.join(", ")}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+            <Link
+              to="/supplier/business-profile"
+              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              Complete Profile
+            </Link>
+
+            <Link
+              to="/supplier/services"
+              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              Add Services
+            </Link>
+
+            <Link
+              to="/supplier/availability"
+              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              Set Availability
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => submitForReviewMutation.mutate()}
+              disabled={
+                submitForReviewMutation.isPending ||
+                completionData?.completionPercent !== 100
+              }
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitForReviewMutation.isPending
+                ? "Submitting..."
+                : "Submit for review"}
+            </button>
           </div>
         </div>
       </div>
