@@ -266,7 +266,7 @@ export default function AdminDashboard() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Link
-          to="/admin-suppliers"
+          to="/admin/suppliers"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Review Suppliers
@@ -276,7 +276,7 @@ export default function AdminDashboard() {
         </Link>
 
         <Link
-          to="/admin-waitlist"
+          to="/admin/waitlist"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           View Waitlist
@@ -286,7 +286,7 @@ export default function AdminDashboard() {
         </Link>
 
         <Link
-          to="/admin-users"
+          to="/admin/users"
           className="rounded-xl border border-gray-200 bg-white p-5 font-semibold text-gray-900 shadow transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:text-blue-600"
         >
           Manage Users
