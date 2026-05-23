@@ -94,10 +94,10 @@ export default function AppRoutes() {
       <Route element={<RequireAuth allowRoles={["ADMIN"]} />}>
   <Route element={<AdminLayout />}>
     <Route path="admin" element={<AdminDashboard />} />
-    <Route path="admin-suppliers" element={<AdminSuppliersPage />} />
-    <Route path="admin-waitlist" element={<AdminWaitlistPage />} />
-    <Route path="admin-users" element={<AdminUsersPage />} />
-    <Route path="admin-suppliers/:id" element={<AdminSupplierDetailPage />} />
+    <Route path="admin/admin-suppliers" element={<AdminSuppliersPage />} />
+    <Route path="admin/admin-waitlist" element={<AdminWaitlistPage />} />
+    <Route path="admin/admin-users" element={<AdminUsersPage />} />
+    <Route path="admin/admin-suppliers/:id" element={<AdminSupplierDetailPage />} />
   </Route>
 </Route>
 
