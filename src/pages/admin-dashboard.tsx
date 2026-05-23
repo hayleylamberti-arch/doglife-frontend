@@ -167,7 +167,7 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Link to="/admin-waitlist" className="rounded-xl bg-white p-5 shadow">
+        <Link to="/admin/waitlist" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Waitlist Demand
           </p>
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm text-gray-500">Lead requests</p>
         </Link>
 
-        <Link to="/admin-suppliers" className="rounded-xl bg-white p-5 shadow">
+        <Link to="/admin/suppliers" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Visible Suppliers
           </p>
@@ -190,7 +190,7 @@ export default function AdminDashboard() {
         </Link>
 
         <Link
-          to="/admin-suppliers"
+          to="/admin/suppliers"
           className={`rounded-xl border p-5 shadow ${getUrgencyClass(
             supplierMetrics.supplierQueue
           )}`}
@@ -204,7 +204,7 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm text-gray-500">Need follow-up</p>
         </Link>
 
-        <Link to="/admin-users" className="rounded-xl bg-white p-5 shadow">
+        <Link to="/admin/users" className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Active Users
           </p>
@@ -344,7 +344,7 @@ export default function AdminDashboard() {
             ) : (
               topWaitlistSuburbs.slice(0, 5).map((item, index) => (
                 <Link
-                  to="/admin-waitlist"
+                  to="/admin/waitlist"
                   key={`${item.suburb}-${item.province ?? "unknown"}-${index}`}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
                 >
@@ -381,7 +381,7 @@ export default function AdminDashboard() {
             ) : (
               topWaitlistServices.slice(0, 5).map(([service, count], index) => (
                 <Link
-                  to="/admin-waitlist"
+                  to="/admin/waitlist"
                   key={service}
                   className="flex items-center justify-between rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
                 >
@@ -409,7 +409,7 @@ export default function AdminDashboard() {
 
           <div className="mt-4 space-y-3">
             <Link
-              to="/admin-waitlist"
+              to="/admin/waitlist"
               className={`block rounded-lg border p-4 hover:border-blue-200 hover:bg-gray-50 ${getUrgencyClass(
                 highestWaitlistDemand?._count.id ?? 0
               )}`}
@@ -423,7 +423,7 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
-              to="/admin-users"
+              to="/admin/users"
               className="block rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
             >
               <p className="text-sm text-gray-500">Booked service strength</p>
@@ -433,7 +433,7 @@ export default function AdminDashboard() {
             </Link>
 
             <Link
-              to="/admin-waitlist"
+              to="/admin/waitlist"
               className="block rounded-lg border border-gray-100 p-4 hover:border-blue-200 hover:bg-gray-50"
             >
               <p className="text-sm text-gray-500">Waitlist service signal</p>
