@@ -160,13 +160,9 @@ export default function AdminSuppliersPage() {
     return {
       total: suppliers.length,
       pending: suppliers.filter((supplier) =>
-        ["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(
-          supplier.approvalStatus
-        )
+        ["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(supplier.approvalStatus)
       ).length,
-      approved: suppliers.filter(
-        (supplier) => supplier.approvalStatus === "APPROVED"
-      ).length,
+      approved: suppliers.filter((supplier) => supplier.approvalStatus === "APPROVED").length,
       visible: suppliers.filter((supplier) => supplier.isPublicVisible).length,
     };
   }, [suppliers]);
@@ -197,9 +193,9 @@ export default function AdminSuppliersPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
     },
     onError: (err: any) => {
-  console.error("Reject supplier failed:", err?.response?.data || err);
-  alert(err?.response?.data?.error || "Failed to reject supplier");
-},
+      console.error("Reject supplier failed:", err?.response?.data || err);
+      alert(err?.response?.data?.error || "Failed to reject supplier");
+    },
     onSettled: () => setActiveSupplierId(null),
   });
 
@@ -224,12 +220,9 @@ export default function AdminSuppliersPage() {
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
             Supplier Operations
           </p>
-          <h1 className="mt-1 text-3xl font-bold text-gray-900">
-            Supplier Review
-          </h1>
+          <h1 className="mt-1 text-3xl font-bold text-gray-900">Supplier Review</h1>
           <p className="mt-2 text-gray-500">
-            Review suppliers, approve public listings, and manage marketplace
-            visibility.
+            Review suppliers, approve public listings, and manage marketplace visibility.
           </p>
         </div>
 
@@ -269,27 +262,21 @@ export default function AdminSuppliersPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Needs Review
           </p>
-          <p className="mt-2 text-4xl font-bold text-amber-600">
-            {metrics.pending}
-          </p>
+          <p className="mt-2 text-4xl font-bold text-amber-600">{metrics.pending}</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Approved
           </p>
-          <p className="mt-2 text-4xl font-bold text-emerald-600">
-            {metrics.approved}
-          </p>
+          <p className="mt-2 text-4xl font-bold text-emerald-600">{metrics.approved}</p>
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Publicly Visible
           </p>
-          <p className="mt-2 text-4xl font-bold text-blue-600">
-            {metrics.visible}
-          </p>
+          <p className="mt-2 text-4xl font-bold text-blue-600">{metrics.visible}</p>
         </div>
       </div>
 
@@ -298,8 +285,7 @@ export default function AdminSuppliersPage() {
           <h2 className="font-semibold text-gray-900">Action Required</h2>
           <p className="mt-1 text-sm text-gray-600">
             {metrics.pending} supplier{metrics.pending === 1 ? "" : "s"}{" "}
-            {metrics.pending === 1 ? "needs" : "need"} admin review or
-            follow-up.
+            {metrics.pending === 1 ? "needs" : "need"} admin review or follow-up.
           </p>
         </div>
       ) : null}
