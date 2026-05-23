@@ -206,6 +206,62 @@ export default function BusinessProfilePage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Business Profile</h1>
 
+      // keep all your existing imports, types, functions, state, queries and save logic exactly as-is
+
+// Add this inside the return, directly after:
+// <h1 className="text-3xl font-bold">Business Profile</h1>
+
+<div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl space-y-4">
+  <div>
+    <h2 className="text-xl font-semibold text-gray-900">
+      DogLife trust levels
+    </h2>
+    <p className="mt-1 text-sm text-gray-600">
+      Complete your basic setup first to qualify as an Approved Supplier. Higher trust levels can be added later.
+    </p>
+  </div>
+
+  <div className="grid gap-4 md:grid-cols-3">
+    <div className="bg-white border rounded-xl p-4">
+      <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
+        Approved Supplier
+      </span>
+      <h3 className="mt-3 font-semibold">Required for launch</h3>
+      <ul className="mt-2 text-sm text-gray-600 space-y-1">
+        <li>• Business profile</li>
+        <li>• Service suburbs</li>
+        <li>• Services and pricing</li>
+        <li>• Availability hours</li>
+      </ul>
+    </div>
+
+    <div className="bg-white border rounded-xl p-4">
+      <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+        Identity Verified
+      </span>
+      <h3 className="mt-3 font-semibold">Coming next</h3>
+      <ul className="mt-2 text-sm text-gray-600 space-y-1">
+        <li>• ID or passport check</li>
+        <li>• Contact verification</li>
+        <li>• Supplier owner details</li>
+      </ul>
+    </div>
+
+    <div className="bg-white border rounded-xl p-4">
+      <span className="inline-block rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700">
+        Fully Verified
+      </span>
+      <h3 className="mt-3 font-semibold">Future trust checks</h3>
+      <ul className="mt-2 text-sm text-gray-600 space-y-1">
+        <li>• Premises or equipment photos</li>
+        <li>• References</li>
+        <li>• Business documents</li>
+        <li>• Vehicle checks where relevant</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
       {/* =========================
          LOGO
       ========================= */}
