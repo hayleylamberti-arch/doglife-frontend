@@ -206,11 +206,6 @@ export default function BusinessProfilePage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Business Profile</h1>
 
-      // keep all your existing imports, types, functions, state, queries and save logic exactly as-is
-
-// Add this inside the return, directly after:
-// <h1 className="text-3xl font-bold">Business Profile</h1>
-
 <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl space-y-4">
   <div>
     <h2 className="text-xl font-semibold text-gray-900">
