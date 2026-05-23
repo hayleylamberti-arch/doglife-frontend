@@ -196,6 +196,10 @@ export default function AdminSuppliersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
     },
+    onError: (err: any) => {
+  console.error("Reject supplier failed:", err?.response?.data || err);
+  alert(err?.response?.data?.error || "Failed to reject supplier");
+},
     onSettled: () => setActiveSupplierId(null),
   });
 
