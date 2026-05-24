@@ -645,6 +645,7 @@ trackEvent("booking_request_submitted", {
     bookingResponse.data?.id ||
     null,
   supplierId,
+  supplierName: service?.supplier?.businessName || null,
   supplierServiceId: service.id,
   serviceType,
   dogCount: selectedDogIds.length,
