@@ -4,6 +4,7 @@ import { trackEvent } from "@/lib/analytics";
 
 interface Props {
   supplierId: string;
+  supplierName?: string | null;
   service: any;
   onClose: () => void;
 }
@@ -99,7 +100,12 @@ function buildDaycareTimes(
   };
 }
 
-export default function BookingModal({ supplierId, service, onClose }: Props) {
+export default function BookingModal({
+  supplierId,
+  supplierName,
+  service,
+  onClose,
+}: Props) {
   const serviceType = service?.service || "WALKING";
 
   const isBoarding = serviceType === "BOARDING";
@@ -645,7 +651,7 @@ trackEvent("booking_request_submitted", {
     bookingResponse.data?.id ||
     null,
   supplierId,
-  supplierName: service?.supplier?.businessName || null,
+  supplierName: supplierName || null,
   supplierServiceId: service.id,
   serviceType,
   dogCount: selectedDogIds.length,

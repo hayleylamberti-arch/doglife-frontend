@@ -430,10 +430,11 @@ export default function SupplierPublicProfile() {
 
       {modalOpen && selectedService && (
         <BookingModal
-          supplierId={supplier.id}
-          service={selectedService}
-          onClose={() => setModalOpen(false)}
-        />
+  supplierId={supplier.id}
+  supplierName={supplier.businessName}
+  service={selectedService}
+  onClose={() => setModalOpen(false)}
+/>
       )}
     </div>
   );
