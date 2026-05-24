@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 
 interface Props {
   supplierId: string;
@@ -582,7 +583,9 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
     }
 
     if (!acceptedHealthSafety) {
-  return alert("Please confirm the Health & Safety Policy before requesting a booking.");
+  return alert(
+    "Please confirm the Health & Safety Policy before requesting a booking."
+  );
 }
 
     setLoading(true);
@@ -614,7 +617,7 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
         );
       }
 
-      await api.post("/api/bookings", {
+      const bookingResponse = await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
         serviceType,
@@ -634,6 +637,20 @@ export default function BookingModal({ supplierId, service, onClose }: Props) {
           isDaycare && daycareSessionType === "HALF_DAY"
             ? halfDayPeriod
             : undefined,
+            });
+
+trackEvent("booking_request_submitted", {
+  bookingId:
+    bookingResponse.data?.booking?.id ||
+    bookingResponse.data?.id ||
+    null,
+  supplierId,
+  supplierServiceId: service.id,
+  serviceType,
+  dogCount: selectedDogIds.length,
+  startAt: startAt.toISOString(),
+  endAt: endAt.toISOString(),
+  estimatedPriceCents: displayPrice,
       });
 
       alert("✅ Booking request sent");
