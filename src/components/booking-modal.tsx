@@ -27,6 +27,12 @@ type GroomingSelection = {
   size: string;
 };
 
+type BookingSlotOption = {
+  id?: string;
+  startTime: string;
+  endTime?: string;
+};
+
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
 }
@@ -66,6 +72,22 @@ function toBoolean(value: unknown): boolean {
   if (typeof value === "string") return value.toLowerCase() === "true";
   if (typeof value === "number") return value === 1;
   return false;
+}
+
+function normalizeSlot(slot: any): BookingSlotOption | null {
+  if (typeof slot === "string") {
+    return { startTime: slot };
+  }
+
+  if (slot?.startTime) {
+    return {
+      id: slot.id,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    };
+  }
+
+  return null;
 }
 
 function buildDaycareTimes(
@@ -126,10 +148,11 @@ export default function BookingModal({
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
 
-  const [slots, setSlots] = useState<string[]>([]);
+  const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
   const [dogs, setDogs] = useState<Dog[]>([]);
+  const [dogsLoading, setDogsLoading] = useState(true);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
 
   const [notes, setNotes] = useState("");
@@ -418,18 +441,56 @@ export default function BookingModal({
   ]);
 
   useEffect(() => {
-    api.get("/api/owner/profile").then((res) => {
-      const address = res.data?.profile?.address || "";
-      setOwnerAddress(address);
+    let cancelled = false;
 
-      if (isPetTransport && address) {
-        setPickup(address);
+    async function loadOwnerData() {
+      try {
+        setDogsLoading(true);
+
+        const [profileRes, dogsRes] = await Promise.allSettled([
+          api.get("/api/owner/profile"),
+          api.get("/api/owner/dogs"),
+        ]);
+
+        if (cancelled) return;
+
+        if (profileRes.status === "fulfilled") {
+          const profile = profileRes.value.data?.profile;
+          const address = profile?.address || "";
+          setOwnerAddress(address);
+
+          if (isPetTransport && address) {
+            setPickup(address);
+          }
+
+          if (Array.isArray(profile?.dogs)) {
+            setDogs(profile.dogs);
+          }
+        }
+
+        if (dogsRes.status === "fulfilled") {
+          const dogsPayload =
+            dogsRes.value.data?.dogs ||
+            dogsRes.value.data?.data ||
+            dogsRes.value.data?.profile?.dogs ||
+            [];
+
+          if (Array.isArray(dogsPayload)) {
+            setDogs(dogsPayload);
+          }
+        }
+      } finally {
+        if (!cancelled) {
+          setDogsLoading(false);
+        }
       }
-    });
+    }
 
-    api.get("/api/owner/dogs").then((res) => {
-      setDogs(res.data?.dogs || []);
-    });
+    loadOwnerData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isPetTransport]);
 
   useEffect(() => {
@@ -442,7 +503,11 @@ export default function BookingModal({
     api
       .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
       .then((res) => {
-        setSlots(res.data?.slots || []);
+        const nextSlots = Array.isArray(res.data?.slots)
+          ? res.data.slots.map(normalizeSlot).filter(Boolean)
+          : [];
+
+        setSlots(nextSlots as BookingSlotOption[]);
         setSelectedSlot(null);
       })
       .catch(() => {
@@ -467,10 +532,7 @@ export default function BookingModal({
         );
 
         const size =
-          existing?.size ||
-          dog?.size ||
-          tiersForCategory[0]?.dogSize ||
-          "";
+          existing?.size || dog?.size || tiersForCategory[0]?.dogSize || "";
 
         next[dogId] = {
           category,
@@ -497,7 +559,6 @@ export default function BookingModal({
     }
 
     if (isTraining) parts.push("Training location: owner home.");
-
     if (isBoarding) parts.push(`Kennel type: ${kennelType}.`);
 
     if (isPetSitting) {
@@ -529,6 +590,7 @@ export default function BookingModal({
 
     if (isDaycare) {
       parts.push(`Daycare type: ${daycareSessionType}.`);
+
       if (daycareSessionType === "HALF_DAY") {
         parts.push(`Half day period: ${halfDayPeriod}.`);
       }
@@ -589,10 +651,10 @@ export default function BookingModal({
     }
 
     if (!acceptedHealthSafety) {
-  return alert(
-    "Please confirm the Health & Safety Policy before requesting a booking."
-  );
-}
+      return alert(
+        "Please confirm the Health & Safety Policy before requesting a booking."
+      );
+    }
 
     setLoading(true);
 
@@ -643,21 +705,19 @@ export default function BookingModal({
           isDaycare && daycareSessionType === "HALF_DAY"
             ? halfDayPeriod
             : undefined,
-            });
+      });
 
-trackEvent("booking_request_submitted", {
-  bookingId:
-    bookingResponse.data?.booking?.id ||
-    bookingResponse.data?.id ||
-    null,
-  supplierId,
-  supplierName: supplierName || null,
-  supplierServiceId: service.id,
-  serviceType,
-  dogCount: selectedDogIds.length,
-  startAt: startAt.toISOString(),
-  endAt: endAt.toISOString(),
-  estimatedPriceCents: displayPrice,
+      trackEvent("booking_request_submitted", {
+        bookingId:
+          bookingResponse.data?.booking?.id || bookingResponse.data?.id || null,
+        supplierId,
+        supplierName: supplierName || null,
+        supplierServiceId: service.id,
+        serviceType,
+        dogCount: selectedDogIds.length,
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+        estimatedPriceCents: displayPrice,
       });
 
       alert("✅ Booking request sent");
@@ -686,22 +746,31 @@ trackEvent("booking_request_submitted", {
           <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 pb-6">
             <div className="space-y-2">
               <p className="text-sm text-gray-600">Select dog(s)</p>
-              {dogs.map((dog) => (
-                <label
-                  key={dog.id}
-                  className="flex cursor-pointer items-center gap-3 rounded border px-3 py-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDogIds.includes(dog.id)}
-                    onChange={() => toggleDog(dog.id)}
-                  />
-                  <span>
-                    {dog.name}
-                    {dog.breed ? ` • ${dog.breed}` : ""}
-                  </span>
-                </label>
-              ))}
+
+              {dogsLoading ? (
+                <p className="text-sm text-gray-400">Loading dogs...</p>
+              ) : dogs.length === 0 ? (
+                <p className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                  No dogs found. Please add a dog to your owner profile first.
+                </p>
+              ) : (
+                dogs.map((dog) => (
+                  <label
+                    key={dog.id}
+                    className="flex cursor-pointer items-center gap-3 rounded border px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDogIds.includes(dog.id)}
+                      onChange={() => toggleDog(dog.id)}
+                    />
+                    <span>
+                      {dog.name}
+                      {dog.breed ? ` • ${dog.breed}` : ""}
+                    </span>
+                  </label>
+                ))
+              )}
 
               {maxDogsPerBooking > 0 ? (
                 <p className="text-xs text-gray-500">
@@ -792,7 +861,7 @@ trackEvent("booking_request_submitted", {
             ) : null}
 
             {isStayService ? (
-              <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
+              <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
                 <p className="text-sm font-semibold">
                   Select arrival and departure dates
                 </p>
@@ -834,7 +903,7 @@ trackEvent("booking_request_submitted", {
                 ) : null}
               </div>
             ) : (
-              <div className="rounded-lg border-2 border-blue-300 p-3 overflow-hidden">
+              <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
                 <p className="text-sm font-semibold">
                   {isDaycare ? "Select daycare date" : "Select date and time"}
                 </p>
@@ -866,16 +935,16 @@ trackEvent("booking_request_submitted", {
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => (
                   <button
-                    key={slot}
+                    key={slot.id || slot.startTime}
                     type="button"
-                    onClick={() => setSelectedSlot(slot)}
+                    onClick={() => setSelectedSlot(slot.startTime)}
                     className={`rounded border p-2 text-sm ${
-                      selectedSlot === slot
+                      selectedSlot === slot.startTime
                         ? "bg-blue-600 text-white"
                         : "bg-white"
                     }`}
                   >
-                    {new Date(slot).toLocaleTimeString("en-ZA", {
+                    {new Date(slot.startTime).toLocaleTimeString("en-ZA", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -1027,11 +1096,11 @@ trackEvent("booking_request_submitted", {
             ) : null}
 
             <textarea
-  className="min-h-[90px] w-full rounded border px-3 py-2"
-  placeholder="Access instructions: gate code, estate access, directions & parking etc."
-  value={accessInstructions}
-  onChange={(e) => setAccessInstructions(e.target.value)}
-/>
+              className="min-h-[90px] w-full rounded border px-3 py-2"
+              placeholder="Access instructions: gate code, estate access, directions & parking etc."
+              value={accessInstructions}
+              onChange={(e) => setAccessInstructions(e.target.value)}
+            />
 
             <textarea
               className="min-h-[100px] w-full rounded border px-3 py-2"
@@ -1043,28 +1112,30 @@ trackEvent("booking_request_submitted", {
 
           <div className="shrink-0 border-t bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
             <label className="mb-3 flex items-start gap-2 text-xs text-gray-600">
-  <input
-    type="checkbox"
-    checked={acceptedHealthSafety}
-    onChange={(e) => setAcceptedHealthSafety(e.target.checked)}
-    className="mt-1"
-  />
-  <span>
-    I confirm my pet information is accurate, vaccinations are up to date where required, and I agree to the{" "}
-    <a
-      href="/legal/health-safety"
-      target="_blank"
-      rel="noreferrer"
-      className="text-blue-600 underline"
-    >
-      Health & Safety Policy
-    </a>
-    .
-  </span>
-</label>
+              <input
+                type="checkbox"
+                checked={acceptedHealthSafety}
+                onChange={(e) => setAcceptedHealthSafety(e.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                I confirm my pet information is accurate, vaccinations are up to
+                date where required, and I agree to the{" "}
+                <a
+                  href="/legal/health-safety"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-blue-600 underline"
+                >
+                  Health & Safety Policy
+                </a>
+                .
+              </span>
+            </label>
+
             <button
               onClick={handleBooking}
-              disabled={loading}
+              disabled={loading || dogsLoading}
               className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
             >
               {loading ? "Sending Request..." : "Request Booking"}
