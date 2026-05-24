@@ -501,7 +501,9 @@ export default function BookingModal({
     }
 
     api
-      .get(`/api/suppliers/${supplierId}/availability?date=${date}`)
+      .get(
+  `/api/suppliers/${supplierId}/availability?date=${date}&supplierServiceId=${service.id}`
+)
       .then((res) => {
         const nextSlots = Array.isArray(res.data?.slots)
           ? res.data.slots.map(normalizeSlot).filter(Boolean)
