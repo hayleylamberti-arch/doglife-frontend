@@ -500,14 +500,16 @@ export default function BookingModal({
       return;
     }
 
-    api
-      .get(
-  `/api/suppliers/${supplierId}/availability?date=${date}&supplierServiceId=${service.id}`
+    api.get(
+  `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&limit=50`
 )
       .then((res) => {
-        const nextSlots = Array.isArray(res.data?.slots)
-          ? res.data.slots.map(normalizeSlot).filter(Boolean)
-          : [];
+        const groupedSlots = res.data?.slots || {};
+const nextSlots = [
+  ...(groupedSlots.morning || []),
+  ...(groupedSlots.afternoon || []),
+  ...(groupedSlots.evening || []),
+].map((slot) => normalizeSlot(slot?.start || slot?.startTime || slot)).filter(Boolean);
 
         setSlots(nextSlots as BookingSlotOption[]);
         setSelectedSlot(null);
@@ -516,7 +518,7 @@ export default function BookingModal({
         setSlots([]);
         setSelectedSlot(null);
       });
-  }, [date, supplierId, usesTimeSlots]);
+  }, [date, supplierId, service.id, usesTimeSlots]);
 
   useEffect(() => {
     if (!isGrooming || groomingCategories.length === 0) return;
