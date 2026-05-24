@@ -1,8 +1,9 @@
 import { useParams, useLocation, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import BookingModal from "@/components/booking-modal";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -82,6 +83,7 @@ export default function SupplierPublicProfile() {
     Boolean(locationState.isPreferred)
   );
   const [savingPreferred, setSavingPreferred] = useState(false);
+  const trackedProfileView = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["publicSupplier", id],
@@ -95,6 +97,29 @@ export default function SupplierPublicProfile() {
   useEffect(() => {
     setIsPreferred(Boolean(locationState.isPreferred));
   }, [locationState.isPreferred, id]);
+
+  useEffect(() => {
+  if (!data || trackedProfileView.current) return;
+
+  trackedProfileView.current = true;
+
+  trackEvent("supplier_profile_viewed", {
+    supplierId: data.id,
+    supplierName: data.businessName,
+    suburb: data.suburb,
+    approvalStatus: data.approvalStatus,
+  });
+}, [data]);
+
+  if (isLoading) {
+    return <div className="p-6">Loading supplier...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-6 text-red-500">Supplier not found</div>;
+  }
+
+  const supplier = data;
 
   async function togglePreferredSupplier() {
     if (!id) return;
@@ -116,16 +141,6 @@ export default function SupplierPublicProfile() {
       setSavingPreferred(false);
     }
   }
-
-  if (isLoading) {
-    return <div className="p-6">Loading supplier...</div>;
-  }
-
-  if (!data) {
-    return <div className="p-6 text-red-500">Supplier not found</div>;
-  }
-
-  const supplier = data;
 
   const isApprovedSupplier = supplier.approvalStatus === "APPROVED";
   const isIdentityVerified = Boolean(supplier.identityVerified);
@@ -390,6 +405,14 @@ export default function SupplierPublicProfile() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      trackEvent("booking_started", {
+                        supplierId: supplier.id,
+                        supplierName: supplier.businessName,
+                        serviceId: service.id,
+                        serviceType: service.service,
+                        suburb: supplier.suburb,
+                      });
+
                       setSelectedService(service);
                       setModalOpen(true);
                     }}
