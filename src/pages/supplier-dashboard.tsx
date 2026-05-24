@@ -16,6 +16,20 @@ type BookingDog = {
     id: string;
     name: string;
     breed?: string | null;
+    size?: string | null;
+    sex?: string | null;
+    isNeutered?: boolean | null;
+    behavioralNotes?: string | null;
+    goodWithDogs?: boolean | null;
+    goodWithChildren?: boolean | null;
+    medicalNotes?: string | null;
+    isVaccinated?: boolean | null;
+    vaccinationExpiryDate?: string | null;
+    kennelCoughAt?: string | null;
+    dewormedAt?: string | null;
+    tickFleaTreatedAt?: string | null;
+    vetName?: string | null;
+    vetPhone?: string | null;
   };
 };
 
@@ -64,6 +78,21 @@ function formatDateTime(value?: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("en-ZA", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function yesNo(value?: boolean | null) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "—";
 }
 
 function formatMoney(cents?: number | null) {
@@ -150,6 +179,54 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
   );
 }
 
+function DogDetails({ booking }: { booking: SupplierBooking }) {
+  const dogs = booking.dogs?.map((item) => item.dog).filter(Boolean) || [];
+
+  if (!dogs.length) return null;
+
+  return (
+    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+      <div className="font-semibold">Dog care details</div>
+
+      {dogs.map((dog) => (
+        <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
+          <div className="font-medium">{dog!.name}</div>
+
+          <div className="mt-2 grid gap-1 sm:grid-cols-2">
+            <div>Breed: {dog!.breed || "—"}</div>
+            <div>Size: {dog!.size || "—"}</div>
+            <div>Sex: {dog!.sex || "—"}</div>
+            <div>Neutered: {yesNo(dog!.isNeutered)}</div>
+            <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
+            <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
+            <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
+            <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
+            <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
+            <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
+            <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
+            <div>Vet: {dog!.vetName || "—"}</div>
+            <div>Vet phone: {dog!.vetPhone || "—"}</div>
+          </div>
+
+          {dog!.behavioralNotes ? (
+            <div className="mt-2">
+              <span className="font-medium">Behaviour notes:</span>{" "}
+              {dog!.behavioralNotes}
+            </div>
+          ) : null}
+
+          {dog!.medicalNotes ? (
+            <div className="mt-2">
+              <span className="font-medium">Medical notes:</span>{" "}
+              {dog!.medicalNotes}
+            </div>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAccept,
@@ -203,6 +280,8 @@ function BookingCard({
       <div className="text-sm text-gray-700">
         <span className="font-medium">Dogs:</span> {formatDogNames(booking)}
       </div>
+
+      <DogDetails booking={booking} />
 
       <LocationSummary booking={booking} />
 
