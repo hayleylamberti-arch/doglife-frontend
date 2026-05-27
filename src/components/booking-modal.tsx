@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 
@@ -47,6 +48,10 @@ function formatLabel(value?: string | null) {
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getHttpStatus(error: unknown) {
+  return (error as any)?.response?.status || null;
 }
 
 function getStayDays(arrivalDate: string, departureDate: string) {
@@ -153,6 +158,7 @@ export default function BookingModal({
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [dogsLoading, setDogsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
   const [selectedDogIds, setSelectedDogIds] = useState<string[]>([]);
 
   const [notes, setNotes] = useState("");
@@ -444,46 +450,55 @@ export default function BookingModal({
     let cancelled = false;
 
     async function loadOwnerData() {
-      try {
-        setDogsLoading(true);
+      setDogsLoading(true);
+      setAuthRequired(false);
 
-        const [profileRes, dogsRes] = await Promise.allSettled([
-          api.get("/api/owner/profile"),
-          api.get("/api/owner/dogs"),
-        ]);
+      const [profileRes, dogsRes] = await Promise.allSettled([
+        api.get("/api/owner/profile"),
+        api.get("/api/owner/dogs"),
+      ]);
 
-        if (cancelled) return;
+      if (cancelled) return;
 
-        if (profileRes.status === "fulfilled") {
-          const profile = profileRes.value.data?.profile;
-          const address = profile?.address || "";
-          setOwnerAddress(address);
+      const profileStatus =
+        profileRes.status === "rejected" ? getHttpStatus(profileRes.reason) : null;
+      const dogsStatus =
+        dogsRes.status === "rejected" ? getHttpStatus(dogsRes.reason) : null;
 
-          if (isPetTransport && address) {
-            setPickup(address);
-          }
+      if (profileStatus === 401 || dogsStatus === 401) {
+        setAuthRequired(true);
+        setDogs([]);
+        setDogsLoading(false);
+        return;
+      }
 
-          if (Array.isArray(profile?.dogs)) {
-            setDogs(profile.dogs);
-          }
+      if (profileRes.status === "fulfilled") {
+        const profile = profileRes.value.data?.profile;
+        const address = profile?.address || "";
+        setOwnerAddress(address);
+
+        if (isPetTransport && address) {
+          setPickup(address);
         }
 
-        if (dogsRes.status === "fulfilled") {
-          const dogsPayload =
-            dogsRes.value.data?.dogs ||
-            dogsRes.value.data?.data ||
-            dogsRes.value.data?.profile?.dogs ||
-            [];
-
-          if (Array.isArray(dogsPayload)) {
-            setDogs(dogsPayload);
-          }
-        }
-      } finally {
-        if (!cancelled) {
-          setDogsLoading(false);
+        if (Array.isArray(profile?.dogs)) {
+          setDogs(profile.dogs);
         }
       }
+
+      if (dogsRes.status === "fulfilled") {
+        const dogsPayload =
+          dogsRes.value.data?.dogs ||
+          dogsRes.value.data?.data ||
+          dogsRes.value.data?.profile?.dogs ||
+          [];
+
+        if (Array.isArray(dogsPayload)) {
+          setDogs(dogsPayload);
+        }
+      }
+
+      setDogsLoading(false);
     }
 
     loadOwnerData();
@@ -500,16 +515,19 @@ export default function BookingModal({
       return;
     }
 
-    api.get(
-  `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&limit=50`
-)
+    api
+      .get(
+        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&limit=50`
+      )
       .then((res) => {
         const groupedSlots = res.data?.slots || {};
-const nextSlots = [
-  ...(groupedSlots.morning || []),
-  ...(groupedSlots.afternoon || []),
-  ...(groupedSlots.evening || []),
-].map((slot) => normalizeSlot(slot?.start || slot?.startTime || slot)).filter(Boolean);
+        const nextSlots = [
+          ...(groupedSlots.morning || []),
+          ...(groupedSlots.afternoon || []),
+          ...(groupedSlots.evening || []),
+        ]
+          .map((slot) => normalizeSlot(slot?.start || slot?.startTime || slot))
+          .filter(Boolean);
 
         setSlots(nextSlots as BookingSlotOption[]);
         setSelectedSlot(null);
@@ -606,6 +624,7 @@ const nextSlots = [
   }
 
   async function handleBooking() {
+    if (authRequired) return alert("Please log in as an owner to book.");
     if (selectedDogIds.length === 0) return alert("Select at least one dog");
 
     if (maxDogsPerBooking > 0 && selectedDogIds.length > maxDogsPerBooking) {
@@ -727,7 +746,12 @@ const nextSlots = [
       alert("✅ Booking request sent");
       onClose();
     } catch (e: any) {
-      alert(e?.response?.data?.error || e?.message || "Error");
+      if (e?.response?.status === 401) {
+        setAuthRequired(true);
+        alert("Please log in as an owner to book.");
+      } else {
+        alert(e?.response?.data?.error || e?.message || "Error");
+      }
     } finally {
       setLoading(false);
     }
@@ -751,7 +775,14 @@ const nextSlots = [
             <div className="space-y-2">
               <p className="text-sm text-gray-600">Select dog(s)</p>
 
-              {dogsLoading ? (
+              {authRequired ? (
+                <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                  <p className="font-medium">Please log in to book this service.</p>
+                  <Link to="/login" className="mt-2 inline-block underline">
+                    Log in as an owner
+                  </Link>
+                </div>
+              ) : dogsLoading ? (
                 <p className="text-sm text-gray-400">Loading dogs...</p>
               ) : dogs.length === 0 ? (
                 <p className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
@@ -790,6 +821,7 @@ const nextSlots = [
                   className="w-full rounded border px-3 py-2"
                   value={kennelType}
                   onChange={(e) => setKennelType(e.target.value as KennelType)}
+                  disabled={authRequired}
                 >
                   <option value="SOCIAL">Social kennel</option>
                   <option value="PRIVATE">Individual kennel</option>
@@ -805,7 +837,8 @@ const nextSlots = [
                   <button
                     type="button"
                     onClick={() => setDaycareSessionType("HALF_DAY")}
-                    className={`rounded border px-3 py-2 text-sm ${
+                    disabled={authRequired}
+                    className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                       daycareSessionType === "HALF_DAY"
                         ? "border-blue-600 bg-blue-600 text-white"
                         : "bg-white"
@@ -817,7 +850,8 @@ const nextSlots = [
                   <button
                     type="button"
                     onClick={() => setDaycareSessionType("FULL_DAY")}
-                    className={`rounded border px-3 py-2 text-sm ${
+                    disabled={authRequired}
+                    className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                       daycareSessionType === "FULL_DAY"
                         ? "border-blue-600 bg-blue-600 text-white"
                         : "bg-white"
@@ -832,7 +866,8 @@ const nextSlots = [
                     <button
                       type="button"
                       onClick={() => setHalfDayPeriod("MORNING")}
-                      className={`rounded border px-3 py-2 text-sm ${
+                      disabled={authRequired}
+                      className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                         halfDayPeriod === "MORNING"
                           ? "border-blue-600 bg-blue-600 text-white"
                           : "bg-white"
@@ -844,7 +879,8 @@ const nextSlots = [
                     <button
                       type="button"
                       onClick={() => setHalfDayPeriod("AFTERNOON")}
-                      className={`rounded border px-3 py-2 text-sm ${
+                      disabled={authRequired}
+                      className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                         halfDayPeriod === "AFTERNOON"
                           ? "border-blue-600 bg-blue-600 text-white"
                           : "bg-white"
@@ -876,6 +912,7 @@ const nextSlots = [
                     className={dateInputClass}
                     value={arrivalDate}
                     onChange={(e) => setArrivalDate(e.target.value)}
+                    disabled={authRequired}
                   />
 
                   <input
@@ -883,6 +920,7 @@ const nextSlots = [
                     className={dateInputClass}
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
+                    disabled={authRequired}
                   />
                 </div>
 
@@ -894,6 +932,7 @@ const nextSlots = [
                     <select
                       className="w-full rounded border px-3 py-2"
                       value={petSittingLocation}
+                      disabled={authRequired}
                       onChange={(e) =>
                         setPetSittingLocation(
                           e.target.value as PetSittingLocation
@@ -921,6 +960,7 @@ const nextSlots = [
                   type="date"
                   className={dateInputClass}
                   value={date}
+                  disabled={authRequired}
                   onChange={(e) => {
                     setDate(e.target.value);
                     setSelectedSlot(null);
@@ -941,8 +981,9 @@ const nextSlots = [
                   <button
                     key={slot.id || slot.startTime}
                     type="button"
+                    disabled={authRequired}
                     onClick={() => setSelectedSlot(slot.startTime)}
-                    className={`rounded border p-2 text-sm ${
+                    className={`rounded border p-2 text-sm disabled:opacity-50 ${
                       selectedSlot === slot.startTime
                         ? "bg-blue-600 text-white"
                         : "bg-white"
@@ -981,6 +1022,7 @@ const nextSlots = [
                       <select
                         className="w-full rounded border px-3 py-2"
                         value={selection.category}
+                        disabled={authRequired}
                         onChange={(e) =>
                           setGroomingSelections((prev) => ({
                             ...prev,
@@ -1004,6 +1046,7 @@ const nextSlots = [
                       <select
                         className="w-full rounded border px-3 py-2"
                         value={selection.size}
+                        disabled={authRequired}
                         onChange={(e) =>
                           setGroomingSelections((prev) => ({
                             ...prev,
@@ -1030,6 +1073,7 @@ const nextSlots = [
                   <input
                     type="checkbox"
                     checked={isMobileGrooming}
+                    disabled={authRequired}
                     onChange={(e) => setIsMobileGrooming(e.target.checked)}
                   />
                   <span>Mobile grooming at owner home</span>
@@ -1042,6 +1086,7 @@ const nextSlots = [
                 <select
                   className="w-full rounded border px-3 py-2"
                   value={journeyType}
+                  disabled={authRequired}
                   onChange={(e) =>
                     setJourneyType(e.target.value as PetTransportJourneyType)
                   }
@@ -1055,6 +1100,7 @@ const nextSlots = [
                     <button
                       type="button"
                       className="rounded border px-3 py-2 text-sm"
+                      disabled={authRequired}
                       onClick={() => setPickup(ownerAddress)}
                     >
                       Use home as pickup
@@ -1062,6 +1108,7 @@ const nextSlots = [
                     <button
                       type="button"
                       className="rounded border px-3 py-2 text-sm"
+                      disabled={authRequired}
                       onClick={() => setDropoff(ownerAddress)}
                     >
                       Use home as drop-off
@@ -1073,6 +1120,7 @@ const nextSlots = [
                   placeholder="Pickup location"
                   className="w-full rounded border px-3 py-2"
                   value={pickup}
+                  disabled={authRequired}
                   onChange={(e) => setPickup(e.target.value)}
                 />
 
@@ -1080,6 +1128,7 @@ const nextSlots = [
                   placeholder="Drop-off location"
                   className="w-full rounded border px-3 py-2"
                   value={dropoff}
+                  disabled={authRequired}
                   onChange={(e) => setDropoff(e.target.value)}
                 />
               </div>
@@ -1089,6 +1138,7 @@ const nextSlots = [
               <select
                 className="w-full rounded border px-3 py-2"
                 value={mobileVetService}
+                disabled={authRequired}
                 onChange={(e) => setMobileVetService(e.target.value)}
               >
                 {mobileOptions.map((option) => (
@@ -1103,6 +1153,7 @@ const nextSlots = [
               className="min-h-[90px] w-full rounded border px-3 py-2"
               placeholder="Access instructions: gate code, estate access, directions & parking etc."
               value={accessInstructions}
+              disabled={authRequired}
               onChange={(e) => setAccessInstructions(e.target.value)}
             />
 
@@ -1110,6 +1161,7 @@ const nextSlots = [
               className="min-h-[100px] w-full rounded border px-3 py-2"
               placeholder="Anything the supplier should know"
               value={notes}
+              disabled={authRequired}
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
@@ -1119,6 +1171,7 @@ const nextSlots = [
               <input
                 type="checkbox"
                 checked={acceptedHealthSafety}
+                disabled={authRequired}
                 onChange={(e) => setAcceptedHealthSafety(e.target.checked)}
                 className="mt-1"
               />
@@ -1139,10 +1192,14 @@ const nextSlots = [
 
             <button
               onClick={handleBooking}
-              disabled={loading || dogsLoading}
+              disabled={loading || dogsLoading || authRequired}
               className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
             >
-              {loading ? "Sending Request..." : "Request Booking"}
+              {authRequired
+                ? "Log in to book"
+                : loading
+                ? "Sending Request..."
+                : "Request Booking"}
             </button>
 
             <button onClick={onClose} className="mt-3 w-full py-2 text-gray-500">
