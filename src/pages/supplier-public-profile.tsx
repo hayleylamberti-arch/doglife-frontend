@@ -232,7 +232,17 @@ export default function SupplierPublicProfile() {
           </div>
         </div>
 
-        <Button size="lg">Book Now</Button>
+        <Button
+  size="lg"
+  onClick={() => {
+    const firstService = supplier.services?.[0];
+    if (!firstService) return alert("This supplier has no services available to book.");
+    setSelectedService(firstService);
+    setModalOpen(true);
+  }}
+>
+  Book Now
+</Button>
       </div>
 
       {supplier.galleryUrls?.length > 0 && (
