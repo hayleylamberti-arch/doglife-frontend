@@ -3,7 +3,7 @@ import { api } from "@/lib/api";
 const PUSH_DEBUG_VERSION = "push-debug-2026-05-30-v3";
 
 const VAPID_PUBLIC_KEY =
-  "BMZU08aWaHHWw1X7rXkevWbsJ2DMKSFjArrehhVzm20ZnLkklenNKa71yy_BIct5gFzXGa-kvCSi_wD5g4DY6mE".trim();
+  "BMV129g1mXV14P6T2WDD181bmWn1HYcdOU1JtWXE45zvobR63WtDoA_JQyGbsLPpDiPnbmXeTBhdm0020k7_AzY";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
