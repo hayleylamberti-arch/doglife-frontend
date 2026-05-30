@@ -101,12 +101,16 @@ export default function NotificationsPage() {
           >
             <p className="font-semibold text-gray-900">{n.title}</p>
             <p className="mt-1 text-sm text-gray-600">
-              {n.booking
-                ? `${n.booking.serviceLabel} with ${
-                    n.booking.dogNames || "your dog"
-                  } on ${formatDate(n.booking.startAt)}`
-                : n.message}
-            </p>
+  {n.booking
+    ? `${n.booking.serviceLabel} with ${
+        n.booking.dogNames || "your dog"
+      } on ${formatDate(n.booking.startAt)}`
+    : n.message}
+</p>
+
+{n.message ? (
+  <p className="mt-1 text-sm text-gray-500">{n.message}</p>
+) : null}
             <p className="mt-2 text-xs text-gray-400">
               {formatDate(n.createdAt)}
             </p>
