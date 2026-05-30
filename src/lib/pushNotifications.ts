@@ -29,6 +29,9 @@ export async function registerPushNotifications() {
 
   const existingSubscription = await registration.pushManager.getSubscription();
 
+  console.log("VAPID key:", VAPID_PUBLIC_KEY);
+console.log("VAPID key length:", VAPID_PUBLIC_KEY?.length);
+
   const subscription =
     existingSubscription ||
     (await registration.pushManager.subscribe({
