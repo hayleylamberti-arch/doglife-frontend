@@ -1,5 +1,7 @@
 import { api } from "@/lib/api";
 
+const PUSH_DEBUG_VERSION = "push-debug-2026-05-30-v2";
+
 const VAPID_PUBLIC_KEY =
   "BMZU08aWaHHWw1X7rXkevWbsJ2DMKSFjArrehhVzm20ZnLkklenNKa71yy_BIct5gFzXGa-kvCSi_wD5g4DY6mE";
 
@@ -12,18 +14,21 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export async function registerPushNotifications() {
+  console.log("Push debug version:", PUSH_DEBUG_VERSION);
+  console.log("VAPID key length:", VAPID_PUBLIC_KEY.length);
+
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    throw new Error("Push notifications are not supported on this device.");
+    throw new Error(`Push notifications are not supported on this device. ${PUSH_DEBUG_VERSION}`);
   }
 
   if (!VAPID_PUBLIC_KEY) {
-    throw new Error("Missing VITE_VAPID_PUBLIC_KEY.");
+    throw new Error(`Missing VAPID key. ${PUSH_DEBUG_VERSION}`);
   }
 
   const permission = await Notification.requestPermission();
 
   if (permission !== "granted") {
-    throw new Error("Notification permission was not granted.");
+    throw new Error(`Notification permission was not granted. ${PUSH_DEBUG_VERSION}`);
   }
 
   const registration = await navigator.serviceWorker.register("/sw.js");
