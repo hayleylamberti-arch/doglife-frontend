@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -14,6 +15,8 @@ function formatDate(value?: string | null) {
 }
 
 export default function SupplierBookings() {
+  const [alternativeMessages, setAlternativeMessages] = useState<Record<string, string>>({});
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["supplier-bookings"],
     queryFn: async () => {
@@ -39,13 +42,17 @@ export default function SupplierBookings() {
     refetch();
   }
 
-  async function declineBooking(id: string) {
-    await api.patch(`/api/supplier/bookings/${id}/decline`);
+  async function markUnavailable(id: string) {
+    const message = alternativeMessages[id]?.trim();
 
-    trackEvent("booking_cancelled", {
+    await api.patch(`/api/supplier/bookings/${id}/decline`, {
+      message: message || undefined,
+    });
+
+    trackEvent("booking_unavailable", {
       bookingId: id,
       actor: "supplier",
-      reason: "supplier_declined",
+      hasAlternativeSuggestion: Boolean(message),
     });
 
     refetch();
@@ -80,20 +87,45 @@ export default function SupplierBookings() {
             </div>
 
             {booking.status === "PENDING" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => acceptBooking(booking.id)}
-                  className="rounded-md bg-green-600 px-4 py-2 text-white"
-                >
-                  Accept
-                </button>
+              <div className="flex max-w-sm flex-col gap-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => acceptBooking(booking.id)}
+                    className="rounded-md bg-green-600 px-4 py-2 text-white"
+                  >
+                    Accept
+                  </button>
 
-                <button
-                  onClick={() => declineBooking(booking.id)}
-                  className="rounded-md bg-red-600 px-4 py-2 text-white"
-                >
-                  Decline
-                </button>
+                  <button
+                    onClick={() => markUnavailable(booking.id)}
+                    className="rounded-md bg-red-600 px-4 py-2 text-white"
+                  >
+                    Mark as unavailable
+                  </button>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700">
+                    Suggest an alternative time (optional)
+                  </label>
+
+                  <p className="mt-1 text-xs text-gray-500">
+                    If you can’t accept this exact request, suggest another time before marking it unavailable.
+                  </p>
+
+                  <textarea
+                    value={alternativeMessages[booking.id] || ""}
+                    onChange={(event) =>
+                      setAlternativeMessages((current) => ({
+                        ...current,
+                        [booking.id]: event.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="mt-2 w-full rounded-md border border-gray-300 p-2 text-sm"
+                    placeholder="Example: I’m available tomorrow at 2pm or Thursday morning."
+                  />
+                </div>
               </div>
             )}
           </div>

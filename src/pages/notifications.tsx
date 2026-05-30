@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { registerPushNotifications } from "@/lib/pushNotifications";
 
 function formatDate(date?: string | null) {
   if (!date) return "—";
@@ -13,6 +15,8 @@ function formatDate(date?: string | null) {
 
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["notifications"],
@@ -30,6 +34,21 @@ export default function NotificationsPage() {
     typeof data?.unreadCount === "number"
       ? data.unreadCount
       : notifications.filter((n: any) => !n.read).length;
+
+  async function handleEnablePush() {
+    try {
+      setIsEnablingPush(true);
+      setPushStatus(null);
+
+      await registerPushNotifications();
+
+      setPushStatus("Push notifications enabled.");
+    } catch (err: any) {
+      setPushStatus(err?.message || "Could not enable push notifications.");
+    } finally {
+      setIsEnablingPush(false);
+    }
+  }
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -59,17 +78,34 @@ export default function NotificationsPage() {
           </p>
         </div>
 
-        {unreadCount > 0 ? (
+        <div className="flex flex-wrap justify-end gap-2">
           <button
             type="button"
-            onClick={() => markAllAsReadMutation.mutate()}
-            disabled={markAllAsReadMutation.isPending}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            onClick={handleEnablePush}
+            disabled={isEnablingPush}
+            className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
           >
-            Mark all as read
+            {isEnablingPush ? "Enabling..." : "Enable push notifications"}
           </button>
-        ) : null}
+
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => markAllAsReadMutation.mutate()}
+              disabled={markAllAsReadMutation.isPending}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              Mark all as read
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {pushStatus ? (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700">
+          {pushStatus}
+        </div>
+      ) : null}
 
       {isLoading ? <p className="text-gray-500">Loading notifications...</p> : null}
 
@@ -94,26 +130,24 @@ export default function NotificationsPage() {
               if (!n.read) markAsReadMutation.mutate(n.id);
             }}
             className={`w-full rounded-2xl border p-4 text-left ${
-              n.read
-                ? "border-gray-200 bg-white"
-                : "border-yellow-200 bg-yellow-50"
+              n.read ? "border-gray-200 bg-white" : "border-yellow-200 bg-yellow-50"
             }`}
           >
             <p className="font-semibold text-gray-900">{n.title}</p>
-            <p className="mt-1 text-sm text-gray-600">
-  {n.booking
-    ? `${n.booking.serviceLabel} with ${
-        n.booking.dogNames || "your dog"
-      } on ${formatDate(n.booking.startAt)}`
-    : n.message}
-</p>
 
-{n.message ? (
-  <p className="mt-1 text-sm text-gray-500">{n.message}</p>
-) : null}
-            <p className="mt-2 text-xs text-gray-400">
-              {formatDate(n.createdAt)}
+            <p className="mt-1 text-sm text-gray-600">
+              {n.booking
+                ? `${n.booking.serviceLabel} with ${
+                    n.booking.dogNames || "your dog"
+                  } on ${formatDate(n.booking.startAt)}`
+                : n.message}
             </p>
+
+            {n.message ? (
+              <p className="mt-1 text-sm text-gray-500">{n.message}</p>
+            ) : null}
+
+            <p className="mt-2 text-xs text-gray-400">{formatDate(n.createdAt)}</p>
           </button>
         ))}
       </div>
