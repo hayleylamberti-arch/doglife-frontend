@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const VAPID_PUBLIC_KEY =
+  "BMZU08aWaHHWw1X7rXkevWbsJ2DMKSFjArrehhVzm20ZnLkklenNKa71yy_BIct5gFzXGa-kvCSi_wD5g4DY6mE";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -28,9 +29,6 @@ export async function registerPushNotifications() {
   const registration = await navigator.serviceWorker.register("/sw.js");
 
   const existingSubscription = await registration.pushManager.getSubscription();
-
-  console.log("VAPID key:", VAPID_PUBLIC_KEY);
-console.log("VAPID key length:", VAPID_PUBLIC_KEY?.length);
 
   const subscription =
     existingSubscription ||
