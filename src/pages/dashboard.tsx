@@ -220,18 +220,30 @@ function DogProfilePrompt() {
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
       <h2 className="text-xl font-semibold text-orange-900">
-        Add your dog profile before booking 🐶
+        Create your Dog Passport 🐶
       </h2>
+
       <p className="mt-2 text-sm text-orange-800">
-        Suppliers need your dog’s size, health notes, behaviour notes and care
-        details before they can accept a booking.
+        Your Dog Passport stores important health, care and behaviour
+        information so suppliers can safely care for your dog.
       </p>
+
+      <div className="mt-3 text-sm text-orange-800">
+        Includes:
+        <ul className="mt-2 ml-5 list-disc space-y-1">
+          <li>Vaccinations & treatments</li>
+          <li>Vet & emergency details</li>
+          <li>Behaviour & care notes</li>
+          <li>Medical history</li>
+          <li>Microchip details</li>
+        </ul>
+      </div>
 
       <Link
         to="/my-dogs"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
       >
-        Add Dog Profile
+        Create Dog Passport
       </Link>
     </div>
   );
@@ -246,17 +258,19 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
           <p className="mt-1 text-sm text-gray-500">
             {hasDogs
               ? "Preferred providers first, then providers in your suburb."
-              : "Add your dog profile first, then you can book trusted services."}
+              : "Create your Dog Passport first, then you can book trusted services."}
           </p>
         </div>
 
-        <Link
-          to={hasDogs ? "/search" : "/my-dogs"}
-          className="hidden text-sm font-medium text-blue-600 hover:text-blue-700 md:inline"
-        >
-          {hasDogs ? "View all" : "Add dog"}
-        </Link>
-      </div>
+        {hasDogs ? (
+  <Link
+    to="/search"
+    className="hidden text-sm font-medium text-blue-600 hover:text-blue-700 md:inline"
+  >
+    View all
+  </Link>
+) : null}
+</div>
 
       <div className="mt-5 overflow-x-auto pb-2">
         <div className="flex min-w-max gap-3 md:gap-4">
@@ -283,6 +297,82 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
       <p className="mt-2 text-xs text-gray-400 md:hidden">
         Swipe to see more services
       </p>
+    </div>
+  );
+}
+
+function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
+  const steps = [
+    {
+      icon: "🐶",
+      title: "Create Dog Passport",
+      text: "Add health, care and behaviour details.",
+      active: !hasDogs,
+    },
+    {
+      icon: "🔎",
+      title: "Find a provider",
+      text: "Search by service, suburb and price.",
+      active: hasDogs,
+    },
+    {
+      icon: "📅",
+      title: "Send request",
+      text: "Choose a time that suits you.",
+      active: false,
+    },
+    {
+      icon: "✅",
+      title: "Get confirmed",
+      text: "Supplier accepts your booking.",
+      active: false,
+    },
+    {
+      icon: "❤️",
+      title: "Service completed",
+      text: "Track updates and book again.",
+      active: false,
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            How DogLife works
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            A simple journey from Dog Passport to trusted care.
+          </p>
+        </div>
+
+        <Link
+          to={hasDogs ? "/search" : "/my-dogs"}
+          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          {hasDogs ? "Find a service" : "Create Dog Passport"}
+        </Link>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        {steps.map((step, index) => (
+          <div
+            key={step.title}
+            className={`rounded-xl border p-4 ${
+              step.active
+                ? "border-blue-200 bg-blue-50"
+                : "border-gray-200 bg-gray-50"
+            }`}
+          >
+            <div className="text-2xl">{step.icon}</div>
+            <p className="mt-2 text-sm font-semibold text-gray-900">
+              {index + 1}. {step.title}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{step.text}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -640,19 +730,21 @@ export default function Dashboard() {
               Welcome to DogLife 🐾
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-              Easily manage your bookings, view service updates, and book trusted
-              dog services near you.
-            </p>
+  Manage your Dog Passport, bookings, care reminders and trusted dog
+  services — all in one place.
+</p>
           </div>
 
           <Link
-            to={hasDogs ? "/search" : "/my-dogs"}
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
-          >
-            {hasDogs ? "Make a booking" : "Add Dog Profile"}
-          </Link>
+  to="/my-dogs"
+  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+>
+  {hasDogs ? "View Dog Passport" : "Create Dog Passport"}
+</Link>
         </div>
       </div>
+
+      <OwnerBookingJourney hasDogs={hasDogs} />
 
       {!isDogsLoading && !hasDogs ? <DogProfilePrompt /> : null}
 

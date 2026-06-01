@@ -438,6 +438,73 @@ function BookingSection({
   );
 }
 
+function SupplierBookingJourney() {
+  const steps = [
+    {
+      icon: "📩",
+      title: "Receive request",
+      text: "Owner sends booking, dog and timing details.",
+    },
+    {
+      icon: "🐶",
+      title: "Review Dog Passport",
+      text: "Check health, behaviour and care notes.",
+    },
+    {
+      icon: "✅",
+      title: "Confirm booking",
+      text: "Accept or suggest another time.",
+    },
+    {
+      icon: "🚶",
+      title: "Deliver service",
+      text: "Start and complete the booking.",
+    },
+    {
+      icon: "💳",
+      title: "Mark paid",
+      text: "Track payment and booking history.",
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Your booking journey
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            From request to completed care, DogLife helps you manage each step.
+          </p>
+        </div>
+
+        <Link
+          to="/supplier/bookings"
+          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          View booking requests
+        </Link>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-5">
+        {steps.map((step, index) => (
+          <div
+            key={step.title}
+            className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+          >
+            <div className="text-2xl">{step.icon}</div>
+            <p className="mt-2 text-sm font-semibold text-gray-900">
+              {index + 1}. {step.title}
+            </p>
+            <p className="mt-1 text-xs text-gray-500">{step.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
@@ -713,6 +780,8 @@ export default function SupplierDashboardPage() {
           </div>
         </div>
       </div>
+
+      <SupplierBookingJourney />
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
