@@ -240,7 +240,7 @@ function DogProfilePrompt() {
       </div>
 
       <Link
-        to="/my-dogs"
+        to="/owner/my-dogs"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
       >
         Create Dog Passport
@@ -277,7 +277,7 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
           {SERVICE_SHORTCUTS.map((service) => (
             <Link
               key={service.key}
-              to={hasDogs ? service.href : "/my-dogs"}
+              to={hasDogs ? service.href: "/owner/my-dogs"}
               className={`group flex w-20 shrink-0 flex-col items-center text-center md:w-24 ${
                 hasDogs ? "" : "opacity-70"
               }`}
@@ -308,30 +308,35 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
       title: "Create Dog Passport",
       text: "Add health, care and behaviour details.",
       active: !hasDogs,
+      href: "/owner/my-dogs",
     },
     {
       icon: "🔎",
       title: "Find a provider",
       text: "Search by service, suburb and price.",
       active: hasDogs,
+      href: "/search",
     },
     {
       icon: "📅",
       title: "Send request",
       text: "Choose a time that suits you.",
       active: false,
+      href: "/search",
     },
     {
       icon: "✅",
       title: "Get confirmed",
       text: "Supplier accepts your booking.",
       active: false,
+      href: null,
     },
     {
       icon: "❤️",
       title: "Service completed",
       text: "Track updates and book again.",
       active: false,
+      href: null,
     },
   ];
 
@@ -348,7 +353,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
         </div>
 
         <Link
-          to={hasDogs ? "/search" : "/my-dogs"}
+          to={hasDogs ? "/search" : "/owner/my-dogs"}
           className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
           {hasDogs ? "Find a service" : "Create Dog Passport"}
@@ -356,22 +361,37 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
-        {steps.map((step, index) => (
-          <div
-            key={step.title}
-            className={`rounded-xl border p-4 ${
-              step.active
-                ? "border-blue-200 bg-blue-50"
-                : "border-gray-200 bg-gray-50"
-            }`}
-          >
-            <div className="text-2xl">{step.icon}</div>
-            <p className="mt-2 text-sm font-semibold text-gray-900">
-              {index + 1}. {step.title}
-            </p>
-            <p className="mt-1 text-xs text-gray-500">{step.text}</p>
-          </div>
-        ))}
+        {steps.map((step, index) => {
+          const cardClass = `block rounded-xl border p-4 transition ${
+            step.active
+              ? "border-blue-200 bg-blue-50"
+              : "border-gray-200 bg-gray-50"
+          } ${
+            step.href
+              ? "cursor-pointer hover:-translate-y-0.5 hover:bg-white hover:shadow-md"
+              : "cursor-default opacity-80"
+          }`;
+
+          const content = (
+            <>
+              <div className="text-2xl">{step.icon}</div>
+              <p className="mt-2 text-sm font-semibold text-gray-900">
+                {index + 1}. {step.title}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">{step.text}</p>
+            </>
+          );
+
+          return step.href ? (
+            <Link key={step.title} to={step.href} className={cardClass}>
+              {content}
+            </Link>
+          ) : (
+            <div key={step.title} className={cardClass}>
+              {content}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -736,7 +756,7 @@ export default function Dashboard() {
           </div>
 
           <Link
-  to="/my-dogs"
+  to="/owner/my-dogs"
   className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
 >
   {hasDogs ? "View Dog Passport" : "Create Dog Passport"}
