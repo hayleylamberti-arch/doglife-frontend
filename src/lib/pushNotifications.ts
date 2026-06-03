@@ -2,8 +2,7 @@ import { api } from "@/lib/api";
 
 const PUSH_DEBUG_VERSION = "push-debug-2026-06-03-v5";
 
-const VAPID_PUBLIC_KEY =
-  "BMV129g1mXV14P6T2WDD181bmWn1HYcdOU1JtWXE45zvobR63WtDoA_JQyGbsLPpDiPnbmXeTBhdm0020k7_AzY";
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
 
 function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
