@@ -1,16 +1,22 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-03-v4";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-03-v5";
 
 const VAPID_PUBLIC_KEY =
   "BMV129g1mXV14P6T2WDD181bmWn1HYcdOU1JtWXE45zvobR63WtDoA_JQyGbsLPpDiPnbmXeTBhdm0020k7_AzY";
 
-function urlBase64ToUint8Array(base64String: string) {
+function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
 
-  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+
+  return outputArray.buffer;
 }
 
 export async function registerPushNotifications() {
@@ -21,13 +27,13 @@ export async function registerPushNotifications() {
     throw new Error(`Push notifications are not supported on this device. ${PUSH_DEBUG_VERSION}`);
   }
 
-  const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const applicationServerKey = urlBase64ToArrayBuffer(VAPID_PUBLIC_KEY);
 
-  console.log("Decoded VAPID key length:", applicationServerKey.length);
+  console.log("Decoded VAPID key byte length:", applicationServerKey.byteLength);
 
-  if (applicationServerKey.length !== 65) {
+  if (applicationServerKey.byteLength !== 65) {
     throw new Error(
-      `Invalid VAPID key length: ${applicationServerKey.length}. ${PUSH_DEBUG_VERSION}`
+      `Invalid VAPID key byte length: ${applicationServerKey.byteLength}. ${PUSH_DEBUG_VERSION}`
     );
   }
 
@@ -45,16 +51,22 @@ export async function registerPushNotifications() {
     await existingSubscription.unsubscribe();
   }
 
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey,
-  });
+  try {
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    });
 
-  await api.post("/api/push/subscribe", {
-    endpoint: subscription.endpoint,
-    keys: subscription.toJSON().keys,
-    userAgent: navigator.userAgent,
-  });
+    await api.post("/api/push/subscribe", {
+      endpoint: subscription.endpoint,
+      keys: subscription.toJSON().keys,
+      userAgent: navigator.userAgent,
+    });
 
-  return subscription;
+    return subscription;
+  } catch (error: any) {
+    throw new Error(
+      `${error?.message || "Push subscription failed"} ${PUSH_DEBUG_VERSION}`
+    );
+  }
 }
