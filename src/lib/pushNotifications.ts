@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-05-30-v3";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-03-v4";
 
 const VAPID_PUBLIC_KEY =
   "BMV129g1mXV14P6T2WDD181bmWn1HYcdOU1JtWXE45zvobR63WtDoA_JQyGbsLPpDiPnbmXeTBhdm0020k7_AzY";
