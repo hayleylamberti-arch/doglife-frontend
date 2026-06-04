@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { ShieldCheck, HeartPulse, AlertTriangle, CalendarDays } from "lucide-react";
 
 type Dog = {
   id: string;
@@ -48,6 +49,37 @@ function addDays(value?: string | null, days = 0) {
   return date.toISOString();
 }
 
+function hasValue(value: unknown) {
+  if (value === true || value === false) return true;
+  if (typeof value === "string") return value.trim().length > 0;
+  return Boolean(value);
+}
+
+function getPassportScore(dog: Dog) {
+  const fields = [
+    dog.name,
+    dog.breed,
+    dog.dateOfBirth,
+    dog.size,
+    dog.sex,
+    dog.isNeutered,
+    dog.isVaccinated,
+    dog.vaccinationExpiryDate,
+    dog.kennelCoughAt,
+    dog.dewormedAt,
+    dog.tickFleaTreatedAt,
+    dog.vetName,
+    dog.vetPhone,
+    dog.behavioralNotes,
+    dog.medicalNotes,
+    dog.goodWithDogs,
+    dog.goodWithChildren,
+  ];
+
+  const completed = fields.filter(hasValue).length;
+  return Math.round((completed / fields.length) * 100);
+}
+
 function getAge(value?: string | null) {
   if (!value) return "Age not added";
 
@@ -67,6 +99,12 @@ function getAge(value?: string | null) {
   if (years <= 0) return "Under 1 year";
   if (years === 1) return "1 year old";
   return `${years} years old`;
+}
+
+function yesNo(value?: boolean | null) {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "Not added";
 }
 
 function getDueStatus(date?: string | null) {
@@ -218,22 +256,15 @@ export default function DogProfilePage() {
       ...activities,
     ]);
 
-    setNewActivity({
-      date: "",
-      type: "",
-      notes: "",
-    });
-
+    setNewActivity({ date: "", type: "", notes: "" });
     setShowForm(false);
   };
 
-  if (isLoading) {
-    return <div className="p-10">Loading dog...</div>;
-  }
+  if (isLoading) return <div className="p-10">Loading Dog Passport...</div>;
+  if (!dog) return <div className="p-10">Dog not found</div>;
 
-  if (!dog) {
-    return <div className="p-10">Dog not found</div>;
-  }
+  const passportScore = getPassportScore(dog);
+  const supplierReady = passportScore >= 85;
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-6">
@@ -243,7 +274,7 @@ export default function DogProfilePage() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 shadow-sm">
         <div className="flex flex-col items-center text-center">
           {dog.profileImageUrl ? (
             <img
@@ -252,14 +283,16 @@ export default function DogProfilePage() {
               className="h-36 w-36 rounded-full border object-cover"
             />
           ) : (
-            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-gray-100 text-5xl">
+            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-white text-5xl">
               🐶
             </div>
           )}
 
-          <h1 className="mt-4 text-3xl font-bold text-gray-900">{dog.name}</h1>
+          <h1 className="mt-4 text-3xl font-bold text-gray-900">
+            {dog.name}’s Dog Passport
+          </h1>
 
-          <p className="mt-2 text-gray-500">
+          <p className="mt-2 text-gray-600">
             {dog.breed || "Breed not added"} • {dog.size || "Size not added"} •{" "}
             {dog.sex || "Sex not added"}
           </p>
@@ -267,15 +300,80 @@ export default function DogProfilePage() {
           <p className="mt-1 text-sm text-gray-500">
             Birthday: {formatDate(dog.dateOfBirth)} • {getAge(dog.dateOfBirth)}
           </p>
+
+          <div className="mt-5 w-full max-w-md">
+            <div className="flex items-center justify-between text-sm text-gray-700">
+              <span>Passport completeness</span>
+              <span className="font-semibold">{passportScore}%</span>
+            </div>
+
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-white">
+              <div
+                className="h-full rounded-full bg-blue-600"
+                style={{ width: `${passportScore}%` }}
+              />
+            </div>
+
+            <p className="mt-3 text-sm text-gray-600">
+              {supplierReady
+                ? "This passport is supplier-ready and helps providers safely care for your dog."
+                : "Add more health, behaviour and vet details to make this passport supplier-ready."}
+            </p>
+          </div>
+
+          <Link
+            to="/owner/my-dogs"
+            className="mt-4 text-sm font-medium text-blue-700 underline"
+          >
+            Back to Dog Passports
+          </Link>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 h-5 w-5 text-green-700" />
+          <div>
+            <h2 className="font-semibold text-green-900">
+              Shared with suppliers when you book
+            </h2>
+            <p className="mt-1 text-sm text-green-800">
+              DogLife shares relevant Dog Passport information with suppliers
+              involved in your booking, including health, care, behaviour and
+              emergency details needed to safely care for {dog.name}.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <HeartPulse className="h-5 w-5 text-red-500" />
+          <p className="mt-3 text-sm text-gray-500">Vaccinated</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {yesNo(dog.isVaccinated)}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+          <p className="mt-3 text-sm text-gray-500">Behaviour notes</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {dog.behavioralNotes ? "Added" : "Not added"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl bg-white p-5 shadow-sm">
+          <CalendarDays className="h-5 w-5 text-blue-500" />
+          <p className="mt-3 text-sm text-gray-500">Vet details</p>
+          <p className="text-lg font-semibold text-gray-900">
+            {dog.vetName || dog.vetPhone ? "Added" : "Not added"}
+          </p>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <HealthCard
-          title="Core vaccinations due"
-          date={dog.vaccinationExpiryDate}
-        />
-        {reminders.slice(1).map((reminder) => (
+        {reminders.map((reminder) => (
           <HealthCard
             key={reminder.title}
             title={`${reminder.title} due`}
@@ -287,14 +385,14 @@ export default function DogProfilePage() {
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">Behaviour</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Behaviour & care notes
+          </h2>
 
           <div className="mt-4 space-y-2 text-sm text-gray-700">
-            <p>Good with dogs: {dog.goodWithDogs ? "Yes" : "Not added"}</p>
-            <p>
-              Good with children: {dog.goodWithChildren ? "Yes" : "Not added"}
-            </p>
-            <p>Neutered: {dog.isNeutered ? "Yes" : "Not added"}</p>
+            <p>Good with dogs: {yesNo(dog.goodWithDogs)}</p>
+            <p>Good with children: {yesNo(dog.goodWithChildren)}</p>
+            <p>Neutered: {yesNo(dog.isNeutered)}</p>
             <p className="whitespace-pre-line">
               Notes: {dog.behavioralNotes || "No behaviour notes added."}
             </p>
@@ -302,7 +400,9 @@ export default function DogProfilePage() {
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">Vet details</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Emergency & vet details
+          </h2>
 
           <div className="mt-4 space-y-2 text-sm text-gray-700">
             <p>Vet name: {dog.vetName || "Not added"}</p>
@@ -316,7 +416,9 @@ export default function DogProfilePage() {
 
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Activity</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Passport activity
+          </h2>
 
           <button
             className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white"
@@ -382,7 +484,7 @@ export default function DogProfilePage() {
 
         {activities.length === 0 ? (
           <p className="text-sm text-gray-500">
-            No activity added yet. Add vet visits, treatments, medication, or
+            No activity added yet. Add vet visits, treatments, medication or
             notes here.
           </p>
         ) : (

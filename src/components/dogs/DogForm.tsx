@@ -32,6 +32,7 @@ const BREEDS = [
   "Border Collie",
   "Border Terrier",
   "Boston Terrier",
+  "Bouvier des Flandres",
   "Boxer",
   "Bull Terrier",
   "Bulldog",
@@ -148,6 +149,20 @@ function dateInputValue(value?: string | null) {
   return value.slice(0, 10);
 }
 
+function SectionHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="mb-4">
+      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
+  );
+}
 export default function DogForm({ dog, onClose }: any) {
   const [imageUrl, setImageUrl] = useState<string>(dog?.profileImageUrl || "");
 
@@ -159,9 +174,17 @@ export default function DogForm({ dog, onClose }: any) {
       size: dog?.size || "",
       sex: dog?.sex || "",
       isNeutered:
-        dog?.isNeutered === true ? "true" : dog?.isNeutered === false ? "false" : "",
+        dog?.isNeutered === true
+          ? "true"
+          : dog?.isNeutered === false
+          ? "false"
+          : "",
       isVaccinated:
-        dog?.isVaccinated === true ? "true" : dog?.isVaccinated === false ? "false" : "",
+        dog?.isVaccinated === true
+          ? "true"
+          : dog?.isVaccinated === false
+          ? "false"
+          : "",
       vaccinationExpiryDate: dateInputValue(dog?.vaccinationExpiryDate),
       kennelCoughAt: dateInputValue(dog?.kennelCoughAt),
       dewormedAt: dateInputValue(dog?.dewormedAt),
@@ -170,7 +193,11 @@ export default function DogForm({ dog, onClose }: any) {
       vetPhone: dog?.vetPhone || "",
       behavioralNotes: dog?.behavioralNotes || "",
       goodWithDogs:
-        dog?.goodWithDogs === true ? "true" : dog?.goodWithDogs === false ? "false" : "",
+        dog?.goodWithDogs === true
+          ? "true"
+          : dog?.goodWithDogs === false
+          ? "false"
+          : "",
       goodWithChildren:
         dog?.goodWithChildren === true
           ? "true"
@@ -241,111 +268,246 @@ export default function DogForm({ dog, onClose }: any) {
       });
 
       queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/owner/dogs/${dog?.id}`] });
+      queryClient.invalidateQueries({
+        queryKey: [`/api/owner/dogs/${dog?.id}`],
+      });
 
       onClose();
     },
   });
-
-  return (
+    return (
     <form
       onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
       className="mb-6 space-y-6 rounded-2xl bg-white p-6 shadow-sm"
     >
-      <ImageUpload onUpload={setImageUrl} initialImage={imageUrl} />
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+        <h2 className="text-xl font-bold text-gray-900">
+          Build your dog’s Dog Passport
+        </h2>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Input placeholder="Dog name" {...form.register("name")} required />
-
-        <select {...form.register("breed")} className="w-full rounded border px-3 py-2">
-          <option value="">Select breed</option>
-          {BREEDS.map((breed) => (
-            <option key={breed} value={breed}>
-              {breed}
-            </option>
-          ))}
-        </select>
-
-        <Input type="date" {...form.register("dateOfBirth")} />
-
-        <select {...form.register("size")} className="w-full rounded border px-3 py-2">
-          <option value="">Select size</option>
-          <option value="SMALL">Small</option>
-          <option value="MEDIUM">Medium</option>
-          <option value="LARGE">Large</option>
-          <option value="XL">XL</option>
-        </select>
-
-        <select {...form.register("sex")} className="w-full rounded border px-3 py-2">
-          <option value="">Select sex</option>
-          <option value="MALE">Male</option>
-          <option value="FEMALE">Female</option>
-        </select>
-
-        <select {...form.register("isNeutered")} className="w-full rounded border px-3 py-2">
-          <option value="">Neutered?</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
+        <p className="mt-2 text-sm text-gray-700">
+          A complete Dog Passport helps suppliers safely care for your dog and
+          makes bookings smoother. Health, behaviour and emergency details are
+          shared securely with suppliers when you book.
+        </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 p-4">
-        <h3 className="mb-4 font-semibold text-gray-900">Health reminders</h3>
+      <ImageUpload
+        onUpload={setImageUrl}
+        initialImage={imageUrl}
+      />
+
+      {/* BASIC DETAILS */}
+      <div className="rounded-2xl border border-gray-200 p-5">
+        <SectionHeader
+          title="Basic details"
+          description="Tell suppliers who your dog is."
+        />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <select {...form.register("isVaccinated")} className="w-full rounded border px-3 py-2">
+          <Input
+            placeholder="Dog name"
+            {...form.register("name")}
+            required
+          />
+
+          <select
+            {...form.register("breed")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Select breed</option>
+
+            {BREEDS.map((breed) => (
+              <option key={breed} value={breed}>
+                {breed}
+              </option>
+            ))}
+          </select>
+
+          <Input
+            type="date"
+            {...form.register("dateOfBirth")}
+          />
+
+          <select
+            {...form.register("size")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Select size</option>
+            <option value="SMALL">Small</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LARGE">Large</option>
+            <option value="XL">XL</option>
+          </select>
+
+          <select
+            {...form.register("sex")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Select sex</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+          </select>
+
+          <select
+            {...form.register("isNeutered")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Neutered / sterilised?</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+      </div>
+
+      {/* HEALTH */}
+      <div className="rounded-2xl border border-gray-200 p-5">
+        <SectionHeader
+          title="Health & vaccinations"
+          description="This helps suppliers keep all dogs safe."
+        />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <select
+            {...form.register("isVaccinated")}
+            className="w-full rounded border px-3 py-2"
+          >
             <option value="">Vaccinated?</option>
             <option value="true">Yes</option>
             <option value="false">No</option>
           </select>
 
-          <Input type="date" {...form.register("vaccinationExpiryDate")} />
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Vaccination expiry
+  </label>
+  <Input
+    type="date"
+    {...form.register("vaccinationExpiryDate")}
+  />
+</div>
 
-          <Input type="date" {...form.register("kennelCoughAt")} />
-          <Input type="date" {...form.register("dewormedAt")} />
-          <Input type="date" {...form.register("tickFleaTreatedAt")} />
-        </div>
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Kennel cough last done
+  </label>
+  <Input
+    type="date"
+    {...form.register("kennelCoughAt")}
+  />
+</div>
 
-        <p className="mt-2 text-xs text-gray-500">
-          Dates are used to show vaccination, kennel cough, deworming, and tick/flea reminders.
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Deworming last done
+  </label>
+  <Input
+    type="date"
+    {...form.register("dewormedAt")}
+  />
+</div>
+
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Tick & flea last treated
+  </label>
+  <Input
+    type="date"
+    {...form.register("tickFleaTreatedAt")}
+  />
+</div>
+</div>
+
+        <p className="mt-3 text-xs text-gray-500">
+          DogLife uses these dates to send reminders and help keep your Dog
+          Passport supplier-ready.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Input placeholder="Vet name" {...form.register("vetName")} />
-        <Input placeholder="Vet phone" {...form.register("vetPhone")} />
+      {/* BEHAVIOUR */}
+      <div className="rounded-2xl border border-gray-200 p-5">
+        <SectionHeader
+          title="Behaviour & socialisation"
+          description="Help suppliers understand how to care for your dog."
+        />
 
-        <select {...form.register("goodWithDogs")} className="w-full rounded border px-3 py-2">
-          <option value="">Good with dogs?</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
+        <div className="grid gap-4 md:grid-cols-2">
+          <select
+            {...form.register("goodWithDogs")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Good with dogs?</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
 
-        <select {...form.register("goodWithChildren")} className="w-full rounded border px-3 py-2">
-          <option value="">Good with children?</option>
-          <option value="true">Yes</option>
-          <option value="false">No</option>
-        </select>
+          <select
+            {...form.register("goodWithChildren")}
+            className="w-full rounded border px-3 py-2"
+          >
+            <option value="">Good with children?</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+
+        <textarea
+          className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
+          placeholder="Behaviour notes (e.g. anxious around strangers, escape artist, loves balls, nervous during storms)"
+          {...form.register("behavioralNotes")}
+        />
       </div>
 
-      <textarea
-        className="min-h-[90px] w-full rounded border px-3 py-2"
-        placeholder="Behaviour notes"
-        {...form.register("behavioralNotes")}
-      />
+      {/* VET */}
+      <div className="rounded-2xl border border-gray-200 p-5">
+        <SectionHeader
+          title="Vet & emergency details"
+          description="Important information suppliers may need in an emergency."
+        />
 
-      <textarea
-        className="min-h-[90px] w-full rounded border px-3 py-2"
-        placeholder="Medical notes"
-        {...form.register("medicalNotes")}
-      />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Input
+            placeholder="Vet name"
+            {...form.register("vetName")}
+          />
+
+          <Input
+            placeholder="Vet phone number"
+            {...form.register("vetPhone")}
+          />
+        </div>
+
+        <textarea
+          className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
+          placeholder="Medical notes (allergies, medication, injuries, sensitivities, conditions)"
+          {...form.register("medicalNotes")}
+        />
+      </div>
+
+      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+        <p className="text-sm text-green-800">
+          🐾 The more complete your Dog Passport, the easier it is for trusted
+          suppliers to safely care for your dog.
+        </p>
+      </div>
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving..." : dog?.id ? "Update Dog" : "Save Dog"}
+        <Button
+          type="submit"
+          disabled={mutation.isPending}
+        >
+          {mutation.isPending
+            ? "Saving..."
+            : dog?.id
+            ? "Update Dog Passport"
+            : "Save Dog Passport"}
         </Button>
 
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onClose}
+        >
           Cancel
         </Button>
       </div>

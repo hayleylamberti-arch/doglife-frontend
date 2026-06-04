@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, PawPrint } from "lucide-react";
+import { Edit, ShieldCheck, Trash2 } from "lucide-react";
 
 function formatLabel(value?: string | null) {
   if (!value) return "Not added";
@@ -31,8 +31,62 @@ function getAge(dateOfBirth?: string | null) {
   return `${years} years old`;
 }
 
+function hasValue(value: unknown) {
+  if (value === true || value === false) return true;
+  if (typeof value === "string") return value.trim().length > 0;
+  return Boolean(value);
+}
+
+function getPassportScore(dog: any) {
+  const fields = [
+    dog.name,
+    dog.breed,
+    dog.dateOfBirth,
+    dog.size,
+    dog.sex,
+    dog.isNeutered,
+    dog.isVaccinated,
+    dog.vaccinationExpiryDate,
+    dog.kennelCoughAt,
+    dog.dewormedAt,
+    dog.tickFleaTreatedAt,
+    dog.vetName,
+    dog.vetPhone,
+    dog.behavioralNotes,
+    dog.medicalNotes,
+    dog.goodWithDogs,
+    dog.goodWithChildren,
+  ];
+
+  const completed = fields.filter(hasValue).length;
+  return Math.round((completed / fields.length) * 100);
+}
+
+function getPassportStatus(score: number) {
+  if (score >= 85) {
+    return {
+      label: "Supplier-ready",
+      className: "bg-green-100 text-green-700",
+    };
+  }
+
+  if (score >= 55) {
+    return {
+      label: "Almost ready",
+      className: "bg-yellow-100 text-yellow-700",
+    };
+  }
+
+  return {
+    label: "Needs details",
+    className: "bg-orange-100 text-orange-700",
+  };
+}
+
 export default function DogCard({ dog, onEdit, onDelete }: any) {
   const age = getAge(dog.dateOfBirth);
+  const passportScore = getPassportScore(dog);
+  const passportStatus = getPassportStatus(passportScore);
 
   return (
     <Card className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
@@ -62,7 +116,7 @@ export default function DogCard({ dog, onEdit, onDelete }: any) {
                 </p>
               </div>
 
-              <PawPrint className="h-5 w-5 shrink-0 text-blue-500" />
+              <ShieldCheck className="h-5 w-5 shrink-0 text-blue-500" />
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
@@ -81,6 +135,31 @@ export default function DogCard({ dog, onEdit, onDelete }: any) {
                   {age}
                 </span>
               ) : null}
+
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${passportStatus.className}`}
+              >
+                {passportStatus.label}
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-xs text-gray-600">
+                <span>Dog Passport</span>
+                <span>{passportScore}% complete</span>
+              </div>
+
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-blue-600"
+                  style={{ width: `${passportScore}%` }}
+                />
+              </div>
+
+              <p className="mt-2 text-xs text-gray-500">
+                Shared with suppliers when you book, so they can safely care for{" "}
+                {dog.name}.
+              </p>
             </div>
 
             <div className="mt-4 flex gap-2">
@@ -93,7 +172,7 @@ export default function DogCard({ dog, onEdit, onDelete }: any) {
                 }}
               >
                 <Edit className="mr-1 h-4 w-4" />
-                Edit
+                Update Passport
               </Button>
 
               <Button
