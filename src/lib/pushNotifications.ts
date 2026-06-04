@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v10";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v11";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -32,7 +32,7 @@ export async function registerPushNotifications() {
   // Fetch VAPID key from backend
   const response = await api.get("/api/push/public-key");
 
-  const vapidPublicKey = response.data?.publicKey;
+  const vapidPublicKey = String(response.data?.publicKey || "").trim();
 
   if (!vapidPublicKey) {
     throw new Error(
@@ -70,7 +70,7 @@ export async function registerPushNotifications() {
     const subscription =
       await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey,
+        applicationServerKey: applicationServerKey.buffer,
       });
 
     await api.post("/api/push/subscribe", {
