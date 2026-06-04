@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v14";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v15";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -52,7 +52,10 @@ export async function registerPushNotifications() {
   try {
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey,
+      applicationServerKey: applicationServerKey.buffer.slice(
+  applicationServerKey.byteOffset,
+  applicationServerKey.byteOffset + applicationServerKey.byteLength
+),
     });
 
     await api.post("/api/push/subscribe", {
