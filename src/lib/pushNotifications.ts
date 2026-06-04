@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v12";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v13";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -57,14 +57,20 @@ export async function registerPushNotifications() {
   }
 
   const registration =
-    await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.register("/sw.js");
 
-  const existingSubscription =
-    await registration.pushManager.getSubscription();
+await navigator.serviceWorker.ready;
 
-  if (existingSubscription) {
-    await existingSubscription.unsubscribe();
-  }
+const existingSubscription =
+  await registration.pushManager.getSubscription();
+
+if (existingSubscription) {
+  await existingSubscription.unsubscribe();
+
+  await api.post("/api/push/unsubscribe", {
+    endpoint: existingSubscription.endpoint,
+  });
+}
 
   try {
     const subscription =
