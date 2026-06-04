@@ -173,6 +173,14 @@ function getDateInputClass(value?: string) {
   return "w-full rounded border px-3 py-2";
 }
 
+function isValidSouthAfricanPhone(value: string) {
+  if (!value?.trim()) return true;
+
+  const cleaned = value.replace(/\s/g, "");
+
+  return /^(\+27|0)[6-8][0-9]{8}$/.test(cleaned);
+}
+
 function SectionHeader({
   title,
   description,
@@ -335,18 +343,22 @@ export default function DogForm({ dog, onClose }: any) {
             required
           />
 
-          <select
-            {...form.register("breed")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select breed</option>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Breed
+  </label>
+  <Input
+    list="dog-breeds"
+    placeholder="Start typing breed"
+    {...form.register("breed")}
+  />
 
-            {BREEDS.map((breed) => (
-              <option key={breed} value={breed}>
-                {breed}
-              </option>
-            ))}
-          </select>
+  <datalist id="dog-breeds">
+    {BREEDS.map((breed) => (
+      <option key={breed} value={breed} />
+    ))}
+  </datalist>
+</div>
 
           <Input
             type="date"
@@ -428,7 +440,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
-    className={getDateInputClass(form.watch("kennelCoughAt"))}
+    className="w-full rounded border px-3 py-2"
     {...form.register("kennelCoughAt")}
   />
 </div>
@@ -439,7 +451,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
-    className={getDateInputClass(form.watch("dewormedAt"))}
+    className="w-full rounded border px-3 py-2"
     {...form.register("dewormedAt")}
   />
 </div>
@@ -450,7 +462,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
-    className={getDateInputClass(form.watch("tickFleaTreatedAt"))}
+    className="w-full rounded border px-3 py-2"
     {...form.register("tickFleaTreatedAt")}
   />
 </div>
@@ -519,11 +531,25 @@ export default function DogForm({ dog, onClose }: any) {
             {...form.register("vetName")}
           />
 
-          <Input
-            placeholder="Vet phone number"
-            {...form.register("vetPhone")}
-          />
-        </div>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Vet phone number
+  </label>
+  <Input
+    placeholder="e.g. 0111234567 or +27111234567"
+    {...form.register("vetPhone", {
+      validate: (value) =>
+        isValidSouthAfricanPhone(value) ||
+        "Please enter a valid South African phone number.",
+    })}
+  />
+
+  {form.formState.errors.vetPhone ? (
+    <p className="mt-1 text-xs text-red-600">
+      {form.formState.errors.vetPhone.message}
+    </p>
+  ) : null}
+</div>
 
         <textarea
           className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
