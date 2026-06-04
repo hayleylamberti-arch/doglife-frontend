@@ -1,9 +1,10 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v7";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v8";
 
-const VAPID_PUBLIC_KEY =
-  import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+const VAPID_PUBLIC_KEY = String(
+  import.meta.env.VITE_VAPID_PUBLIC_KEY || ""
+).trim();
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -13,7 +14,6 @@ function urlBase64ToUint8Array(base64String: string) {
     .replace(/_/g, "/");
 
   const rawData = window.atob(base64);
-
   const outputArray = new Uint8Array(rawData.length);
 
   for (let i = 0; i < rawData.length; i += 1) {
@@ -25,6 +25,7 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export async function registerPushNotifications() {
   console.log("Push debug version:", PUSH_DEBUG_VERSION);
+  console.log("VAPID key chars:", VAPID_PUBLIC_KEY.length);
 
   if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
     throw new Error(
@@ -32,13 +33,9 @@ export async function registerPushNotifications() {
     );
   }
 
-  const applicationServerKey =
-    urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-  console.log(
-    "Decoded key bytes:",
-    applicationServerKey.byteLength
-  );
+  console.log("Decoded key bytes:", applicationServerKey.byteLength);
 
   const permission = await Notification.requestPermission();
 
@@ -48,8 +45,7 @@ export async function registerPushNotifications() {
     );
   }
 
-  const registration =
-    await navigator.serviceWorker.register("/sw.js");
+  const registration = await navigator.serviceWorker.register("/sw.js");
 
   const existingSubscription =
     await registration.pushManager.getSubscription();
@@ -59,11 +55,10 @@ export async function registerPushNotifications() {
   }
 
   try {
-    const subscription =
-      await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey,
-      });
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    });
 
     await api.post("/api/push/subscribe", {
       endpoint: subscription.endpoint,
@@ -74,7 +69,9 @@ export async function registerPushNotifications() {
     return subscription;
   } catch (error: any) {
     throw new Error(
-      `${error?.message || "Push subscription failed"} ${PUSH_DEBUG_VERSION}`
+      `${error?.message || "Push subscription failed"} keyBytes=${
+        applicationServerKey.byteLength
+      } firstByte=${applicationServerKey[0]} ${PUSH_DEBUG_VERSION}`
     );
   }
 }
