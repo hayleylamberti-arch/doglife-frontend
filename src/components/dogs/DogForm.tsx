@@ -550,6 +550,7 @@ export default function DogForm({ dog, onClose }: any) {
     </p>
   ) : null}
 </div>
+</div>
 
         <textarea
           className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
