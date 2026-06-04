@@ -90,16 +90,16 @@ export default function DogCard({ dog, onEdit, onDelete }: any) {
 
   return (
     <Card className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:shadow-md">
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start gap-4">
           {dog.profileImageUrl ? (
             <img
               src={dog.profileImageUrl}
               alt={dog.name}
-              className="h-24 w-24 shrink-0 rounded-2xl border object-cover"
+              className="h-20 w-20 shrink-0 rounded-2xl border object-cover"
             />
           ) : (
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border bg-gray-100 text-4xl">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border bg-gray-100 text-4xl">
               🐶
             </div>
           )}

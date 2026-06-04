@@ -149,6 +149,30 @@ function dateInputValue(value?: string | null) {
   return value.slice(0, 10);
 }
 
+function getDateInputClass(value?: string) {
+  if (!value) return "w-full rounded border px-3 py-2";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const date = new Date(`${value}T00:00:00`);
+  date.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil(
+    (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (diffDays < 0) {
+    return "w-full rounded border border-red-400 bg-red-50 px-3 py-2 text-red-700";
+  }
+
+  if (diffDays <= 30) {
+    return "w-full rounded border border-yellow-400 bg-yellow-50 px-3 py-2 text-yellow-800";
+  }
+
+  return "w-full rounded border px-3 py-2";
+}
+
 function SectionHeader({
   title,
   description,
@@ -349,14 +373,19 @@ export default function DogForm({ dog, onClose }: any) {
             <option value="FEMALE">Female</option>
           </select>
 
-          <select
-            {...form.register("isNeutered")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Neutered / sterilised?</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Neutered / sterilised?
+  </label>
+  <select
+    {...form.register("isNeutered")}
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="">Select</option>
+    <option value="true">Yes</option>
+    <option value="false">No</option>
+  </select>
+</div>
         </div>
       </div>
 
@@ -368,23 +397,29 @@ export default function DogForm({ dog, onClose }: any) {
         />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <select
-            {...form.register("isVaccinated")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Vaccinated?</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Vaccinated?
+  </label>
+  <select
+    {...form.register("isVaccinated")}
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="">Select</option>
+    <option value="true">Yes</option>
+    <option value="false">No</option>
+  </select>
+</div>
 
           <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
     Vaccination expiry
   </label>
   <Input
-    type="date"
-    {...form.register("vaccinationExpiryDate")}
-  />
+  type="date"
+  className={getDateInputClass(form.watch("vaccinationExpiryDate"))}
+  {...form.register("vaccinationExpiryDate")}
+/>
 </div>
 
 <div>
@@ -393,6 +428,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
+    className={getDateInputClass(form.watch("kennelCoughAt"))}
     {...form.register("kennelCoughAt")}
   />
 </div>
@@ -403,6 +439,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
+    className={getDateInputClass(form.watch("dewormedAt"))}
     {...form.register("dewormedAt")}
   />
 </div>
@@ -413,6 +450,7 @@ export default function DogForm({ dog, onClose }: any) {
   </label>
   <Input
     type="date"
+    className={getDateInputClass(form.watch("tickFleaTreatedAt"))}
     {...form.register("tickFleaTreatedAt")}
   />
 </div>
@@ -425,38 +463,48 @@ export default function DogForm({ dog, onClose }: any) {
       </div>
 
       {/* BEHAVIOUR */}
-      <div className="rounded-2xl border border-gray-200 p-5">
-        <SectionHeader
-          title="Behaviour & socialisation"
-          description="Help suppliers understand how to care for your dog."
-        />
+<div className="rounded-2xl border border-gray-200 p-5">
+  <SectionHeader
+    title="Behaviour & socialisation"
+    description="Help suppliers understand how to care for your dog."
+  />
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <select
-            {...form.register("goodWithDogs")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Good with dogs?</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
+  <div className="grid gap-4 md:grid-cols-2">
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">
+        Good with dogs?
+      </label>
+      <select
+        {...form.register("goodWithDogs")}
+        className="w-full rounded border px-3 py-2"
+      >
+        <option value="">Select</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    </div>
 
-          <select
-            {...form.register("goodWithChildren")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Good with children?</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        </div>
+    <div>
+      <label className="mb-1 block text-sm font-medium text-gray-700">
+        Good with children?
+      </label>
+      <select
+        {...form.register("goodWithChildren")}
+        className="w-full rounded border px-3 py-2"
+      >
+        <option value="">Select</option>
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+    </div>
+  </div>
 
-        <textarea
-          className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
-          placeholder="Behaviour notes (e.g. anxious around strangers, escape artist, loves balls, nervous during storms)"
-          {...form.register("behavioralNotes")}
-        />
-      </div>
+  <textarea
+    className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
+    placeholder="Behaviour notes (e.g. anxious around strangers, escape artist, loves balls, nervous during storms)"
+    {...form.register("behavioralNotes")}
+  />
+</div>
 
       {/* VET */}
       <div className="rounded-2xl border border-gray-200 p-5">
