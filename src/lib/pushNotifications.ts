@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-03-v5";
+const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v6";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
 
