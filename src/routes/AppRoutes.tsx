@@ -24,6 +24,9 @@ import SupplierTerms from "@/pages/legal/SupplierTerms";
 import CookiePolicy from "@/pages/legal/CookiePolicy";
 import RefundPolicy from "@/pages/legal/RefundPolicy";
 import HealthSafetyPolicy from "@/pages/legal/HealthSafetyPolicy";
+import TrustSafetyPolicy from "@/pages/legal/TrustSafetyPolicy";
+import CommunityStandards from "@/pages/legal/CommunityStandards";
+import Disclaimer from "@/pages/legal/Disclaimer";
 
 import SupplierDashboard from "@/pages/supplier-dashboard";
 import SupplierProfile from "@/pages/supplier-profile";
@@ -64,6 +67,9 @@ export default function AppRoutes() {
         <Route path="legal/cookies" element={<CookiePolicy />} />
         <Route path="legal/refunds" element={<RefundPolicy />} />
         <Route path="legal/health-safety" element={<HealthSafetyPolicy />} />
+        <Route path="legal/trust-safety" element={<TrustSafetyPolicy />} />
+<Route path="legal/community-standards" element={<CommunityStandards />} />
+<Route path="legal/disclaimer" element={<Disclaimer />} />
       </Route>
 
       <Route element={<RequireAuth />}>
