@@ -1,65 +1,161 @@
 export default function RefundPolicy() {
   return (
     <main className="max-w-4xl mx-auto px-6 py-16 text-gray-800">
-      <h1 className="text-3xl font-bold mb-6">
+      <h1 className="text-3xl font-bold mb-2">
         Refund & Cancellation Policy
       </h1>
-
-      <p className="mb-4">
-        This policy explains how cancellations, refunds and booking issues are handled on DogLife.
+      <p className="text-sm text-gray-500 mb-8">
+        Last updated: 4 June 2026
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">DogLife’s role</h2>
-      <p className="mb-4">
-        DogLife is a marketplace platform that connects dog owners with independent service providers. DogLife does not directly provide dog walking, grooming, training, boarding, transport or veterinary services.
+      <p className="mb-6">
+        This Refund & Cancellation Policy explains how bookings,
+        cancellations, refunds and booking disputes are handled on
+        DogLife.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Launch-phase payments</h2>
-      <p className="mb-4">
-        During DogLife’s launch phase, payments are arranged directly between the dog owner and the supplier once a booking is confirmed. DogLife does not currently hold customer funds or process marketplace payments.
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        1. DogLife’s Role
+      </h2>
+      <p className="mb-8">
+        DogLife is a marketplace platform that connects dog owners
+        with independent pet service providers (“Suppliers”).
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Owner cancellations</h2>
-      <p className="mb-4">
-        Dog owners may cancel a confirmed booking free of charge up to 24 hours before the scheduled appointment.
+      <p className="mb-8">
+        DogLife does not directly provide boarding, grooming,
+        training, walking, pet sitting, daycare, transport or
+        veterinary-related services and is not responsible for the
+        performance of services delivered by suppliers.
       </p>
-
-      <p className="mb-4">
-        Cancellations made less than 24 hours before the appointment may result in a partial cancellation fee if this was agreed directly with the supplier.
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        2. Booking Confirmation
+      </h2>
+      <p className="mb-8">
+        A booking request is not confirmed until the supplier accepts
+        the booking through DogLife. Once accepted, the booking is
+        considered confirmed.
       </p>
-
-      <p className="mb-4">
-        No-shows or same-day cancellations may be non-refundable where payment has already been made directly to the supplier.
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        3. Payments During Launch
+      </h2>
+      <p className="mb-8">
+        During DogLife’s launch phase, payments are arranged directly
+        between dog owners and suppliers after a booking has been
+        confirmed.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Supplier cancellations</h2>
-      <p className="mb-4">
-        Service providers are expected to honour confirmed bookings. Repeated cancellations may affect supplier visibility, preferred supplier status, or approval on DogLife.
+      <p className="mb-8">
+        DogLife does not currently hold customer funds, process
+        payments or manage supplier payouts.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Refunds</h2>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        4. Owner Cancellations
+      </h2>
       <p className="mb-4">
-        Because payments are currently made directly to suppliers, refunds must be arranged directly between the dog owner and the supplier. DogLife may assist with reviewing booking disputes but does not currently process refunds.
+        Dog owners may cancel confirmed bookings through DogLife.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Disputes</h2>
       <p className="mb-4">
-        If there is a problem with a booking, owners or suppliers should contact DogLife with the booking details so the issue can be reviewed.
+        Cancellation policies may vary by supplier and will be
+        communicated by the supplier or displayed on their DogLife
+        profile where applicable.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Future payment processing</h2>
+      <p className="mb-2">
+        DogLife recommends the following cancellation guidelines:
+      </p>
+      <ul className="list-disc pl-6 mb-8 space-y-1">
+        <li>
+          Free cancellation for bookings cancelled more than 24 hours
+          before the scheduled appointment
+        </li>
+        <li>
+          Late cancellations (within 24 hours) may result in a
+          cancellation fee at the supplier’s discretion
+        </li>
+        <li>
+          Same-day cancellations or no-shows may be non-refundable
+          where payment has already been made directly to the
+          supplier
+        </li>
+      </ul>
+      <p className="mb-8">
+        Dog owners are encouraged to review supplier cancellation
+        policies before confirming a booking.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        5. Supplier Cancellations
+      </h2>
       <p className="mb-4">
-        DogLife may introduce secure in-app payments, booking deposits or platform-managed refunds in future. If this changes, this policy will be updated.
+        Suppliers are expected to honour confirmed bookings.
       </p>
-
-      <h2 className="text-xl font-semibold mt-8 mb-3">Contact</h2>
+      <p className="mb-8">
+        Where a supplier cancels a confirmed booking, the supplier
+        should notify the owner as soon as reasonably possible and,
+        where practical, assist in finding an alternative solution.
+      </p>
+      <p className="mb-8">
+        Repeated cancellations, poor reliability or failure to honour
+        bookings may impact supplier visibility, platform standing,
+        preferred supplier status or continued access to DogLife.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        6. Refunds
+      </h2>
+      <p className="mb-8">
+        During DogLife’s launch phase, payments are arranged directly
+        between dog owners and suppliers.
+      </p>
+      <p className="mb-8">
+        Refund eligibility may vary depending on the supplier’s
+        cancellation policy and the circumstances of the booking.
+      </p>
+      <p className="mb-8">
+        DogLife does not currently process refunds, hold customer
+        funds or guarantee refunds for services provided by
+        independent suppliers.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        7. Booking Issues and Disputes
+      </h2>
+      <p className="mb-4">
+        If there is a concern about a booking, service quality,
+        cancellation or dispute, owners and suppliers should first
+        attempt to resolve the matter directly.
+      </p>
+      <p className="mb-8">
+        DogLife may review booking information and assist in
+        facilitating communication between parties where appropriate,
+        but is not responsible for mediating or enforcing outcomes
+        between independent users.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        8. Emergency Circumstances
+      </h2>
+      <p className="mb-8">
+        In certain situations, bookings may need to be cancelled or
+        changed due to emergencies, illness, dangerous weather,
+        veterinary emergencies, unsafe situations or events outside a
+        party’s reasonable control. DogLife encourages fair and
+        reasonable communication between users in these situations.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        9. Future Payment Processing
+      </h2>
+      <p className="mb-8">
+        DogLife may introduce secure in-platform payments, deposits,
+        cancellation fees or platform-managed refunds in future.
+      </p>
+      <p className="mb-8">
+        If payment handling changes, this Refund & Cancellation
+        Policy and related Terms & Conditions may be updated.
+      </p>
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        10. Contact Us
+      </h2>
+      <p className="mb-4">
+        Booking, cancellation or refund questions can be sent to:
+      </p>
       <p>
-        Booking, cancellation and refund questions can be sent to: hello@doglife.app
-      </p>
-
-      <p className="text-sm text-gray-500 mt-10">
-        Last updated: 9 May 2026
+        <strong>DogLife</strong>
+        <br />
+        Email: hello@doglife.app
       </p>
     </main>
-  )
+  );
 }
