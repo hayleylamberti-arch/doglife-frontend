@@ -65,7 +65,7 @@ export async function registerPushNotifications() {
     return subscription;
   } catch (error: any) {
     throw new Error(
-      `${error?.message || "Push subscription failed"} ${PUSH_DEBUG_VERSION}`
-    );
+  `${error?.message || "Push subscription failed"} keyBytes=${applicationServerKey.byteLength} keyChars=${VAPID_PUBLIC_KEY.length} ${PUSH_DEBUG_VERSION}`
+);
   }
 }
