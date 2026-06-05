@@ -281,7 +281,7 @@ export default function DogForm({ dog, onClose }: any) {
     },
 
     onSuccess: (response) => {
-      const newDog = response?.dog;
+      const newDog = response?.dog || response?.data?.dog || response?.data || response;
 
       queryClient.setQueryData(["owner-dogs"], (old: any) => {
         if (!old || !newDog) return old;
@@ -337,53 +337,71 @@ export default function DogForm({ dog, onClose }: any) {
         />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Input
-            placeholder="Dog name"
-            {...form.register("name")}
-            required
-          />
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Dog name
+  </label>
+  <Input
+    placeholder="Dog name"
+    {...form.register("name")}
+    required
+  />
+</div>
 
           <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
     Breed
   </label>
+
   <Input
-    list="dog-breeds"
-    placeholder="Start typing breed"
+    placeholder="Start typing breed, e.g. English Springer Spaniel"
     {...form.register("breed")}
   />
 
-  <datalist id="dog-breeds">
-    {BREEDS.map((breed) => (
-      <option key={breed} value={breed} />
-    ))}
-  </datalist>
+  <p className="mt-1 text-xs text-gray-500">
+    Start typing your dog’s breed, or enter Mixed Breed / Other.
+  </p>
 </div>
 
-          <Input
-            type="date"
-            {...form.register("dateOfBirth")}
-          />
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Date of birth
+  </label>
+  <Input
+    type="date"
+    {...form.register("dateOfBirth")}
+  />
+</div>
 
-          <select
-            {...form.register("size")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select size</option>
-            <option value="SMALL">Small</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LARGE">Large</option>
-            <option value="XL">XL</option>
-          </select>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Size
+  </label>
+  <select
+    {...form.register("size")}
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="">Select size</option>
+    <option value="SMALL">Small</option>
+    <option value="MEDIUM">Medium</option>
+    <option value="LARGE">Large</option>
+    <option value="XL">XL</option>
+  </select>
+</div>
 
-          <select
-            {...form.register("sex")}
-            className="w-full rounded border px-3 py-2"
-          >
-            <option value="">Select sex</option>
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-          </select>
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Sex
+  </label>
+  <select
+    {...form.register("sex")}
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="">Select sex</option>
+    <option value="MALE">Male</option>
+    <option value="FEMALE">Female</option>
+  </select>
+</div>
 
           <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
@@ -526,10 +544,15 @@ export default function DogForm({ dog, onClose }: any) {
         />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <Input
-            placeholder="Vet name"
-            {...form.register("vetName")}
-          />
+          <div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Vet name
+  </label>
+  <Input
+    placeholder="Vet name"
+    {...form.register("vetName")}
+  />
+</div>
 
           <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
