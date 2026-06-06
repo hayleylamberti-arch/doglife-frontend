@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,11 +35,29 @@ const profileSchema = z.object({
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
+type SaveStatus = "idle" | "saved" | "error";
+
+function SaveFeedback({ status }: { status: SaveStatus }) {
+  if (status === "saved") {
+    return <p className="text-sm font-medium text-green-600">Saved ✓</p>;
+  }
+
+  if (status === "error") {
+    return (
+      <p className="text-sm font-medium text-red-600">
+        Failed to save. Please try again.
+      </p>
+    );
+  }
+
+  return null;
+}
 
 export default function Profile() {
   const { user, isLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -78,6 +96,8 @@ export default function Profile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
+      setSaveStatus("idle");
+
       const res = await api.post("/api/owner/profile", {
         firstName: data.firstName,
         lastName: data.lastName,
@@ -89,13 +109,20 @@ export default function Profile() {
       return res.data;
     },
     onSuccess: async () => {
+      setSaveStatus("saved");
       toast({ title: "Profile updated successfully" });
 
       await queryClient.invalidateQueries({ queryKey: ["owner-profile"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       await queryClient.invalidateQueries({ queryKey: ["me"] });
+
+      window.setTimeout(() => {
+        setSaveStatus("idle");
+      }, 3000);
     },
     onError: (error: any) => {
+      setSaveStatus("error");
+
       toast({
         title: "Error updating profile",
         description: error?.response?.data?.error || error?.message || "Failed to save profile",
@@ -229,9 +256,13 @@ export default function Profile() {
                   Your suburb helps us show nearby providers faster. Your address is used for services that happen at your home, such as walking, home training, mobile grooming, or mobile vet bookings.
                 </div>
 
-                <Button type="submit" disabled={updateProfileMutation.isPending}>
-                  {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button type="submit" disabled={updateProfileMutation.isPending}>
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
+                  </Button>
+
+                  <SaveFeedback status={saveStatus} />
+                </div>
               </form>
             </Form>
           </CardContent>

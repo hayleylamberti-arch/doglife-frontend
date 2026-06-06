@@ -20,6 +20,8 @@ async function uploadToCloudinary(file: File) {
   return data.secure_url;
 }
 
+type SaveStatus = "idle" | "saved" | "error";
+
 type SuburbOption = {
   id: string;
   suburbName: string;
@@ -53,11 +55,28 @@ type SupplierProfileResponse = {
   }>;
 };
 
+function SaveFeedback({ status }: { status: SaveStatus }) {
+  if (status === "saved") {
+    return <p className="text-sm font-medium text-green-600">Saved ✓</p>;
+  }
+
+  if (status === "error") {
+    return (
+      <p className="text-sm font-medium text-red-600">
+        Failed to save. Please try again.
+      </p>
+    );
+  }
+
+  return null;
+}
+
 export default function BusinessProfilePage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [gallery, setGallery] = useState<string[]>([]);
   const [logoUploading, setLogoUploading] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const [businessName, setBusinessName] = useState("");
   const [businessAddress, setBusinessAddress] = useState("");
@@ -73,10 +92,6 @@ export default function BusinessProfilePage() {
 
   const [operatingAreaIds, setOperatingAreaIds] = useState<string[]>([]);
   const [suburbSearch, setSuburbSearch] = useState("");
-
-  /* =========================
-     FETCH PROFILE
-  ========================= */
 
   const { data, refetch: refetchProfile } = useQuery({
     queryKey: ["supplierProfile"],
@@ -103,10 +118,6 @@ export default function BusinessProfilePage() {
   const profile = data;
   const suburbs = Array.isArray(suburbsData) ? suburbsData : [];
 
-  /* =========================
-     LOAD DATA INTO STATE
-  ========================= */
-
   useEffect(() => {
     if (!profile) return;
 
@@ -122,11 +133,8 @@ export default function BusinessProfilePage() {
     setFacebookUrl(profile.socialLinks?.facebook || "");
     setWhatsappNumber(profile.socialLinks?.whatsapp || "");
 
-    if (profile.logoUrl) setLogoUrl(profile.logoUrl);
-    else setLogoUrl(null);
-
-    if (profile.galleryUrls) setGallery(profile.galleryUrls);
-    else setGallery([]);
+    setLogoUrl(profile.logoUrl || null);
+    setGallery(profile.galleryUrls || []);
 
     const existingOperatingAreaIds =
       profile.operatingAreas
@@ -136,37 +144,36 @@ export default function BusinessProfilePage() {
     setOperatingAreaIds(existingOperatingAreaIds);
   }, [profile]);
 
-  /* =========================
-     FILTERED SUBURBS
-  ========================= */
-
   const filteredSuburbs = useMemo(() => {
     const search = suburbSearch.trim().toLowerCase();
 
     const sorted = [...suburbs].sort((a, b) =>
-      `${a.suburbName} ${a.city || ""}`.localeCompare(`${b.suburbName} ${b.city || ""}`)
+      `${a.suburbName} ${a.city || ""}`.localeCompare(
+        `${b.suburbName} ${b.city || ""}`
+      )
     );
 
     if (!search) return sorted;
 
     return sorted.filter((item) => {
-      const haystack = `${item.suburbName} ${item.city || ""} ${item.province || ""}`.toLowerCase();
+      const haystack =
+        `${item.suburbName} ${item.city || ""} ${item.province || ""}`.toLowerCase();
       return haystack.includes(search);
     });
   }, [suburbs, suburbSearch]);
 
   function toggleOperatingArea(suburbId: string) {
     setOperatingAreaIds((prev) =>
-      prev.includes(suburbId) ? prev.filter((id) => id !== suburbId) : [...prev, suburbId]
+      prev.includes(suburbId)
+        ? prev.filter((id) => id !== suburbId)
+        : [...prev, suburbId]
     );
   }
 
-  /* =========================
-     SAVE PROFILE
-  ========================= */
-
   const saveMutation = useMutation({
     mutationFn: async () => {
+      setSaveStatus("idle");
+
       await api.patch("/api/supplier/profile", {
         businessName,
         businessAddress,
@@ -185,13 +192,17 @@ export default function BusinessProfilePage() {
       });
     },
     onSuccess: () => {
+      setSaveStatus("saved");
       refetchProfile();
+
+      window.setTimeout(() => {
+        setSaveStatus("idle");
+      }, 3000);
+    },
+    onError: () => {
+      setSaveStatus("error");
     },
   });
-
-  /* =========================
-     SAVE GALLERY
-  ========================= */
 
   const saveGalleryMutation = useMutation({
     mutationFn: async (images: string[]) => {
@@ -206,60 +217,18 @@ export default function BusinessProfilePage() {
     <div className="max-w-5xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold">Business Profile</h1>
 
-<div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl space-y-4">
-  <div>
-    <h2 className="text-xl font-semibold text-gray-900">
-      DogLife trust levels
-    </h2>
-    <p className="mt-1 text-sm text-gray-600">
-      Complete your basic setup first to qualify as an Approved Supplier. Higher trust levels can be added later.
-    </p>
-  </div>
+      <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            DogLife trust levels
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Complete your basic setup first to qualify as an Approved Supplier.
+            Higher trust levels can be added later.
+          </p>
+        </div>
+      </div>
 
-  <div className="grid gap-4 md:grid-cols-3">
-    <div className="bg-white border rounded-xl p-4">
-      <span className="inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700">
-        Approved Supplier
-      </span>
-      <h3 className="mt-3 font-semibold">Required for launch</h3>
-      <ul className="mt-2 text-sm text-gray-600 space-y-1">
-        <li>• Business profile</li>
-        <li>• Service suburbs</li>
-        <li>• Services and pricing</li>
-        <li>• Availability hours</li>
-      </ul>
-    </div>
-
-    <div className="bg-white border rounded-xl p-4">
-      <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
-        Identity Verified
-      </span>
-      <h3 className="mt-3 font-semibold">Coming next</h3>
-      <ul className="mt-2 text-sm text-gray-600 space-y-1">
-        <li>• ID or passport check</li>
-        <li>• Contact verification</li>
-        <li>• Supplier owner details</li>
-      </ul>
-    </div>
-
-    <div className="bg-white border rounded-xl p-4">
-      <span className="inline-block rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700">
-        Fully Verified
-      </span>
-      <h3 className="mt-3 font-semibold">Future trust checks</h3>
-      <ul className="mt-2 text-sm text-gray-600 space-y-1">
-        <li>• Premises or equipment photos</li>
-        <li>• References</li>
-        <li>• Business documents</li>
-        <li>• Vehicle checks where relevant</li>
-      </ul>
-    </div>
-  </div>
-</div>
-
-      {/* =========================
-         LOGO
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Logo</h2>
 
@@ -303,14 +272,12 @@ export default function BusinessProfilePage() {
         </div>
       </div>
 
-      {/* =========================
-         GALLERY
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Gallery</h2>
 
         <p className="text-sm text-gray-500">
-          Add photos of your space, team, grooming setup, transport vehicle, or dogs in your care.
+          Add photos of your space, team, grooming setup, transport vehicle, or
+          dogs in your care.
         </p>
 
         <div className="flex flex-wrap gap-3">
@@ -363,9 +330,6 @@ export default function BusinessProfilePage() {
         </div>
       </div>
 
-      {/* =========================
-         BUSINESS DETAILS
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Business Details</h2>
 
@@ -405,14 +369,14 @@ export default function BusinessProfilePage() {
         />
 
         <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Service suburbs
-            </label>
-            <p className="text-sm text-gray-500 mb-3">
-              Select all suburbs you are willing to travel to. Your profile will appear in searches for these suburbs.
-            </p>
-          </div>
+          <label className="block text-sm font-medium text-gray-700">
+            Service suburbs
+          </label>
+
+          <p className="text-sm text-gray-500">
+            Select all suburbs you are willing to travel to. Your profile will
+            appear in searches for these suburbs.
+          </p>
 
           <input
             className="w-full border p-3 rounded-lg"
@@ -443,7 +407,9 @@ export default function BusinessProfilePage() {
                     />
 
                     <div className="text-sm">
-                      <div className="font-medium text-gray-900">{item.suburbName}</div>
+                      <div className="font-medium text-gray-900">
+                        {item.suburbName}
+                      </div>
                       <div className="text-gray-500">
                         {[item.city, item.province].filter(Boolean).join(", ")}
                       </div>
@@ -459,14 +425,18 @@ export default function BusinessProfilePage() {
           </div>
         </div>
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save Details"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save Details"}
+          </Button>
+
+          <SaveFeedback status={saveStatus} />
+        </div>
       </div>
 
-      {/* =========================
-         SOCIAL LINKS
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Website & Social Links</h2>
 
@@ -491,14 +461,18 @@ export default function BusinessProfilePage() {
           placeholder="WhatsApp number or link (optional)"
         />
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save Links"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save Links"}
+          </Button>
+
+          <SaveFeedback status={saveStatus} />
+        </div>
       </div>
 
-      {/* =========================
-         DESCRIPTION
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">About Your Services</h2>
 
@@ -510,14 +484,18 @@ export default function BusinessProfilePage() {
           placeholder="Describe your services..."
         />
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save Description"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save Description"}
+          </Button>
+
+          <SaveFeedback status={saveStatus} />
+        </div>
       </div>
 
-      {/* =========================
-         POLICIES
-      ========================= */}
       <div className="bg-white p-6 rounded-2xl shadow space-y-4">
         <h2 className="text-xl font-semibold">Policies & House Rules</h2>
 
@@ -529,14 +507,18 @@ export default function BusinessProfilePage() {
           placeholder="Example: vaccination requirements, drop-off times, cancellation rules, feeding instructions, pickup policy..."
         />
 
-        <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? "Saving..." : "Save Policies"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? "Saving..." : "Save Policies"}
+          </Button>
+
+          <SaveFeedback status={saveStatus} />
+        </div>
       </div>
 
-      {/* =========================
-         PREVIEW BUTTON
-      ========================= */}
       <div className="flex justify-end">
         <Button onClick={() => (window.location.href = `/supplier/${profile?.id}`)}>
           Preview Public Profile

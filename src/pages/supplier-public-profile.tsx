@@ -1,4 +1,4 @@
-import { useParams, useLocation, Link } from "react-router-dom";
+import { useParams, useLocation, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import BookingModal from "@/components/booking-modal";
 import { useQuery } from "@tanstack/react-query";
@@ -75,6 +75,7 @@ type LocationState = {
 export default function SupplierPublicProfile() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const locationState = (location.state || {}) as LocationState;
 
   const [selectedService, setSelectedService] = useState<any | null>(null);
@@ -99,17 +100,17 @@ export default function SupplierPublicProfile() {
   }, [locationState.isPreferred, id]);
 
   useEffect(() => {
-  if (!data || trackedProfileView.current) return;
+    if (!data || trackedProfileView.current) return;
 
-  trackedProfileView.current = true;
+    trackedProfileView.current = true;
 
-  trackEvent("supplier_profile_viewed", {
-    supplierId: data.id,
-    supplierName: data.businessName,
-    suburb: data.suburb,
-    approvalStatus: data.approvalStatus,
-  });
-}, [data]);
+    trackEvent("supplier_profile_viewed", {
+      supplierId: data.id,
+      supplierName: data.businessName,
+      suburb: data.suburb,
+      approvalStatus: data.approvalStatus,
+    });
+  }, [data]);
 
   if (isLoading) {
     return <div className="p-6">Loading supplier...</div>;
@@ -120,6 +121,15 @@ export default function SupplierPublicProfile() {
   }
 
   const supplier = data;
+
+  function handleBackToSearch() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/search");
+  }
 
   async function togglePreferredSupplier() {
     if (!id) return;
@@ -153,7 +163,8 @@ export default function SupplierPublicProfile() {
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="flex items-center justify-between">
         <button
-          onClick={() => window.history.back()}
+          type="button"
+          onClick={handleBackToSearch}
           className="text-sm text-gray-500 hover:underline"
         >
           ← Back to search
@@ -233,16 +244,21 @@ export default function SupplierPublicProfile() {
         </div>
 
         <Button
-  size="lg"
-  onClick={() => {
-    const firstService = supplier.services?.[0];
-    if (!firstService) return alert("This supplier has no services available to book.");
-    setSelectedService(firstService);
-    setModalOpen(true);
-  }}
->
-  Book Now
-</Button>
+          size="lg"
+          onClick={() => {
+            const firstService = supplier.services?.[0];
+
+            if (!firstService) {
+              alert("This supplier has no services available to book.");
+              return;
+            }
+
+            setSelectedService(firstService);
+            setModalOpen(true);
+          }}
+        >
+          Book Now
+        </Button>
       </div>
 
       {supplier.galleryUrls?.length > 0 && (
@@ -440,11 +456,11 @@ export default function SupplierPublicProfile() {
 
       {modalOpen && selectedService && (
         <BookingModal
-  supplierId={supplier.id}
-  supplierName={supplier.businessName}
-  service={selectedService}
-  onClose={() => setModalOpen(false)}
-/>
+          supplierId={supplier.id}
+          supplierName={supplier.businessName}
+          service={selectedService}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </div>
   );
