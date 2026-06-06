@@ -294,7 +294,7 @@ export default function DogForm({ dog, onClose }: any) {
     });
   }
 
-  onClose();
+  await onClose();
 },
   });
     return (

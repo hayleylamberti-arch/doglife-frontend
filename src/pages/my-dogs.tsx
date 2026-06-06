@@ -95,7 +95,7 @@ export default function MyDogsPage() {
   const [pendingDelete, setPendingDelete] = useState<Dog | null>(null);
   const [undoTimeout, setUndoTimeout] = useState<any>(null);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["owner-dogs"],
     queryFn: async () => {
       const res = await api.get("/api/owner/dogs");
@@ -107,13 +107,14 @@ export default function MyDogsPage() {
   });
 
   const deleteDogMutation = useMutation({
-    mutationFn: async (dogId: string) => {
-      await api.delete(`/api/owner/dogs/${dogId}`);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-    },
-  });
+  mutationFn: async (dogId: string) => {
+    await api.delete(`/api/owner/dogs/${dogId}`);
+  },
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+    await refetch();
+  },
+});
 
   const dogs: Dog[] = data?.dogs || [];
 
@@ -252,15 +253,16 @@ export default function MyDogsPage() {
       )}
 
       {showForm && (
-        <DogForm
-          dog={editingDog}
-          onClose={() => {
-            setShowForm(false);
-            setEditingDog(null);
-            queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-          }}
-        />
-      )}
+  <DogForm
+    dog={editingDog}
+    onClose={async () => {
+      setShowForm(false);
+      setEditingDog(null);
+      await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
+      await refetch();
+    }}
+  />
+)}
 
       {dogs.length === 0 && !showForm && (
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
