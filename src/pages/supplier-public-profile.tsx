@@ -72,7 +72,7 @@ type LocationState = {
   isPreferred?: boolean;
 };
 
-function getServiceExpectations(serviceType?: string) {
+function getDefaultServiceExpectations(serviceType?: string) {
   switch (serviceType) {
     case "WALKING":
       return {
@@ -109,6 +109,30 @@ function getServiceExpectations(serviceType?: string) {
         goodToKnow: ["Share anything important about your dog before booking."],
       };
   }
+}
+
+function getServiceExpectations(service: any) {
+  const defaults = getDefaultServiceExpectations(service?.service);
+
+  return {
+    provides:
+      Array.isArray(service?.pricingJson?.supplierProvides) &&
+      service.pricingJson.supplierProvides.length > 0
+        ? service.pricingJson.supplierProvides
+        : defaults.provides,
+
+    ownerProvides:
+      Array.isArray(service?.pricingJson?.ownerProvides) &&
+      service.pricingJson.ownerProvides.length > 0
+        ? service.pricingJson.ownerProvides
+        : defaults.ownerProvides,
+
+    goodToKnow:
+      Array.isArray(service?.pricingJson?.goodToKnow) &&
+      service.pricingJson.goodToKnow.length > 0
+        ? service.pricingJson.goodToKnow
+        : defaults.goodToKnow,
+  };
 }
 
 export default function SupplierPublicProfile() {
@@ -389,7 +413,7 @@ export default function SupplierPublicProfile() {
               toNumber(service?.pricingJson?.additionalDogPrice);
 
             const hasAdditionalDogPrice = additionalDogPriceCents > 0;
-            const expectations = getServiceExpectations(service.service);
+            const expectations = getServiceExpectations(service);
 
             return (
               <Card key={service.id}>
@@ -480,7 +504,7 @@ export default function SupplierPublicProfile() {
   <div className="rounded-xl border bg-green-50 p-4">
     <h4 className="font-semibold text-green-900">What we provide</h4>
     <ul className="mt-2 space-y-1 text-sm text-green-800">
-      {expectations.provides.map((item) => (
+      {expectations.provides.map((item: string) => (
         <li key={item}>✓ {item}</li>
       ))}
     </ul>
@@ -489,7 +513,7 @@ export default function SupplierPublicProfile() {
   <div className="rounded-xl border bg-blue-50 p-4">
     <h4 className="font-semibold text-blue-900">What you provide</h4>
     <ul className="mt-2 space-y-1 text-sm text-blue-800">
-      {expectations.ownerProvides.map((item) => (
+      {expectations.ownerProvides.map((item: string) => (
         <li key={item}>✓ {item}</li>
       ))}
     </ul>
@@ -498,7 +522,7 @@ export default function SupplierPublicProfile() {
   <div className="rounded-xl border bg-gray-50 p-4">
     <h4 className="font-semibold text-gray-900">Good to know</h4>
     <ul className="mt-2 space-y-1 text-sm text-gray-700">
-      {expectations.goodToKnow.map((item) => (
+      {expectations.goodToKnow.map((item: string) => (
         <li key={item}>• {item}</li>
       ))}
     </ul>
