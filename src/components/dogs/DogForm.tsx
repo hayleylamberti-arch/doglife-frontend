@@ -280,32 +280,17 @@ export default function DogForm({ dog, onClose }: any) {
       return res.json();
     },
 
-    onSuccess: (response) => {
-      const newDog = response?.dog || response?.data?.dog || response?.data || response;
+    onSuccess: async () => {
+  await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
 
-      queryClient.setQueryData(["owner-dogs"], (old: any) => {
-        if (!old || !newDog) return old;
+  if (dog?.id) {
+    await queryClient.invalidateQueries({
+      queryKey: [`/api/owner/dogs/${dog.id}`],
+    });
+  }
 
-        if (dog?.id) {
-          return {
-            ...old,
-            dogs: old.dogs.map((d: any) => (d.id === dog.id ? newDog : d)),
-          };
-        }
-
-        return {
-          ...old,
-          dogs: [newDog, ...old.dogs],
-        };
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
-      queryClient.invalidateQueries({
-        queryKey: [`/api/owner/dogs/${dog?.id}`],
-      });
-
-      onClose();
-    },
+  onClose();
+},
   });
     return (
     <form

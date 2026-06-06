@@ -432,7 +432,7 @@ export default function DogProfilePage() {
           <div className="mb-6 space-y-3 rounded-xl border border-gray-200 p-4">
             <input
               className="w-full rounded border px-3 py-2"
-              placeholder="Date"
+              type="date"
               value={newActivity.date}
               onChange={(e) =>
                 setNewActivity({ ...newActivity, date: e.target.value })
