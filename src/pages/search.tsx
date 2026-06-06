@@ -442,7 +442,25 @@ export default function SearchPage() {
 
             <select
               value={service}
-              onChange={(e) => setService(e.target.value as ValidService)}
+              onChange={async (e) => {
+  const nextService = e.target.value as ValidService;
+  setService(nextService);
+
+  if (searchMode === "AREA" && suburb.trim()) {
+    try {
+      setLoading(true);
+      setError("");
+      setShowSuburbDropdown(false);
+      await fetchAreaSuppliers(suburb, nextService);
+    } catch (err) {
+      console.error("SERVICE AUTO SEARCH ERROR:", err);
+      setError("Failed to load suppliers");
+      setSuppliers([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+}}
               className="rounded-md border bg-white px-3 py-2"
               disabled={!hasLiveServicesForSuburb || servicesLoading}
             >
