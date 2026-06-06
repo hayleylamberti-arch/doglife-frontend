@@ -56,6 +56,8 @@ type SupplierBooking = {
   totalCents?: number | null;
   serviceType?: string | null;
   notes?: string | null;
+  accessInstructions?: string | null;
+  accessInstructionsUpdatedAt?: string | null;
   completedAt?: string | null;
   serviceLocationSummary?: ServiceLocationSummary | null;
   owner?: {
@@ -284,6 +286,23 @@ function BookingCard({
       <DogDetails booking={booking} />
 
       <LocationSummary booking={booking} />
+
+            {booking.accessInstructions ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <div className="font-medium">Access instructions</div>
+          <div className="mt-1 whitespace-pre-line">
+            {booking.accessInstructions}
+          </div>
+          {booking.accessInstructionsUpdatedAt ? (
+            <div className="mt-2 text-xs text-blue-600">
+              Updated:{" "}
+              {new Date(booking.accessInstructionsUpdatedAt).toLocaleString(
+                "en-ZA"
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {booking.notes ? (
         <div className="text-sm text-gray-600">
