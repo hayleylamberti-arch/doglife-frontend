@@ -283,6 +283,11 @@ export default function DogForm({ dog, onClose }: any) {
     onSuccess: async () => {
   await queryClient.invalidateQueries({ queryKey: ["owner-dogs"] });
 
+  await queryClient.refetchQueries({
+    queryKey: ["owner-dogs"],
+    type: "active",
+  });
+
   if (dog?.id) {
     await queryClient.invalidateQueries({
       queryKey: [`/api/owner/dogs/${dog.id}`],
