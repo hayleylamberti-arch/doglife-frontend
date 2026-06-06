@@ -130,6 +130,22 @@ export default function SupplierBookings() {
             )}
           </div>
 
+          {booking.accessInstructions ? (
+  <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+    <p className="text-sm font-semibold text-blue-900">
+      Access instructions
+    </p>
+    <p className="mt-2 whitespace-pre-line text-sm text-blue-800">
+      {booking.accessInstructions}
+    </p>
+    {booking.accessInstructionsUpdatedAt ? (
+      <p className="mt-2 text-xs text-blue-600">
+        Updated: {new Date(booking.accessInstructionsUpdatedAt).toLocaleString("en-ZA")}
+      </p>
+    ) : null}
+  </div>
+) : null}
+
           {booking.dogs?.length ? (
             <div className="mt-5 space-y-3">
               <h2 className="font-semibold">Dog health & behaviour</h2>

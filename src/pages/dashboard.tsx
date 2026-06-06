@@ -410,6 +410,7 @@ export default function Dashboard() {
   });
 
   const [accessInstructionInputs, setAccessInstructionInputs] = useState<Record<string, string>>({});
+const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string | null>(null);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
@@ -459,10 +460,15 @@ export default function Dashboard() {
       accessInstructions,
     });
   },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["bookings"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-  },
+  onSuccess: (_data, variables) => {
+  setSavedAccessInstructionId(variables.bookingId);
+  queryClient.invalidateQueries({ queryKey: ["bookings"] });
+  queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
+  window.setTimeout(() => {
+    setSavedAccessInstructionId(null);
+  }, 3000);
+},
 });
 
   const markAsReadMutation = useMutation({
@@ -761,6 +767,11 @@ export default function Dashboard() {
         ? "Saving..."
         : "Save access instructions"}
     </button>
+    {savedAccessInstructionId === booking.id ? (
+  <p className="mt-2 text-sm font-medium text-green-700">
+    Access instructions sent ✓
+  </p>
+) : null}
   </div>
 ) : null}
 
