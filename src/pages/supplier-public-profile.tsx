@@ -72,6 +72,45 @@ type LocationState = {
   isPreferred?: boolean;
 };
 
+function getServiceExpectations(serviceType?: string) {
+  switch (serviceType) {
+    case "WALKING":
+      return {
+        provides: ["Poop bags", "Water breaks", "Safe walking route"],
+        ownerProvides: ["Collar or harness", "Access to your dog", "Behaviour notes"],
+        goodToKnow: ["Tell the supplier if your dog pulls, reacts to other dogs, or needs a slower pace."],
+      };
+
+    case "GROOMING":
+      return {
+        provides: ["Shampoo", "Towels", "Grooming equipment"],
+        ownerProvides: ["Access to water", "Access to power", "Safe working space"],
+        goodToKnow: ["Please mention skin sensitivity, matting, or nervous behaviour before the booking."],
+      };
+
+    case "BOARDING":
+      return {
+        provides: ["Safe sleeping area", "Water bowls", "Daily care"],
+        ownerProvides: ["Food", "Medication instructions", "Emergency contact"],
+        goodToKnow: ["Vaccination and behaviour information may be required before boarding."],
+      };
+
+    case "DAYCARE":
+      return {
+        provides: ["Supervised care", "Water access", "Rest area"],
+        ownerProvides: ["Collar or lead", "Food if needed", "Behaviour notes"],
+        goodToKnow: ["Best suited to dogs comfortable around people and other dogs."],
+      };
+
+    default:
+      return {
+        provides: ["Reliable service", "Clear communication", "DogLife-approved care"],
+        ownerProvides: ["Accurate pet details", "Access instructions", "Emergency contact"],
+        goodToKnow: ["Share anything important about your dog before booking."],
+      };
+  }
+}
+
 export default function SupplierPublicProfile() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -262,17 +301,25 @@ export default function SupplierPublicProfile() {
       </div>
 
       {supplier.galleryUrls?.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {supplier.galleryUrls.map((img: string, i: number) => (
-            <img
-              key={i}
-              src={img}
-              className="h-40 w-full rounded-xl object-cover"
-              alt={`${supplier.businessName} gallery ${i + 1}`}
-            />
-          ))}
-        </div>
-      )}
+  <div className="grid gap-4 md:grid-cols-4">
+    <div className="md:col-span-2 md:row-span-2">
+      <img
+        src={supplier.galleryUrls[0]}
+        className="h-80 w-full rounded-2xl object-cover shadow"
+        alt={`${supplier.businessName} main gallery`}
+      />
+    </div>
+
+    {supplier.galleryUrls.slice(1, 5).map((img: string, i: number) => (
+      <img
+        key={i}
+        src={img}
+        className="h-40 w-full rounded-2xl object-cover shadow-sm"
+        alt={`${supplier.businessName} gallery ${i + 2}`}
+      />
+    ))}
+  </div>
+)}
 
       <Card>
         <CardContent className="space-y-3 p-6">
@@ -342,6 +389,7 @@ export default function SupplierPublicProfile() {
               toNumber(service?.pricingJson?.additionalDogPrice);
 
             const hasAdditionalDogPrice = additionalDogPriceCents > 0;
+            const expectations = getServiceExpectations(service.service);
 
             return (
               <Card key={service.id}>
@@ -410,14 +458,14 @@ export default function SupplierPublicProfile() {
 
                         return (
                           <div key={category} className="space-y-1">
-                            <p className="font-medium">
+                            <p className="text-sm font-semibold uppercase tracking-wide text-gray-900">
                               {category === "WASH_BRUSH"
                                 ? "Wash & Brush"
                                 : "Wash & Cut"}
                             </p>
 
                             {tiers.map((tier: any) => (
-                              <p key={tier.id}>
+                              <p key={tier.id} className="ml-3 text-sm text-gray-700">
                                 {formatDogSize(tier.dogSize)} —{" "}
                                 {formatPrice(tier.priceCents)}
                               </p>
@@ -427,6 +475,35 @@ export default function SupplierPublicProfile() {
                       })}
                     </div>
                   ) : null}
+
+                  <div className="grid gap-4 md:grid-cols-3">
+  <div className="rounded-xl border bg-green-50 p-4">
+    <h4 className="font-semibold text-green-900">What we provide</h4>
+    <ul className="mt-2 space-y-1 text-sm text-green-800">
+      {expectations.provides.map((item) => (
+        <li key={item}>✓ {item}</li>
+      ))}
+    </ul>
+  </div>
+
+  <div className="rounded-xl border bg-blue-50 p-4">
+    <h4 className="font-semibold text-blue-900">What you provide</h4>
+    <ul className="mt-2 space-y-1 text-sm text-blue-800">
+      {expectations.ownerProvides.map((item) => (
+        <li key={item}>✓ {item}</li>
+      ))}
+    </ul>
+  </div>
+
+  <div className="rounded-xl border bg-gray-50 p-4">
+    <h4 className="font-semibold text-gray-900">Good to know</h4>
+    <ul className="mt-2 space-y-1 text-sm text-gray-700">
+      {expectations.goodToKnow.map((item) => (
+        <li key={item}>• {item}</li>
+      ))}
+    </ul>
+  </div>
+</div>
 
                   <Button
                     size="sm"
