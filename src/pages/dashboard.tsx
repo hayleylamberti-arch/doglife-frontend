@@ -409,6 +409,8 @@ export default function Dashboard() {
     cancelled: false,
   });
 
+  const [accessInstructionInputs, setAccessInstructionInputs] = useState<Record<string, string>>({});
+
   const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
     queryFn: async () => {
@@ -444,6 +446,24 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
+
+  const updateAccessInstructionsMutation = useMutation({
+  mutationFn: async ({
+    bookingId,
+    accessInstructions,
+  }: {
+    bookingId: string;
+    accessInstructions: string;
+  }) => {
+    await api.patch(`/api/bookings/${bookingId}/access-instructions`, {
+      accessInstructions,
+    });
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  },
+});
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -699,6 +719,50 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : null}
+
+            {["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
+  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+    <p className="text-sm font-medium text-blue-900">
+      Access instructions for supplier
+    </p>
+
+    <textarea
+      rows={3}
+      value={
+        accessInstructionInputs[booking.id] ??
+        booking.accessInstructions ??
+        ""
+      }
+      onChange={(e) =>
+        setAccessInstructionInputs((prev) => ({
+          ...prev,
+          [booking.id]: e.target.value,
+        }))
+      }
+      placeholder="Gate code, parking, key access, security notes..."
+      className="mt-2 w-full rounded-lg border border-blue-200 p-2 text-sm"
+    />
+
+    <button
+      type="button"
+      onClick={() =>
+        updateAccessInstructionsMutation.mutate({
+          bookingId: booking.id,
+          accessInstructions:
+            accessInstructionInputs[booking.id] ??
+            booking.accessInstructions ??
+            "",
+        })
+      }
+      disabled={updateAccessInstructionsMutation.isPending}
+      className="mt-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+    >
+      {updateAccessInstructionsMutation.isPending
+        ? "Saving..."
+        : "Save access instructions"}
+    </button>
+  </div>
+) : null}
 
             {supplierMessage ? (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">
