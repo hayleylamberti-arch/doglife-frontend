@@ -34,6 +34,36 @@ function emptyMobileVetPrices() {
   }, {} as Record<string, string>);
 }
 
+function centsToRandInput(value?: number | null) {
+  if (value == null) return "";
+  return String(value / 100);
+}
+
+function linesToArray(value: string) {
+  return value
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function arrayToLines(value?: unknown) {
+  return Array.isArray(value) ? value.filter(Boolean).join("\n") : "";
+}
+
+function buildExpectationsPricingJson(
+  existing: Record<string, any> | null | undefined,
+  supplierProvides: string,
+  ownerProvides: string,
+  goodToKnow: string
+) {
+  return {
+    ...(existing || {}),
+    supplierProvides: linesToArray(supplierProvides),
+    ownerProvides: linesToArray(ownerProvides),
+    goodToKnow: linesToArray(goodToKnow),
+  };
+}
+
 function getMobileVetPricesFromService(service: any) {
   const prices = emptyMobileVetPrices();
   const savedServices = service?.pricingJson?.mobileVetServices || [];
@@ -158,11 +188,6 @@ function formatDate(value?: string | null) {
   });
 }
 
-function centsToRandInput(value?: number | null) {
-  if (value == null) return "";
-  return String(value / 100);
-}
-
 function serviceDefaults(serviceType: string) {
   switch (serviceType) {
     case "WALKING":
@@ -198,6 +223,9 @@ type EditServiceForm = {
   daycareFullDayPrice: string;
   petSittingLocation: string;
   mobileVetPrices: Record<string, string>;
+  supplierProvides: string;
+  ownerProvides: string;
+  goodToKnow: string;
 };
 
 function emptyGroomingPrices() {
@@ -249,6 +277,10 @@ export default function SupplierServicesPage() {
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
 
+  const [supplierProvides, setSupplierProvides] = useState("");
+  const [ownerProvides, setOwnerProvides] = useState("");
+  const [goodToKnow, setGoodToKnow] = useState("");
+
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditServiceForm | null>(null);
 
@@ -274,6 +306,9 @@ export default function SupplierServicesPage() {
     setMobileVetPrices(emptyMobileVetPrices());
     setMaxDogsPerBooking("");
     setConcurrentCapacityDogs("");
+    setSupplierProvides("");
+    setOwnerProvides("");
+    setGoodToKnow("");
     setWashBrush(emptyGroomingPrices());
     setWashCut(emptyGroomingPrices());
   };
@@ -314,6 +349,9 @@ export default function SupplierServicesPage() {
       ),
       petSittingLocation: s.pricingJson?.petSittingLocation || "BOTH",
       mobileVetPrices: getMobileVetPricesFromService(s),
+      supplierProvides: arrayToLines(s.pricingJson?.supplierProvides),
+      ownerProvides: arrayToLines(s.pricingJson?.ownerProvides),
+      goodToKnow: arrayToLines(s.pricingJson?.goodToKnow),
     });
   };
 
@@ -340,6 +378,12 @@ export default function SupplierServicesPage() {
         additionalDogPriceCents: editForm.additionalDogEnabled
           ? Math.round(Number(editForm.additionalDogPrice || "0") * 100)
           : null,
+        pricingJson: buildExpectationsPricingJson(
+          service.pricingJson || {},
+          editForm.supplierProvides,
+          editForm.ownerProvides,
+          editForm.goodToKnow
+        ),
       };
 
       if (service.service === "GROOMING") {
@@ -366,6 +410,7 @@ export default function SupplierServicesPage() {
           Number(editForm.daycareFullDayPrice) * 100
         );
         payload.pricingJson = {
+          ...payload.pricingJson,
           halfDayPriceCents: Math.round(
             Number(editForm.daycareHalfDayPrice) * 100
           ),
@@ -380,7 +425,7 @@ export default function SupplierServicesPage() {
 
         payload.baseRateCents = Math.round(Number(editForm.price) * 100);
         payload.pricingJson = {
-          ...(service.pricingJson || {}),
+          ...payload.pricingJson,
           petSittingLocation: editForm.petSittingLocation || "BOTH",
         };
       } else if (service.service === "MOBILE_VET") {
@@ -396,7 +441,10 @@ export default function SupplierServicesPage() {
 
         payload.baseRateCents = lowestPrice;
         payload.durationMinutes = Number(editForm.durationMinutes);
-        payload.pricingJson = buildMobileVetPricingJson(editForm.mobileVetPrices);
+        payload.pricingJson = {
+          ...payload.pricingJson,
+          ...buildMobileVetPricingJson(editForm.mobileVetPrices),
+        };
       } else {
         if (!editForm.price || Number(editForm.price) <= 0) {
           throw new Error("Enter a valid price");
@@ -474,6 +522,12 @@ export default function SupplierServicesPage() {
       const isBoarding = serviceType === "BOARDING";
       const isPetSitting = serviceType === "PET_SITTING";
       const isMobileVet = serviceType === "MOBILE_VET";
+      const expectationsPricingJson = buildExpectationsPricingJson(
+        null,
+        supplierProvides,
+        ownerProvides,
+        goodToKnow
+      );
 
       if (
         showDogCapacity &&
@@ -516,6 +570,7 @@ export default function SupplierServicesPage() {
               durationMinutes: Number(duration),
               bufferMinutes: Number(bufferMinutes || "0"),
               groomingOptions: { washBrush, washCut },
+              pricingJson: expectationsPricingJson,
               maxDogsPerBooking: null,
               concurrentCapacityDogs: null,
             },
@@ -545,6 +600,7 @@ export default function SupplierServicesPage() {
               durationMinutes: null,
               bufferMinutes: Number(bufferMinutes || "0"),
               pricingJson: {
+                ...expectationsPricingJson,
                 halfDayPriceCents: Math.round(Number(daycareHalfDayPrice) * 100),
                 fullDayPriceCents: Math.round(Number(daycareFullDayPrice) * 100),
               },
@@ -579,7 +635,10 @@ export default function SupplierServicesPage() {
               baseRateCents: lowestPrice,
               durationMinutes: Number(duration),
               bufferMinutes: Number(bufferMinutes || "0"),
-              pricingJson: buildMobileVetPricingJson(mobileVetPrices),
+              pricingJson: {
+                ...expectationsPricingJson,
+                ...buildMobileVetPricingJson(mobileVetPrices),
+              },
               maxDogsPerBooking: null,
               concurrentCapacityDogs: null,
             },
@@ -621,8 +680,11 @@ export default function SupplierServicesPage() {
                 ? Math.round(Number(boardingExtraDogPrice) * 100)
                 : null,
             pricingJson: isPetSitting
-              ? { petSittingLocation }
-              : null,
+              ? {
+                  ...expectationsPricingJson,
+                  petSittingLocation,
+                }
+              : expectationsPricingJson,
             maxDogsPerBooking: showDogCapacity
               ? Number(maxDogsPerBooking || "0") || null
               : null,
@@ -666,13 +728,97 @@ export default function SupplierServicesPage() {
   const isMobileVet = serviceType === "MOBILE_VET";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
 
+  const renderExpectationInputs = (
+    currentSupplierProvides: string,
+    currentOwnerProvides: string,
+    currentGoodToKnow: string,
+    onSupplierProvidesChange: (value: string) => void,
+    onOwnerProvidesChange: (value: string) => void,
+    onGoodToKnowChange: (value: string) => void
+  ) => (
+    <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+      <div>
+        <p className="font-medium">Service expectations</p>
+        <p className="text-sm text-gray-500">
+          Add one item per line. These will appear on your public supplier profile.
+        </p>
+      </div>
+
+      <textarea
+        rows={3}
+        value={currentSupplierProvides}
+        onChange={(e) => onSupplierProvidesChange(e.target.value)}
+        placeholder={"What you provide, one per line\nExample: Poop bags\nWater breaks"}
+        className="border rounded px-3 py-2 block w-full"
+      />
+
+      <textarea
+        rows={3}
+        value={currentOwnerProvides}
+        onChange={(e) => onOwnerProvidesChange(e.target.value)}
+        placeholder={"What the owner provides, one per line\nExample: Collar or harness\nAccess to dog"}
+        className="border rounded px-3 py-2 block w-full"
+      />
+
+      <textarea
+        rows={3}
+        value={currentGoodToKnow}
+        onChange={(e) => onGoodToKnowChange(e.target.value)}
+        placeholder={"Good to know, one per line\nExample: Please mention nervous behaviour before booking."}
+        className="border rounded px-3 py-2 block w-full"
+      />
+    </div>
+  );
+
+  const renderSavedExpectations = (s: any) => {
+    const supplierItems = s.pricingJson?.supplierProvides || [];
+    const ownerItems = s.pricingJson?.ownerProvides || [];
+    const notes = s.pricingJson?.goodToKnow || [];
+
+    if (!supplierItems.length && !ownerItems.length && !notes.length) return null;
+
+    return (
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        {supplierItems.length ? (
+          <div className="rounded border bg-green-50 p-3 text-green-800">
+            <p className="font-medium">What we provide</p>
+            {supplierItems.map((item: string) => (
+              <p key={item}>✓ {item}</p>
+            ))}
+          </div>
+        ) : null}
+
+        {ownerItems.length ? (
+          <div className="rounded border bg-blue-50 p-3 text-blue-800">
+            <p className="font-medium">What owner provides</p>
+            {ownerItems.map((item: string) => (
+              <p key={item}>✓ {item}</p>
+            ))}
+          </div>
+        ) : null}
+
+        {notes.length ? (
+          <div className="rounded border bg-gray-50 p-3 text-gray-700">
+            <p className="font-medium">Good to know</p>
+            {notes.map((item: string) => (
+              <p key={item}>• {item}</p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const renderEditForm = (s: any) => {
     if (editingServiceId !== s.id || !editForm) return null;
 
     const showCapacity = shouldShowDogCapacity(s.service);
-    const showDuration = !["BOARDING", "PET_SITTING", "DAYCARE", "GROOMING"].includes(
-      s.service
-    );
+    const showDuration = ![
+      "BOARDING",
+      "PET_SITTING",
+      "DAYCARE",
+      "GROOMING",
+    ].includes(s.service);
 
     return (
       <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50">
@@ -892,6 +1038,15 @@ export default function SupplierServicesPage() {
           </>
         ) : null}
 
+        {renderExpectationInputs(
+          editForm.supplierProvides,
+          editForm.ownerProvides,
+          editForm.goodToKnow,
+          (value) => setEditForm({ ...editForm, supplierProvides: value }),
+          (value) => setEditForm({ ...editForm, ownerProvides: value }),
+          (value) => setEditForm({ ...editForm, goodToKnow: value })
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={() => updateMutation.mutate({ service: s })}
@@ -1039,6 +1194,9 @@ export default function SupplierServicesPage() {
             setMobileVetPrices(emptyMobileVetPrices());
             setMaxDogsPerBooking("");
             setConcurrentCapacityDogs("");
+            setSupplierProvides("");
+            setOwnerProvides("");
+            setGoodToKnow("");
             setWashBrush(emptyGroomingPrices());
             setWashCut(emptyGroomingPrices());
           }}
@@ -1289,6 +1447,17 @@ export default function SupplierServicesPage() {
           </>
         ) : null}
 
+        {serviceType
+          ? renderExpectationInputs(
+              supplierProvides,
+              ownerProvides,
+              goodToKnow,
+              setSupplierProvides,
+              setOwnerProvides,
+              setGoodToKnow
+            )
+          : null}
+
         {serviceType ? (
           <button
             onClick={() => createMutation.mutate()}
@@ -1425,6 +1594,8 @@ export default function SupplierServicesPage() {
                           Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
                         </p>
                       ) : null}
+
+                      {renderSavedExpectations(s)}
                     </div>
 
                     <div className="flex gap-2">
