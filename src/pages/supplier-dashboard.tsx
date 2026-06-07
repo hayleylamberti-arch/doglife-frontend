@@ -182,49 +182,63 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
 }
 
 function DogDetails({ booking }: { booking: SupplierBooking }) {
+  const [isOpen, setIsOpen] = useState(false);
   const dogs = booking.dogs?.map((item) => item.dog).filter(Boolean) || [];
 
   if (!dogs.length) return null;
 
   return (
-    <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-      <div className="font-semibold">Dog care details</div>
+    <div className="rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-950">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className="flex w-full items-center justify-between p-3 text-left font-semibold"
+      >
+        <span>
+          Dog care details ({dogs.length} dog{dogs.length === 1 ? "" : "s"})
+        </span>
+        <span>{isOpen ? "−" : "+"}</span>
+      </button>
 
-      {dogs.map((dog) => (
-        <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
-          <div className="font-medium">{dog!.name}</div>
+      {isOpen ? (
+        <div className="space-y-3 p-3 pt-0">
+          {dogs.map((dog) => (
+            <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
+              <div className="font-medium">{dog!.name}</div>
 
-          <div className="mt-2 grid gap-1 sm:grid-cols-2">
-            <div>Breed: {dog!.breed || "—"}</div>
-            <div>Size: {dog!.size || "—"}</div>
-            <div>Sex: {dog!.sex || "—"}</div>
-            <div>Neutered: {yesNo(dog!.isNeutered)}</div>
-            <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
-            <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
-            <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
-            <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
-            <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
-            <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
-            <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
-            <div>Vet: {dog!.vetName || "—"}</div>
-            <div>Vet phone: {dog!.vetPhone || "—"}</div>
-          </div>
+              <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                <div>Breed: {dog!.breed || "—"}</div>
+                <div>Size: {dog!.size || "—"}</div>
+                <div>Sex: {dog!.sex || "—"}</div>
+                <div>Neutered: {yesNo(dog!.isNeutered)}</div>
+                <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
+                <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
+                <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
+                <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
+                <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
+                <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
+                <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
+                <div>Vet: {dog!.vetName || "—"}</div>
+                <div>Vet phone: {dog!.vetPhone || "—"}</div>
+              </div>
 
-          {dog!.behavioralNotes ? (
-            <div className="mt-2">
-              <span className="font-medium">Behaviour notes:</span>{" "}
-              {dog!.behavioralNotes}
+              {dog!.behavioralNotes ? (
+                <div className="mt-2">
+                  <span className="font-medium">Behaviour notes:</span>{" "}
+                  {dog!.behavioralNotes}
+                </div>
+              ) : null}
+
+              {dog!.medicalNotes ? (
+                <div className="mt-2">
+                  <span className="font-medium">Medical notes:</span>{" "}
+                  {dog!.medicalNotes}
+                </div>
+              ) : null}
             </div>
-          ) : null}
-
-          {dog!.medicalNotes ? (
-            <div className="mt-2">
-              <span className="font-medium">Medical notes:</span>{" "}
-              {dog!.medicalNotes}
-            </div>
-          ) : null}
+          ))}
         </div>
-      ))}
+      ) : null}
     </div>
   );
 }
