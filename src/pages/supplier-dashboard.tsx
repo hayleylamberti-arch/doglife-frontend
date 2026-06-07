@@ -725,7 +725,9 @@ export default function SupplierDashboardPage() {
       markAsReadMutation.mutate(notification.id);
     }
 
-    if (!notification.referenceId) return;
+    const bookingId = notification.referenceId || notification.booking?.id;
+
+    if (!bookingId) return;
 
     const sectionMap = [
       { key: "today", bookings: todayBookings },
@@ -738,7 +740,7 @@ export default function SupplierDashboardPage() {
     ];
 
     const matchingSection = sectionMap.find((section) =>
-      section.bookings.some((booking) => booking.id === notification.referenceId)
+      section.bookings.some((booking) => booking.id === bookingId)
     );
 
     if (matchingSection) {
@@ -750,7 +752,7 @@ export default function SupplierDashboardPage() {
 
     setTimeout(() => {
       document
-        .getElementById(`booking-${notification.referenceId}`)
+        .getElementById(`booking-${bookingId}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 300);
   }

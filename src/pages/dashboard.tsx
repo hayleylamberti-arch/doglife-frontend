@@ -598,11 +598,13 @@ const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string 
       markAsReadMutation.mutate(notification.id);
     }
 
-    if (!notification.referenceId) return;
+    const bookingId = notification.referenceId || notification.booking?.id;
+
+if (!bookingId) return;
 
     const section = bookingSections.find((bookingSection) =>
       bookingSection.bookings.some(
-        (booking: any) => booking.id === notification.referenceId
+        (booking: any) => booking.id === bookingId
       )
     );
 
@@ -615,7 +617,7 @@ const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string 
 
     setTimeout(() => {
   document
-    .getElementById(`booking-${notification.referenceId}`)
+    .getElementById(`booking-${bookingId}`)
     ?.scrollIntoView({ behavior: "smooth", block: "center" });
 }, 300);
   }
