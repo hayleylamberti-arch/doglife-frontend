@@ -614,17 +614,10 @@ const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string 
     }
 
     setTimeout(() => {
-      const bookingElement = document.getElementById(
-        `booking-${notification.referenceId}`
-      );
-
-      if (bookingElement) {
-        bookingElement.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
-    }, 100);
+  document
+    .getElementById(`booking-${notification.referenceId}`)
+    ?.scrollIntoView({ behavior: "smooth", block: "center" });
+}, 300);
   }
 
   const renderBookingCard = (booking: any, isToday = false) => {

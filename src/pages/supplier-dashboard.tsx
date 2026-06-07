@@ -752,7 +752,7 @@ export default function SupplierDashboardPage() {
       document
         .getElementById(`booking-${notification.referenceId}`)
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+    }, 300);
   }
 
   function handleDecline(booking: SupplierBooking) {
