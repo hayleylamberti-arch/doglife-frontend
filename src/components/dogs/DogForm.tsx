@@ -115,6 +115,7 @@ type DogFormValues = {
   breed: string;
   dateOfBirth: string;
   size: string;
+  weightKg: string;
   sex: string;
   isNeutered: string;
   isVaccinated: string;
@@ -204,6 +205,7 @@ export default function DogForm({ dog, onClose }: any) {
       breed: dog?.breed || "",
       dateOfBirth: dateInputValue(dog?.dateOfBirth),
       size: dog?.size || "",
+      weightKg: dog?.weightKg ? String(dog.weightKg) : "",
       sex: dog?.sex || "",
       isNeutered:
         dog?.isNeutered === true
@@ -254,6 +256,7 @@ export default function DogForm({ dog, onClose }: any) {
         profileImageUrl: imageUrl || null,
         dateOfBirth: dateOrNull(values.dateOfBirth),
         size: emptyToNull(values.size),
+        weightKg: values.weightKg ? Number(values.weightKg) : null, 
         sex: emptyToNull(values.sex),
         isNeutered: booleanFromSelect(values.isNeutered),
         isVaccinated: booleanFromSelect(values.isVaccinated),
@@ -377,6 +380,23 @@ export default function DogForm({ dog, onClose }: any) {
     <option value="LARGE">Large</option>
     <option value="XL">XL</option>
   </select>
+</div>
+
+<div>
+  <label className="mb-1 block text-sm font-medium text-gray-700">
+    Weight in kg
+  </label>
+  <Input
+    type="number"
+    step="0.1"
+    min="0"
+    max="120"
+    placeholder="e.g. 18.5"
+    {...form.register("weightKg")}
+  />
+  <p className="mt-1 text-xs text-gray-500">
+    Used to help suppliers verify grooming size and pricing.
+  </p>
 </div>
 
           <div>
