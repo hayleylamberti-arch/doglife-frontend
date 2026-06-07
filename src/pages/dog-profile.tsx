@@ -10,6 +10,7 @@ type Dog = {
   breed?: string | null;
   dateOfBirth?: string | null;
   size?: string | null;
+  weightKg?: number | null;
   sex?: string | null;
   isNeutered?: boolean | null;
   behavioralNotes?: string | null;
@@ -293,8 +294,10 @@ export default function DogProfilePage() {
           </h1>
 
           <p className="mt-2 text-gray-600">
-            {dog.breed || "Breed not added"} • {dog.size || "Size not added"} •{" "}
-            {dog.sex || "Sex not added"}
+          {dog.breed || "Breed not added"} •{" "}
+          {dog.size || "Size not added"} •{" "}
+          {dog.weightKg ? `${dog.weightKg}kg` : "Weight not added"} •{" "}
+          {dog.sex || "Sex not added"}
           </p>
 
           <p className="mt-1 text-sm text-gray-500">
