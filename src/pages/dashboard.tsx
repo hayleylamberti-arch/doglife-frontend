@@ -277,7 +277,7 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
           {SERVICE_SHORTCUTS.map((service) => (
             <Link
               key={service.key}
-              to={hasDogs ? service.href: "/owner/my-dogs"}
+              to={hasDogs ? service.href : "/owner/my-dogs"}
               className={`group flex w-20 shrink-0 flex-col items-center text-center md:w-24 ${
                 hasDogs ? "" : "opacity-70"
               }`}
@@ -411,6 +411,9 @@ export default function Dashboard() {
 
   const [accessInstructionInputs, setAccessInstructionInputs] = useState<Record<string, string>>({});
 const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string | null>(null);
+const [reviewInputs, setReviewInputs] = useState<
+  Record<string, { rating: string; comment: string }>
+>({});
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
@@ -479,6 +482,27 @@ const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string 
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
+
+  const submitReviewMutation = useMutation({
+  mutationFn: async ({
+    bookingId,
+    rating,
+    comment,
+  }: {
+    bookingId: string;
+    rating: string;
+    comment: string;
+  }) => {
+    await api.post("/api/reviews", {
+      bookingId,
+      rating: Number(rating),
+      comment: comment.trim() || null,
+    });
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+  },
+});
 
   const todayStart = useMemo(() => {
     const date = new Date();
@@ -778,6 +802,71 @@ if (!bookingId) return;
                 <p className="mt-1 text-sm text-red-700">{supplierMessage}</p>
               </div>
             ) : null}
+            {booking.status === "COMPLETED" && !booking.hasOwnerReviewed ? (
+  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+    <p className="text-sm font-medium text-green-900">
+      Rate this booking
+    </p>
+
+    <select
+      value={reviewInputs[booking.id]?.rating || ""}
+      onChange={(e) =>
+        setReviewInputs((prev) => ({
+          ...prev,
+          [booking.id]: {
+            rating: e.target.value,
+            comment: prev[booking.id]?.comment || "",
+          },
+        }))
+      }
+      className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+    >
+      <option value="">Select rating</option>
+      <option value="5">5 - Excellent</option>
+      <option value="4">4 - Good</option>
+      <option value="3">3 - Okay</option>
+      <option value="2">2 - Poor</option>
+      <option value="1">1 - Very poor</option>
+    </select>
+
+    <textarea
+      rows={3}
+      value={reviewInputs[booking.id]?.comment || ""}
+      onChange={(e) =>
+        setReviewInputs((prev) => ({
+          ...prev,
+          [booking.id]: {
+            rating: prev[booking.id]?.rating || "",
+            comment: e.target.value,
+          },
+        }))
+      }
+      placeholder="Optional comment"
+      className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+    />
+
+    <button
+      type="button"
+      disabled={
+        !reviewInputs[booking.id]?.rating ||
+        submitReviewMutation.isPending
+      }
+      onClick={() =>
+        submitReviewMutation.mutate({
+          bookingId: booking.id,
+          rating: reviewInputs[booking.id]?.rating || "",
+          comment: reviewInputs[booking.id]?.comment || "",
+        })
+      }
+      className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+    >
+      {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
+    </button>
+  </div>
+) : null}
+{booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
+  <p className="text-sm font-medium text-green-700">Reviewed ✓</p>
+) : null}
           </div>
 
           <div className="space-y-3 text-left md:text-right">

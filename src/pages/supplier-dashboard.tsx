@@ -40,6 +40,18 @@ type BookingEvent = {
   createdAt?: string;
 };
 
+type BookingReview = {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  createdAt?: string;
+};
+
+type ReviewInput = {
+  rating: string;
+  comment: string;
+};
+
 type ServiceLocationSummary = {
   type: "OWNER_HOME" | "SUPPLIER_LOCATION" | "TRANSPORT";
   label?: string | null;
@@ -60,6 +72,8 @@ type SupplierBooking = {
   accessInstructionsUpdatedAt?: string | null;
   completedAt?: string | null;
   serviceLocationSummary?: ServiceLocationSummary | null;
+  supplierReview?: BookingReview | null;
+  hasSupplierReviewed?: boolean;
   owner?: {
     id: string;
     firstName?: string | null;
@@ -243,6 +257,78 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
   );
 }
 
+function SupplierOwnerReview({
+  booking,
+  reviewInput,
+  isSubmitting,
+  onChange,
+  onSubmit,
+}: {
+  booking: SupplierBooking;
+  reviewInput?: ReviewInput;
+  isSubmitting: boolean;
+  onChange: (bookingId: string, values: ReviewInput) => void;
+  onSubmit: (bookingId: string) => void;
+}) {
+  if (booking.status !== "COMPLETED") return null;
+
+  if (booking.hasSupplierReviewed) {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700">
+        Owner reviewed ✓
+      </div>
+    );
+  }
+
+  const currentInput = reviewInput || { rating: "", comment: "" };
+
+  return (
+    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+      <p className="font-medium text-green-900">Rate this owner</p>
+
+      <select
+        value={currentInput.rating}
+        onChange={(event) =>
+          onChange(booking.id, {
+            rating: event.target.value,
+            comment: currentInput.comment,
+          })
+        }
+        className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+      >
+        <option value="">Select rating</option>
+        <option value="5">5 - Excellent</option>
+        <option value="4">4 - Good</option>
+        <option value="3">3 - Okay</option>
+        <option value="2">2 - Poor</option>
+        <option value="1">1 - Very poor</option>
+      </select>
+
+      <textarea
+        rows={3}
+        value={currentInput.comment}
+        onChange={(event) =>
+          onChange(booking.id, {
+            rating: currentInput.rating,
+            comment: event.target.value,
+          })
+        }
+        placeholder="Optional comment"
+        className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+      />
+
+      <button
+        type="button"
+        disabled={!currentInput.rating || isSubmitting}
+        onClick={() => onSubmit(booking.id)}
+        className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+      >
+        {isSubmitting ? "Submitting..." : "Submit owner review"}
+      </button>
+    </div>
+  );
+}
+
 function BookingCard({
   booking,
   onAccept,
@@ -251,6 +337,10 @@ function BookingCard({
   onComplete,
   onMarkPaid,
   actionLoading,
+  reviewInput,
+  reviewLoading,
+  onReviewChange,
+  onSubmitReview,
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
@@ -259,6 +349,10 @@ function BookingCard({
   onComplete: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
   actionLoading: boolean;
+  reviewInput?: ReviewInput;
+  reviewLoading: boolean;
+  onReviewChange: (bookingId: string, values: ReviewInput) => void;
+  onSubmitReview: (bookingId: string) => void;
 }) {
   return (
     <div
@@ -298,23 +392,12 @@ function BookingCard({
       </div>
 
       <DogDetails booking={booking} />
-
       <LocationSummary booking={booking} />
 
-            {booking.accessInstructions ? (
+      {booking.accessInstructions ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
           <div className="font-medium">Access instructions</div>
-          <div className="mt-1 whitespace-pre-line">
-            {booking.accessInstructions}
-          </div>
-          {booking.accessInstructionsUpdatedAt ? (
-            <div className="mt-2 text-xs text-blue-600">
-              Updated:{" "}
-              {new Date(booking.accessInstructionsUpdatedAt).toLocaleString(
-                "en-ZA"
-              )}
-            </div>
-          ) : null}
+          <div className="mt-1 whitespace-pre-line">{booking.accessInstructions}</div>
         </div>
       ) : null}
 
@@ -323,6 +406,14 @@ function BookingCard({
           <span className="font-medium">Notes:</span> {booking.notes}
         </div>
       ) : null}
+
+      <SupplierOwnerReview
+        booking={booking}
+        reviewInput={reviewInput}
+        isSubmitting={reviewLoading}
+        onChange={onReviewChange}
+        onSubmit={onSubmitReview}
+      />
 
       {booking.status === "PENDING" ? (
         <div className="flex gap-3 pt-2">
@@ -395,6 +486,10 @@ function BookingSection({
   onStart,
   onComplete,
   onMarkPaid,
+  reviewInputs,
+  activeReviewBookingId,
+  onReviewChange,
+  onSubmitReview,
   isOpen,
   onToggle,
 }: {
@@ -410,20 +505,31 @@ function BookingSection({
   onStart: (bookingId: string) => void;
   onComplete: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
+  reviewInputs: Record<string, ReviewInput>;
+  activeReviewBookingId: string | null;
+  onReviewChange: (bookingId: string, values: ReviewInput) => void;
+  onSubmitReview: (bookingId: string) => void;
   isOpen: boolean;
   onToggle: () => void;
 }) {
   return (
-    <section id={id} className="rounded-2xl border border-gray-200 bg-white p-5">
+    <section
+      id={id}
+      className="rounded-2xl border border-gray-200 bg-white p-5"
+    >
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            {title}
+          </h2>
+
           <p className="mt-1 text-sm text-gray-500">
-            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
+            {bookings.length} booking
+            {bookings.length === 1 ? "" : "s"}
           </p>
         </div>
 
@@ -431,7 +537,10 @@ function BookingSection({
           <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
             {bookings.length}
           </span>
-          <span className="text-2xl text-gray-500">{isOpen ? "−" : "+"}</span>
+
+          <span className="text-2xl text-gray-500">
+            {isOpen ? "−" : "+"}
+          </span>
         </div>
       </button>
 
@@ -461,6 +570,12 @@ function BookingSection({
                   onComplete={onComplete}
                   onMarkPaid={onMarkPaid}
                   actionLoading={activeBookingId === booking.id}
+                  reviewInput={reviewInputs[booking.id]}
+                  reviewLoading={
+                    activeReviewBookingId === booking.id
+                  }
+                  onReviewChange={onReviewChange}
+                  onSubmitReview={onSubmitReview}
                 />
               ))}
             </div>
@@ -473,40 +588,18 @@ function BookingSection({
 
 function SupplierBookingJourney() {
   const steps = [
-    {
-      icon: "📩",
-      title: "Receive request",
-      text: "Owner sends booking, dog and timing details.",
-    },
-    {
-      icon: "🐶",
-      title: "Review Dog Passport",
-      text: "Check health, behaviour and care notes.",
-    },
-    {
-      icon: "✅",
-      title: "Confirm booking",
-      text: "Accept or suggest another time.",
-    },
-    {
-      icon: "🚶",
-      title: "Deliver service",
-      text: "Start and complete the booking.",
-    },
-    {
-      icon: "💳",
-      title: "Mark paid",
-      text: "Track payment and booking history.",
-    },
+    { icon: "📩", title: "Receive request", text: "Owner sends booking, dog and timing details." },
+    { icon: "🐶", title: "Review Dog Passport", text: "Check health, behaviour and care notes." },
+    { icon: "✅", title: "Confirm booking", text: "Accept or suggest another time." },
+    { icon: "🚶", title: "Deliver service", text: "Start and complete the booking." },
+    { icon: "💳", title: "Mark paid", text: "Track payment and booking history." },
   ];
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Your booking journey
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-900">Your booking journey</h2>
           <p className="mt-1 text-sm text-gray-500">
             From request to completed care, DogLife helps you manage each step.
           </p>
@@ -522,10 +615,7 @@ function SupplierBookingJourney() {
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
         {steps.map((step, index) => (
-          <div
-            key={step.title}
-            className="rounded-xl border border-gray-200 bg-gray-50 p-4"
-          >
+          <div key={step.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
             <div className="text-2xl">{step.icon}</div>
             <p className="mt-2 text-sm font-semibold text-gray-900">
               {index + 1}. {step.title}
@@ -541,6 +631,9 @@ function SupplierBookingJourney() {
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
+  const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>({});
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     today: true,
     pending: false,
@@ -583,6 +676,28 @@ export default function SupplierDashboardPage() {
     queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
   };
 
+  const submitSupplierReviewMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const input = reviewInputs[bookingId];
+
+      await api.post("/api/reviews", {
+        bookingId,
+        rating: Number(input.rating),
+        comment: input.comment.trim() || null,
+      });
+    },
+    onMutate: (bookingId) => setActiveReviewBookingId(bookingId),
+    onSuccess: (_data, bookingId) => {
+      refreshBookings();
+      setReviewInputs((prev) => {
+        const next = { ...prev };
+        delete next[bookingId];
+        return next;
+      });
+    },
+    onSettled: () => setActiveReviewBookingId(null),
+  });
+
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.patch(`/api/notifications/${id}/read`);
@@ -606,52 +721,36 @@ export default function SupplierDashboardPage() {
   });
 
   const acceptMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/accept`);
-    },
+    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/accept`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const startMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/start`);
-    },
+    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/start`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const completeMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/complete`);
-    },
+    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/complete`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`);
-    },
+    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const declineMutation = useMutation({
-    mutationFn: async ({
-      bookingId,
-      message,
-    }: {
-      bookingId: string;
-      message?: string;
-    }) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
-        message,
-      });
+    mutationFn: async ({ bookingId, message }: { bookingId: string; message?: string }) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, { message });
     },
     onMutate: ({ bookingId }) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
@@ -673,45 +772,26 @@ export default function SupplierDashboardPage() {
   const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
   const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
-  const todayBookings = sortBookingsByStart(
-    bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
-  );
-
+  const todayBookings = sortBookingsByStart(bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd)));
   const todayBookingIds = new Set(todayBookings.map((b) => b.id));
 
-  const pendingBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id))
-  );
+  const pendingBookings = sortBookingsByStart(bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id)));
+  const confirmedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)));
+  const inProgressBookings = sortBookingsByStart(bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)));
+  const completedUnbilledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)));
+  const completedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)));
+  const cancelledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)));
 
-  const confirmedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id))
-  );
-
-  const inProgressBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id))
-  );
-
-  const completedUnbilledBookings = sortBookingsByStart(
-    bookings.filter(
-      (b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
-    )
-  );
-
-  const completedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
-  );
-
-  const cancelledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id))
-  );
-
-  const totalActive = bookings.filter(
-    (b) =>
-      b.status === "PENDING" ||
-      b.status === "CONFIRMED" ||
-      b.status === "IN_PROGRESS" ||
-      b.status === "COMPLETED_UNBILLED"
+  const totalActive = bookings.filter((b) =>
+    ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(b.status)
   ).length;
+
+  function handleReviewChange(bookingId: string, values: ReviewInput) {
+    setReviewInputs((prev) => ({
+      ...prev,
+      [bookingId]: values,
+    }));
+  }
 
   function toggleSection(sectionKey: string) {
     setOpenSections((prev) => ({
@@ -721,16 +801,10 @@ export default function SupplierDashboardPage() {
   }
 
   function openAndScroll(sectionKey: string, sectionId: string) {
-    setOpenSections((prev) => ({
-      ...prev,
-      [sectionKey]: true,
-    }));
+    setOpenSections((prev) => ({ ...prev, [sectionKey]: true }));
 
     setTimeout(() => {
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
 
@@ -740,43 +814,15 @@ export default function SupplierDashboardPage() {
     }
 
     const bookingId = notification.referenceId || notification.booking?.id;
-
     if (!bookingId) return;
 
-    const sectionMap = [
-      { key: "today", bookings: todayBookings },
-      { key: "pending", bookings: pendingBookings },
-      { key: "confirmed", bookings: confirmedBookings },
-      { key: "inProgress", bookings: inProgressBookings },
-      { key: "completedUnbilled", bookings: completedUnbilledBookings },
-      { key: "completed", bookings: completedBookings },
-      { key: "cancelled", bookings: cancelledBookings },
-    ];
-
-    const matchingSection = sectionMap.find((section) =>
-      section.bookings.some((booking) => booking.id === bookingId)
-    );
-
-    if (matchingSection) {
-      setOpenSections((prev) => ({
-        ...prev,
-        [matchingSection.key]: true,
-      }));
-    }
-
     setTimeout(() => {
-      document
-        .getElementById(`booking-${bookingId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(`booking-${bookingId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 300);
   }
 
   function handleDecline(booking: SupplierBooking) {
-    const message = window.prompt(
-      "Add a message for the owner. You can suggest another time here.",
-      ""
-    );
-
+    const message = window.prompt("Add a message for the owner. You can suggest another time here.", "");
     if (message === null) return;
 
     declineMutation.mutate({
@@ -785,31 +831,54 @@ export default function SupplierDashboardPage() {
     });
   }
 
+  function renderSection(
+    id: string,
+    title: string,
+    emptyText: string,
+    sectionBookings: SupplierBooking[],
+    sectionKey: string
+  ) {
+    return (
+      <BookingSection
+        id={id}
+        title={title}
+        emptyText={emptyText}
+        bookings={sectionBookings}
+        isLoading={isLoading}
+        error={error}
+        activeBookingId={activeBookingId}
+        onAccept={(id) => acceptMutation.mutate(id)}
+        onDecline={handleDecline}
+        onStart={(id) => startMutation.mutate(id)}
+        onComplete={(id) => completeMutation.mutate(id)}
+        onMarkPaid={(id) => markPaidMutation.mutate(id)}
+        isOpen={Boolean(openSections[sectionKey])}
+        onToggle={() => toggleSection(sectionKey)}
+        reviewInputs={reviewInputs}
+        activeReviewBookingId={activeReviewBookingId}
+        onReviewChange={handleReviewChange}
+        onSubmitReview={(id) => submitSupplierReviewMutation.mutate(id)}
+      />
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome to DogLife 🐾
-            </h1>
+            <h1 className="text-3xl font-bold text-gray-900">Welcome to DogLife 🐾</h1>
             <p className="mt-2 text-sm text-gray-600">
               Complete your supplier setup so dog owners can find and book you.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link
-              to="/supplier/business-profile"
-              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
+            <Link to="/supplier/business-profile" className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
               Edit Business Profile
             </Link>
 
-            <Link
-              to="/supplier/availability"
-              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
+            <Link to="/supplier/availability" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
               Update Availability
             </Link>
           </div>
@@ -819,113 +888,39 @@ export default function SupplierDashboardPage() {
       <SupplierBookingJourney />
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Complete your supplier setup
-            </h2>
+        <p className="text-sm font-medium text-gray-800">
+          Profile completion: {completionData?.completionPercent ?? 0}%
+        </p>
 
-            <p className="mt-1 text-sm text-gray-600">
-              Before your profile can appear in owner searches, complete these steps.
-            </p>
-
-            <div className="mt-4 grid gap-2 text-sm text-gray-700 sm:grid-cols-2">
-              <div>✅ Create your business profile</div>
-              <div>✅ Define your service suburbs</div>
-              <div>✅ Add services and pricing</div>
-              <div>✅ Set your availability hours</div>
-              <div>⬜ Submit for DogLife review</div>
-            </div>
-
-            <p className="mt-4 text-sm font-medium text-gray-800">
-              Profile completion: {completionData?.completionPercent ?? 0}%
-            </p>
-
-            {completionData?.missing?.length ? (
-              <p className="mt-2 text-sm text-red-600">
-                Missing: {completionData.missing.join(", ")}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-            <Link
-              to="/supplier/business-profile"
-              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
-            >
-              Complete Profile
-            </Link>
-
-            <Link
-              to="/supplier/services"
-              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
-            >
-              Add Services
-            </Link>
-
-            <Link
-              to="/supplier/availability"
-              className="inline-flex items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
-            >
-              Set Availability
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => submitForReviewMutation.mutate()}
-              disabled={
-                submitForReviewMutation.isPending ||
-                completionData?.completionPercent !== 100
-              }
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitForReviewMutation.isPending
-                ? "Submitting..."
-                : "Submit for review"}
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => submitForReviewMutation.mutate()}
+          disabled={submitForReviewMutation.isPending || completionData?.completionPercent !== 100}
+          className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {submitForReviewMutation.isPending ? "Submitting..." : "Submit for review"}
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <button
-          type="button"
-          onClick={() => openAndScroll("pending", "pending-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
+        <button type="button" onClick={() => openAndScroll("pending", "pending-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
           <div className="text-xs text-gray-500 sm:text-sm">Pending bookings</div>
-          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
-            {pendingBookings.length}
-          </div>
+          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">{pendingBookings.length}</div>
         </button>
 
-        <button
-          type="button"
-          onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
+        <button type="button" onClick={() => openAndScroll("confirmed", "confirmed-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
           <div className="text-xs text-gray-500 sm:text-sm">Confirmed bookings</div>
-          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
-            {confirmedBookings.length}
-          </div>
+          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">{confirmedBookings.length}</div>
         </button>
 
-        <button
-          type="button"
-          onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
+        <button type="button" onClick={() => openAndScroll("inProgress", "in-progress-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
           <div className="text-xs text-gray-500 sm:text-sm">In progress</div>
-          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
-            {inProgressBookings.length}
-          </div>
+          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">{inProgressBookings.length}</div>
         </button>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
           <div className="text-xs text-gray-500 sm:text-sm">Total active bookings</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
-            {totalActive}
-          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">{totalActive}</div>
         </div>
       </div>
 
@@ -937,17 +932,13 @@ export default function SupplierDashboardPage() {
               type="button"
               onClick={() => handleNotificationClick(notification)}
               className={`w-full rounded-lg border p-4 text-left ${
-                notification.read
-                  ? "border-gray-200 bg-gray-50"
-                  : "border-yellow-200 bg-yellow-50"
+                notification.read ? "border-gray-200 bg-gray-50" : "border-yellow-200 bg-yellow-50"
               }`}
             >
               <p className="font-semibold text-gray-800">{notification.title}</p>
               <p className="text-sm text-gray-600">
                 {notification.booking
-                  ? `${notification.booking.serviceLabel} with ${
-                      notification.booking.dogNames || "the dog"
-                    } on ${formatDateTime(notification.booking.startAt)}`
+                  ? `${notification.booking.serviceLabel} with ${notification.booking.dogNames || "the dog"} on ${formatDateTime(notification.booking.startAt)}`
                   : notification.message}
               </p>
             </button>
@@ -956,124 +947,13 @@ export default function SupplierDashboardPage() {
       ) : null}
 
       <div className="space-y-6">
-        <BookingSection
-          id="today-bookings"
-          title="Today"
-          emptyText="No bookings today."
-          bookings={todayBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.today)}
-          onToggle={() => toggleSection("today")}
-        />
-
-        <BookingSection
-          id="pending-bookings"
-          title="Pending Bookings"
-          emptyText="No pending bookings."
-          bookings={pendingBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.pending)}
-          onToggle={() => toggleSection("pending")}
-        />
-
-        <BookingSection
-          id="confirmed-bookings"
-          title="Confirmed Bookings"
-          emptyText="No confirmed bookings."
-          bookings={confirmedBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.confirmed)}
-          onToggle={() => toggleSection("confirmed")}
-        />
-
-        <BookingSection
-          id="in-progress-bookings"
-          title="In Progress"
-          emptyText="No bookings in progress."
-          bookings={inProgressBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.inProgress)}
-          onToggle={() => toggleSection("inProgress")}
-        />
-
-        <BookingSection
-          id="completed-unbilled-bookings"
-          title="Completed - Awaiting Payment"
-          emptyText="No completed unpaid bookings."
-          bookings={completedUnbilledBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.completedUnbilled)}
-          onToggle={() => toggleSection("completedUnbilled")}
-        />
-
-        <BookingSection
-          id="completed-bookings"
-          title="Completed - Paid"
-          emptyText="No completed paid bookings."
-          bookings={completedBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.completed)}
-          onToggle={() => toggleSection("completed")}
-        />
-
-        <BookingSection
-          id="cancelled-bookings"
-          title="Cancelled"
-          emptyText="No cancelled bookings."
-          bookings={cancelledBookings}
-          isLoading={isLoading}
-          error={error}
-          activeBookingId={activeBookingId}
-          onAccept={(id) => acceptMutation.mutate(id)}
-          onDecline={handleDecline}
-          onStart={(id) => startMutation.mutate(id)}
-          onComplete={(id) => completeMutation.mutate(id)}
-          onMarkPaid={(id) => markPaidMutation.mutate(id)}
-          isOpen={Boolean(openSections.cancelled)}
-          onToggle={() => toggleSection("cancelled")}
-        />
+        {renderSection("today-bookings", "Today", "No bookings today.", todayBookings, "today")}
+        {renderSection("pending-bookings", "Pending Bookings", "No pending bookings.", pendingBookings, "pending")}
+        {renderSection("confirmed-bookings", "Confirmed Bookings", "No confirmed bookings.", confirmedBookings, "confirmed")}
+        {renderSection("in-progress-bookings", "In Progress", "No bookings in progress.", inProgressBookings, "inProgress")}
+        {renderSection("completed-unbilled-bookings", "Completed - Awaiting Payment", "No completed unpaid bookings.", completedUnbilledBookings, "completedUnbilled")}
+        {renderSection("completed-bookings", "Completed - Paid", "No completed paid bookings.", completedBookings, "completed")}
+        {renderSection("cancelled-bookings", "Cancelled", "No cancelled bookings.", cancelledBookings, "cancelled")}
       </div>
     </div>
   );
