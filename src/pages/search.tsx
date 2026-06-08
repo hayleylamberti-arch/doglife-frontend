@@ -70,7 +70,7 @@ export default function SearchPage() {
   const serviceFromUrl = params.get("service");
   const suburbFromUrl = params.get("suburb") || params.get("location") || "";
 
-  const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "GROOMING";
+  const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "";
   const openedFromShortcut = isValidService(serviceFromUrl);
 
   const [searchMode, setSearchMode] = useState<SearchMode>(
@@ -81,7 +81,7 @@ export default function SearchPage() {
   const [suburbResults, setSuburbResults] = useState<SuburbResult[]>([]);
   const [showSuburbDropdown, setShowSuburbDropdown] = useState(false);
 
-  const [service, setService] = useState<ValidService>(initialService);
+  const [service, setService] = useState<ValidService | "">(initialService);
   const [availableServices, setAvailableServices] = useState<ValidService[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
 
@@ -98,8 +98,8 @@ export default function SearchPage() {
   const [autoLoadedShortcutResults, setAutoLoadedShortcutResults] = useState(false);
 
   const selectedServiceLabel = useMemo(() => {
-    return SERVICE_LABELS[service];
-  }, [service]);
+  return service ? SERVICE_LABELS[service] : "All services";
+}, [service]);
 
   const serviceOptions = useMemo(() => {
     if (!suburb.trim()) {
@@ -164,9 +164,9 @@ export default function SearchPage() {
 
       setAvailableServices(nextServices);
 
-      if (nextServices.length > 0 && !nextServices.includes(service)) {
-        setService(nextServices[0]);
-      }
+      if (service && nextServices.length > 0 && !nextServices.includes(service)) {
+  setService(nextServices[0]);
+}
     } catch (err) {
       console.error("LIVE SERVICES LOAD ERROR:", err);
       setAvailableServices([]);
@@ -192,7 +192,7 @@ export default function SearchPage() {
   const fetchAvailabilitySuppliers = async () => {
     const query = new URLSearchParams({
       suburb: suburb.trim(),
-      service,
+      service: service || "GROOMING",
       date,
       time,
     });
@@ -218,20 +218,20 @@ export default function SearchPage() {
         return;
       }
 
-      if (availableServices.length === 0) {
+      if (service && availableServices.length === 0) {
         setError("No live services are available in this suburb yet.");
         setSuppliers([]);
         return;
       }
 
-      if (!availableServices.includes(service)) {
+      if (service && !availableServices.includes(service)) {
         setError("That service is not available in this suburb yet.");
         setSuppliers([]);
         return;
       }
 
       if (searchMode === "AREA") {
-        await fetchAreaSuppliers(suburb, service);
+        await fetchAreaSuppliers(suburb, service || undefined);
         return;
       }
 
@@ -336,9 +336,8 @@ export default function SearchPage() {
       return;
     }
 
-    const serviceToSearch = availableServices.includes(service)
-      ? service
-      : availableServices[0];
+    const serviceToSearch =
+  service && availableServices.includes(service) ? service : availableServices[0];
 
     const runAutoSearch = async () => {
       try {
