@@ -319,7 +319,6 @@ export default function SearchPage() {
   }, [suburb]);
 
   useEffect(() => {
-    if (!openedFromShortcut) return;
     if (!ownerProfileLoaded) return;
     if (autoLoadedShortcutResults) return;
     if (servicesLoading) return;
