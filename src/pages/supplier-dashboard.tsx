@@ -586,7 +586,7 @@ function BookingSection({
   );
 }
 
-function SupplierBookingJourney() {
+function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void }) {
   const steps = [
     { icon: "📩", title: "Receive request", text: "Owner sends booking, dog and timing details." },
     { icon: "🐶", title: "Review Dog Passport", text: "Check health, behaviour and care notes." },
@@ -605,12 +605,13 @@ function SupplierBookingJourney() {
           </p>
         </div>
 
-        <Link
-          to="/supplier/bookings"
-          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
-        >
-          View booking requests
-        </Link>
+        <button
+  type="button"
+  onClick={onViewBookings}
+  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+>
+  View booking requests
+</button>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
@@ -885,7 +886,9 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
-      <SupplierBookingJourney />
+      <SupplierBookingJourney
+  onViewBookings={() => openAndScroll("pending", "pending-bookings")}
+/>
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
         <p className="text-sm font-medium text-gray-800">
