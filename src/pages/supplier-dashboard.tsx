@@ -895,10 +895,18 @@ export default function SupplierDashboardPage() {
         <button
           type="button"
           onClick={() => submitForReviewMutation.mutate()}
-          disabled={submitForReviewMutation.isPending || completionData?.completionPercent !== 100}
+          disabled={
+  submitForReviewMutation.isPending ||
+  completionData?.approvalStatus === "APPROVED" ||
+  completionData?.completionPercent !== 100
+}
           className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {submitForReviewMutation.isPending ? "Submitting..." : "Submit for review"}
+          {completionData?.approvalStatus === "APPROVED"
+  ? "Approved supplier ✓"
+  : submitForReviewMutation.isPending
+  ? "Submitting..."
+  : "Submit for review"}
         </button>
       </div>
 
