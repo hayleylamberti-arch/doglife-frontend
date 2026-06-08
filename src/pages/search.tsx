@@ -70,7 +70,7 @@ export default function SearchPage() {
   const serviceFromUrl = params.get("service");
   const suburbFromUrl = params.get("suburb") || params.get("location") || "";
 
-  const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "";
+  const initialService = isValidService(serviceFromUrl) ? serviceFromUrl : "GROOMING";
   const openedFromShortcut = isValidService(serviceFromUrl);
 
   const [searchMode, setSearchMode] = useState<SearchMode>(
@@ -98,7 +98,7 @@ export default function SearchPage() {
   const [autoLoadedShortcutResults, setAutoLoadedShortcutResults] = useState(false);
 
   const selectedServiceLabel = useMemo(() => {
-  return service ? SERVICE_LABELS[service] : "All services";
+  return service ? SERVICE_LABELS[service] : "services";
 }, [service]);
 
   const serviceOptions = useMemo(() => {
