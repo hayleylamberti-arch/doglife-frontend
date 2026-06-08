@@ -90,8 +90,10 @@ export default function AppRoutes() {
       <Route element={<RequireAuth allowRoles={["SUPPLIER"]} />}>
         <Route element={<SupplierLayout />}>
           <Route path="supplier/dashboard" element={<SupplierDashboard />} />
+          <Route path="supplier/bookings" element={<SupplierDashboard />} />
           <Route path="supplier/notifications" element={<NotificationsPage />} />
           <Route path="supplier/profile" element={<SupplierProfile />} />
+          <Route path="supplier/business-profile" element={<SupplierProfile />} />
           <Route path="supplier/services" element={<SupplierServices />} />
           <Route path="supplier/availability" element={<SupplierAvailability />} />
         </Route>
