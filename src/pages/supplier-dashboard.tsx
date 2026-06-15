@@ -67,6 +67,7 @@ type SupplierBooking = {
   endAt: string;
   totalCents?: number | null;
   serviceType?: string | null;
+  serviceArea?: string | null;
   notes?: string | null;
   accessInstructions?: string | null;
   accessInstructionsUpdatedAt?: string | null;
@@ -198,6 +199,7 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
 function DogDetails({ booking }: { booking: SupplierBooking }) {
   const [isOpen, setIsOpen] = useState(false);
   const dogs = booking.dogs?.map((item) => item.dog).filter(Boolean) || [];
+  const isPending = booking.status === "PENDING";
 
   if (!dogs.length) return null;
 
@@ -216,41 +218,36 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
 
       {isOpen ? (
         <div className="space-y-3 p-3 pt-0">
-          {dogs.map((dog) => (
-            <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
-              <div className="font-medium">{dog!.name}</div>
-
-              <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                <div>Breed: {dog!.breed || "—"}</div>
-                <div>Size: {dog!.size || "—"}</div>
-                <div>Sex: {dog!.sex || "—"}</div>
-                <div>Neutered: {yesNo(dog!.isNeutered)}</div>
-                <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
-                <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
-                <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
-                <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
-                <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
-                <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
-                <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
-                <div>Vet: {dog!.vetName || "—"}</div>
-                <div>Vet phone: {dog!.vetPhone || "—"}</div>
-              </div>
-
-              {dog!.behavioralNotes ? (
-                <div className="mt-2">
-                  <span className="font-medium">Behaviour notes:</span>{" "}
-                  {dog!.behavioralNotes}
-                </div>
-              ) : null}
-
-              {dog!.medicalNotes ? (
-                <div className="mt-2">
-                  <span className="font-medium">Medical notes:</span>{" "}
-                  {dog!.medicalNotes}
-                </div>
-              ) : null}
+          {isPending ? (
+            <div className="rounded-lg border border-amber-200 bg-white p-3">
+              <p className="font-medium">Basic dog details</p>
+              <p className="mt-2 text-sm">
+                Dog names, breed, size and sex are shown before confirmation.
+                Health, vet, vaccination and behavioural notes will be shared once you accept the booking.
+              </p>
             </div>
-          ))}
+          ) : (
+            dogs.map((dog) => (
+              <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
+                <div className="font-medium">{dog!.name}</div>
+                <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                  <div>Breed: {dog!.breed || "—"}</div>
+                  <div>Size: {dog!.size || "—"}</div>
+                  <div>Sex: {dog!.sex || "—"}</div>
+                  <div>Neutered: {yesNo(dog!.isNeutered)}</div>
+                  <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
+                  <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
+                  <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
+                  <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
+                  <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
+                  <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
+                  <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
+                  <div>Vet: {dog!.vetName || "—"}</div>
+                  <div>Vet phone: {dog!.vetPhone || "—"}</div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       ) : null}
     </div>
@@ -390,6 +387,12 @@ function BookingCard({
       <div className="text-sm text-gray-700">
         <span className="font-medium">Dogs:</span> {formatDogNames(booking)}
       </div>
+
+      {booking.serviceArea ? (
+  <div className="text-sm text-gray-700">
+    <span className="font-medium">Service area:</span> {booking.serviceArea}
+  </div>
+) : null}
 
       <DogDetails booking={booking} />
       <LocationSummary booking={booking} />

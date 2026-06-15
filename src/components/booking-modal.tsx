@@ -778,7 +778,7 @@ export default function BookingModal({
               {authRequired ? (
                 <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
                   <p className="font-medium">Please log in to book this service.</p>
-                  <Link to="/login" className="mt-2 inline-block underline">
+                  <Link to="/auth/login" className="mt-2 inline-block underline">
                     Log in as an owner
                   </Link>
                 </div>
@@ -1149,13 +1149,20 @@ export default function BookingModal({
               </select>
             ) : null}
 
-            <textarea
-              className="min-h-[90px] w-full rounded border px-3 py-2"
-              placeholder="Access instructions: gate code, estate access, directions & parking etc."
-              value={accessInstructions}
-              disabled={authRequired}
-              onChange={(e) => setAccessInstructions(e.target.value)}
-            />
+            <div>
+  <textarea
+    className="min-h-[90px] w-full rounded border px-3 py-2"
+    placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
+    value={accessInstructions}
+    disabled={authRequired}
+    onChange={(e) => setAccessInstructions(e.target.value)}
+  />
+
+  <p className="mt-1 text-xs text-gray-500">
+    Please don&apos;t add gate codes yet. You can share secure access details
+    with the supplier once the booking is confirmed.
+  </p>
+</div>
 
             <textarea
               className="min-h-[100px] w-full rounded border px-3 py-2"
