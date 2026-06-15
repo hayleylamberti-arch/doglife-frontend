@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
     setMessage(null);
 
     try {
-      await api.post("/auth/forgot-password", { email });
+      await api.post("/api/auth/forgot-password", { email });
       setMessage("If that email exists, a reset link has been sent.");
     } catch (error: any) {
       setMessage(error?.response?.data?.message ?? "Unable to send reset email.");
