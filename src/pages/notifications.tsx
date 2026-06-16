@@ -13,6 +13,21 @@ function formatDate(date?: string | null) {
   });
 }
 
+function firstNameOnly(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().split(/\s+/)[0];
+}
+
+function firstNamesOnlyList(value?: string | null) {
+  if (!value) return "";
+
+  return String(value)
+    .split(",")
+    .map((name) => firstNameOnly(name))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [pushStatus, setPushStatus] = useState<string | null>(null);
@@ -138,7 +153,7 @@ export default function NotificationsPage() {
             <p className="mt-1 text-sm text-gray-600">
               {n.booking
                 ? `${n.booking.serviceLabel} with ${
-                    n.booking.dogNames || "your dog"
+                    firstNamesOnlyList(n.booking.dogNames) || "your dog"
                   } on ${formatDate(n.booking.startAt)}`
                 : n.message}
             </p>
