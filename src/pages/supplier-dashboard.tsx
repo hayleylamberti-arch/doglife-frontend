@@ -133,6 +133,21 @@ function formatDogNames(booking: SupplierBooking) {
   );
 }
 
+function firstNameOnly(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().split(/\s+/)[0];
+}
+
+function firstNamesOnlyList(value?: string | null) {
+  if (!value) return "";
+
+  return String(value)
+    .split(",")
+    .map((name) => firstNameOnly(name))
+    .filter(Boolean)
+    .join(", ");
+}
+
 function formatServiceName(value?: string | null) {
   return String(value || "Booking").replace(/_/g, " ");
 }
@@ -952,7 +967,9 @@ export default function SupplierDashboardPage() {
               <p className="font-semibold text-gray-800">{notification.title}</p>
               <p className="text-sm text-gray-600">
                 {notification.booking
-                  ? `${notification.booking.serviceLabel} with ${notification.booking.dogNames || "the dog"} on ${formatDateTime(notification.booking.startAt)}`
+                  ? `${notification.booking.serviceLabel} with ${
+                    firstNamesOnlyList(notification.booking.dogNames) || "the dog"
+                  } on ${formatDateTime(notification.booking.startAt)}`
                   : notification.message}
               </p>
             </button>
