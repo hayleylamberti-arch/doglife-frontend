@@ -651,6 +651,9 @@ if (!bookingId) return;
       booking.status === "CANCELLED" ? getSupplierMessage(booking) : null;
 
     const parsedNotes = parseBookingNotes(booking.notes);
+    const canShowAccessInstructions =
+      booking.serviceLocationSummary?.type === "OWNER_HOME" ||
+      booking.serviceLocationSummary?.type === "TRANSPORT";
 
     return (
       <div
@@ -745,7 +748,8 @@ if (!bookingId) return;
               </div>
             ) : null}
 
-            {["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
+            {canShowAccessInstructions &&
+            ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
   <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
     <p className="text-sm font-medium text-blue-900">
       Access instructions for supplier
