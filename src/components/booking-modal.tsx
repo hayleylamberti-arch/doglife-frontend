@@ -576,11 +576,14 @@ export default function BookingModal({
     const parts: string[] = [];
 
     if (shouldRequireOwnerAddress && ownerAddress) {
-      parts.push("Service location: OWNER_HOME.");
-      parts.push(`Owner address: ${ownerAddress}.`);
+      if (isTraining) {
+        parts.push("Training location: owner home.");
+      } else {
+        parts.push("Service location: OWNER_HOME.");
     }
 
-    if (isTraining) parts.push("Training location: owner home.");
+  parts.push(`Owner address: ${ownerAddress}.`);
+}
     if (isBoarding) parts.push(`Kennel type: ${kennelType}.`);
 
     if (isPetSitting) {
