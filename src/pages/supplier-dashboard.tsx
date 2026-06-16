@@ -222,8 +222,8 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
             <div className="rounded-lg border border-amber-200 bg-white p-3">
               <p className="font-medium">Basic dog details</p>
               <p className="mt-2 text-sm">
-                Dog names, breed, size and sex are shown before confirmation.
-                Health, vet, vaccination and behavioural notes will be shared once you accept the booking.
+                Basic dog details
+Dog names are shown before confirmation. Health, vet, vaccination, behaviour and detailed care notes will be shared once you accept the booking.
               </p>
             </div>
           ) : (

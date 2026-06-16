@@ -517,7 +517,7 @@ export default function BookingModal({
 
     api
       .get(
-        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&limit=50`
+       `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&dogCount=${Math.max(1, selectedDogIds.length || 1)}&limit=50` 
       )
       .then((res) => {
         const groupedSlots = res.data?.slots || {};
@@ -536,7 +536,7 @@ export default function BookingModal({
         setSlots([]);
         setSelectedSlot(null);
       });
-  }, [date, supplierId, service.id, usesTimeSlots]);
+  }, [date, supplierId, service.id, usesTimeSlots, selectedDogIds.length]);
 
   useEffect(() => {
     if (!isGrooming || groomingCategories.length === 0) return;
@@ -703,9 +703,12 @@ export default function BookingModal({
         endAt = daycareTimes.endAt;
       } else {
         startAt = new Date(selectedSlot!);
-        endAt = new Date(
-          startAt.getTime() + appointmentDurationMinutes * 60000
-        );
+        
+        const bookingDurationMinutes = isGrooming
+          ? appointmentDurationMinutes * Math.max(1, selectedDogIds.length)
+          : appointmentDurationMinutes;
+
+        endAt = new Date(startAt.getTime() + bookingDurationMinutes * 60000);
       }
 
       const bookingResponse = await api.post("/api/bookings", {
