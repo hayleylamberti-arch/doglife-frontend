@@ -214,7 +214,6 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
 function DogDetails({ booking }: { booking: SupplierBooking }) {
   const [isOpen, setIsOpen] = useState(false);
   const dogs = booking.dogs?.map((item) => item.dog).filter(Boolean) || [];
-  const isPending = booking.status === "PENDING";
 
   if (!dogs.length) return null;
 
@@ -233,36 +232,39 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
 
       {isOpen ? (
         <div className="space-y-3 p-3 pt-0">
-          {isPending ? (
-            <div className="rounded-lg border border-amber-200 bg-white p-3">
-              <p className="font-medium">Basic dog details</p>
-              <p className="mt-2 text-sm">
-                Basic dog details
-Dog names are shown before confirmation. Health, vet, vaccination, behaviour and detailed care notes will be shared once you accept the booking.
-              </p>
-            </div>
-          ) : (
-            dogs.map((dog) => (
-              <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
-                <div className="font-medium">{dog!.name}</div>
-                <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                  <div>Breed: {dog!.breed || "—"}</div>
-                  <div>Size: {dog!.size || "—"}</div>
-                  <div>Sex: {dog!.sex || "—"}</div>
-                  <div>Neutered: {yesNo(dog!.isNeutered)}</div>
-                  <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
-                  <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
-                  <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
-                  <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
-                  <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
-                  <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
-                  <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
-                  <div>Vet: {dog!.vetName || "—"}</div>
-                  <div>Vet phone: {dog!.vetPhone || "—"}</div>
+          {dogs.map((dog) => (
+            <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
+              <div className="font-medium">{dog!.name}</div>
+
+              <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                <div>Breed: {dog!.breed || "—"}</div>
+                <div>Size: {dog!.size || "—"}</div>
+                <div>Sex: {dog!.sex || "—"}</div>
+                <div>Neutered: {yesNo(dog!.isNeutered)}</div>
+                <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
+                <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
+                <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
+
+                {booking.status !== "PENDING" ? (
+                  <>
+                    <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
+                    <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
+                    <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
+                    <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
+                    <div>Vet: {dog!.vetName || "—"}</div>
+                    <div>Vet phone: {dog!.vetPhone || "—"}</div>
+                  </>
+                ) : null}
+
+                <div className="sm:col-span-2">
+                  Behaviour notes: {dog!.behavioralNotes || "—"}
+                </div>
+                <div className="sm:col-span-2">
+                  Medical notes: {dog!.medicalNotes || "—"}
                 </div>
               </div>
-            ))
-          )}
+            </div>
+          ))}
         </div>
       ) : null}
     </div>
