@@ -214,6 +214,9 @@ export default function BookingModal({
     isMobileGrooming ||
     (isPetSitting && petSittingLocation === "OWNER_HOME");
 
+  const shouldShowAccessInstructions =
+    shouldRequireOwnerAddress || isPetTransport;
+
   const stayDays = useMemo(
     () => getStayDays(arrivalDate, departureDate),
     [arrivalDate, departureDate]
@@ -724,7 +727,9 @@ export default function BookingModal({
         dogCount: selectedDogIds.length,
         kennelType: isBoarding ? kennelType : undefined,
         notes: buildNotes() || undefined,
-        accessInstructions: accessInstructions.trim() || undefined,
+        accessInstructions: shouldShowAccessInstructions
+        ? accessInstructions.trim() || undefined
+        : undefined,
         healthSafetyAccepted: acceptedHealthSafety,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
@@ -1155,20 +1160,22 @@ export default function BookingModal({
               </select>
             ) : null}
 
-            <div>
-  <textarea
-    className="min-h-[90px] w-full rounded border px-3 py-2"
-    placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
-    value={accessInstructions}
-    disabled={authRequired}
-    onChange={(e) => setAccessInstructions(e.target.value)}
-  />
+            {shouldShowAccessInstructions ? (
+  <div>
+    <textarea
+      className="min-h-[90px] w-full rounded border px-3 py-2"
+      placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
+      value={accessInstructions}
+      disabled={authRequired}
+      onChange={(e) => setAccessInstructions(e.target.value)}
+    />
 
-  <p className="mt-1 text-xs text-gray-500">
-    Please don&apos;t add gate codes yet. You can share secure access details
-    with the supplier once the booking is confirmed.
-  </p>
-</div>
+    <p className="mt-1 text-xs text-gray-500">
+      Please don&apos;t add gate codes yet. You can share secure access details
+      with the supplier once the booking is confirmed.
+    </p>
+  </div>
+) : null}
 
             <textarea
               className="min-h-[100px] w-full rounded border px-3 py-2"
