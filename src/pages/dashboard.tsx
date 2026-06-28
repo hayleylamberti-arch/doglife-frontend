@@ -529,97 +529,131 @@ export default function Dashboard() {
     );
   }, [data]);
 
-  const todayBookings = sortedBookings.filter((b: any) => {
-    const date = new Date(b.startAt);
-    return date >= todayStart && date <= todayEnd;
-  });
-
-  const todayBookingIds = new Set(todayBookings.map((b: any) => b.id));
-
-  const pendingBookings = sortedBookings.filter(
-    (b: any) => b.status === "PENDING" && !todayBookingIds.has(b.id)
+  const todayBookings = useMemo(
+    () =>
+      sortedBookings.filter((b: any) => {
+        const date = new Date(b.startAt);
+        return date >= todayStart && date <= todayEnd;
+      }),
+    [sortedBookings, todayStart, todayEnd]
   );
 
-  const confirmedBookings = sortedBookings.filter(
-    (b: any) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
+  const todayBookingIds = useMemo(
+    () => new Set(todayBookings.map((b: any) => b.id)),
+    [todayBookings]
   );
 
-  const inProgressBookings = sortedBookings.filter(
-    (b: any) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
+  const pendingBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) => b.status === "PENDING" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
   );
 
-  const completedAwaitingPaymentBookings = sortedBookings.filter(
-    (b: any) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+  const confirmedBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
   );
 
-  const completedPaidBookings = [...sortedBookings]
-    .filter((b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
-    .sort((a: any, b: any) => {
-      const aPendingReview = !a.hasOwnerReviewed;
-      const bPendingReview = !b.hasOwnerReviewed;
-
-      if (aPendingReview !== bPendingReview) {
-        return aPendingReview ? -1 : 1;
-      }
-
-      return new Date(b.startAt).getTime() - new Date(a.startAt).getTime();
-    });
-
-  const cancelledBookings = sortedBookings.filter(
-    (b: any) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)
+  const inProgressBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
   );
 
-  const bookingSections = [
-    {
-      key: "today",
-      title: "Today",
-      bookings: todayBookings,
-      titleColor: "text-blue-700",
-      isToday: true,
-    },
-    {
-      key: "pending",
-      title: "Pending",
-      bookings: pendingBookings,
-      titleColor: "text-yellow-700",
-      isToday: false,
-    },
-    {
-      key: "confirmed",
-      title: "Confirmed",
-      bookings: confirmedBookings,
-      titleColor: "text-green-700",
-      isToday: false,
-    },
-    {
-      key: "in-progress",
-      title: "Started / In Progress",
-      bookings: inProgressBookings,
-      titleColor: "text-blue-700",
-      isToday: false,
-    },
-    {
-      key: "completed-unbilled",
-      title: "Completed - Awaiting Payment",
-      bookings: completedAwaitingPaymentBookings,
-      titleColor: "text-purple-700",
-      isToday: false,
-    },
-    {
-      key: "completed",
-      title: "Completed - Paid",
-      bookings: completedPaidBookings,
-      titleColor: "text-gray-800",
-      isToday: false,
-    },
-    {
-      key: "cancelled",
-      title: "Cancelled",
-      bookings: cancelledBookings,
-      titleColor: "text-red-700",
-      isToday: false,
-    },
-  ];
+  const completedAwaitingPaymentBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) =>
+          b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
+  );
+
+  const completedPaidBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
+  );
+
+  const cancelledBookings = useMemo(
+    () =>
+      sortedBookings.filter(
+        (b: any) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)
+      ),
+    [sortedBookings, todayBookingIds]
+  );
+
+  const bookingSections = useMemo(
+    () => [
+      {
+        key: "today",
+        title: "Today",
+        bookings: todayBookings,
+        titleColor: "text-blue-700",
+        isToday: true,
+      },
+      {
+        key: "pending",
+        title: "Pending",
+        bookings: pendingBookings,
+        titleColor: "text-yellow-700",
+        isToday: false,
+      },
+      {
+        key: "confirmed",
+        title: "Confirmed",
+        bookings: confirmedBookings,
+        titleColor: "text-green-700",
+        isToday: false,
+      },
+      {
+        key: "in-progress",
+        title: "Started / In Progress",
+        bookings: inProgressBookings,
+        titleColor: "text-blue-700",
+        isToday: false,
+      },
+      {
+        key: "completed-unbilled",
+        title: "Completed - Awaiting Payment",
+        bookings: completedAwaitingPaymentBookings,
+        titleColor: "text-purple-700",
+        isToday: false,
+      },
+      {
+        key: "completed",
+        title: "Completed - Paid",
+        bookings: completedPaidBookings,
+        titleColor: "text-gray-800",
+        isToday: false,
+      },
+      {
+        key: "cancelled",
+        title: "Cancelled",
+        bookings: cancelledBookings,
+        titleColor: "text-red-700",
+        isToday: false,
+      },
+    ],
+    [
+      todayBookings,
+      pendingBookings,
+      confirmedBookings,
+      inProgressBookings,
+      completedAwaitingPaymentBookings,
+      completedPaidBookings,
+      cancelledBookings,
+    ]
+  );
 
   const hasAnyBookings = bookingSections.some(
     (section) => section.bookings.length > 0
@@ -648,10 +682,13 @@ export default function Dashboard() {
     );
 
     if (section) {
-      setOpenSections((prev) => ({
-        ...prev,
-        [section.key]: true,
-      }));
+      setOpenSections((prev) => {
+        if (prev[section.key]) return prev;
+        return {
+          ...prev,
+          [section.key]: true,
+        };
+      });
     }
 
     setTimeout(() => {
@@ -672,10 +709,13 @@ export default function Dashboard() {
 
     if (!section) return;
 
-    setOpenSections((prev) => ({
-      ...prev,
-      [section.key]: true,
-    }));
+    setOpenSections((prev) => {
+      if (prev[section.key]) return prev;
+      return {
+        ...prev,
+        [section.key]: true,
+      };
+    });
 
     setTimeout(() => {
       const targetId =
@@ -740,18 +780,6 @@ export default function Dashboard() {
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                   {booking.supplierService.durationMinutes} mins
                 </span>
-              ) : null}
-
-              {booking.status === "COMPLETED" ? (
-                booking.hasOwnerReviewed ? (
-                  <span className="inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                    Reviewed ✓
-                  </span>
-                ) : (
-                  <span className="inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                    Review pending
-                  </span>
-                )
               ) : null}
             </div>
 
@@ -934,6 +962,17 @@ export default function Dashboard() {
                   {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
                 </button>
               </div>
+            ) : null}
+
+            {booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
+              <p
+                id={`review-${booking.id}`}
+                className={`text-sm font-medium ${
+                  highlightReview ? "text-blue-700" : "text-green-700"
+                }`}
+              >
+                Reviewed ✓
+              </p>
             ) : null}
           </div>
 
