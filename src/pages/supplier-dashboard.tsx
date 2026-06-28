@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useMemo, useState } from "react";
 
 type BookingStatus =
   | "PENDING"
@@ -277,12 +277,14 @@ function SupplierOwnerReview({
   isSubmitting,
   onChange,
   onSubmit,
+  isHighlighted,
 }: {
   booking: SupplierBooking;
   reviewInput?: ReviewInput;
   isSubmitting: boolean;
   onChange: (bookingId: string, values: ReviewInput) => void;
   onSubmit: (bookingId: string) => void;
+  isHighlighted: boolean;
 }) {
   if (booking.status !== "COMPLETED") return null;
 
@@ -297,7 +299,14 @@ function SupplierOwnerReview({
   const currentInput = reviewInput || { rating: "", comment: "" };
 
   return (
-    <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm">
+    <div
+      id={`review-${booking.id}`}
+      className={`rounded-lg border p-3 text-sm ${
+        isHighlighted
+          ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200"
+          : "border-green-200 bg-green-50"
+      }`}
+    >
       <p className="font-medium text-green-900">Rate this owner</p>
 
       <select
@@ -355,6 +364,7 @@ function BookingCard({
   reviewLoading,
   onReviewChange,
   onSubmitReview,
+  highlightReview,
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
@@ -367,6 +377,7 @@ function BookingCard({
   reviewLoading: boolean;
   onReviewChange: (bookingId: string, values: ReviewInput) => void;
   onSubmitReview: (bookingId: string) => void;
+  highlightReview: boolean;
 }) {
   return (
     <div
@@ -406,10 +417,10 @@ function BookingCard({
       </div>
 
       {booking.serviceArea ? (
-  <div className="text-sm text-gray-700">
-    <span className="font-medium">Service area:</span> {booking.serviceArea}
-  </div>
-) : null}
+        <div className="text-sm text-gray-700">
+          <span className="font-medium">Service area:</span> {booking.serviceArea}
+        </div>
+      ) : null}
 
       <DogDetails booking={booking} />
       <LocationSummary booking={booking} />
@@ -433,6 +444,7 @@ function BookingCard({
         isSubmitting={reviewLoading}
         onChange={onReviewChange}
         onSubmit={onSubmitReview}
+        isHighlighted={highlightReview}
       />
 
       {booking.status === "PENDING" ? (
@@ -512,6 +524,8 @@ function BookingSection({
   onSubmitReview,
   isOpen,
   onToggle,
+  focusBookingId,
+  focusAction,
 }: {
   id: string;
   title: string;
@@ -531,6 +545,8 @@ function BookingSection({
   onSubmitReview: (bookingId: string) => void;
   isOpen: boolean;
   onToggle: () => void;
+  focusBookingId: string | null;
+  focusAction: string | null;
 }) {
   return (
     <section
@@ -543,13 +559,10 @@ function BookingSection({
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">
-            {title}
-          </h2>
+          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            {bookings.length} booking
-            {bookings.length === 1 ? "" : "s"}
+            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
           </p>
         </div>
 
@@ -591,11 +604,12 @@ function BookingSection({
                   onMarkPaid={onMarkPaid}
                   actionLoading={activeBookingId === booking.id}
                   reviewInput={reviewInputs[booking.id]}
-                  reviewLoading={
-                    activeReviewBookingId === booking.id
-                  }
+                  reviewLoading={activeReviewBookingId === booking.id}
                   onReviewChange={onReviewChange}
                   onSubmitReview={onSubmitReview}
+                  highlightReview={
+                    focusAction === "review" && focusBookingId === booking.id
+                  }
                 />
               ))}
             </div>
@@ -626,12 +640,12 @@ function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void
         </div>
 
         <button
-  type="button"
-  onClick={onViewBookings}
-  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
->
-  View booking requests
-</button>
+          type="button"
+          onClick={onViewBookings}
+          className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+        >
+          View booking requests
+        </button>
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
@@ -651,9 +665,13 @@ function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void
 
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
   const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>({});
+
+  const focusBookingId = searchParams.get("bookingId");
+  const focusAction = searchParams.get("action");
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     today: true,
@@ -695,6 +713,7 @@ export default function SupplierDashboardPage() {
 
   const refreshBookings = () => {
     queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
   };
 
   const submitSupplierReviewMutation = useMutation({
@@ -793,15 +812,29 @@ export default function SupplierDashboardPage() {
   const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
   const bookings = Array.isArray(rawBookings) ? rawBookings : [];
 
-  const todayBookings = sortBookingsByStart(bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd)));
+  const todayBookings = sortBookingsByStart(
+    bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
+  );
   const todayBookingIds = new Set(todayBookings.map((b) => b.id));
 
-  const pendingBookings = sortBookingsByStart(bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id)));
-  const confirmedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)));
-  const inProgressBookings = sortBookingsByStart(bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)));
-  const completedUnbilledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)));
-  const completedBookings = sortBookingsByStart(bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)));
-  const cancelledBookings = sortBookingsByStart(bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)));
+  const pendingBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id))
+  );
+  const confirmedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id))
+  );
+  const inProgressBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id))
+  );
+  const completedUnbilledBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id))
+  );
+  const completedBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
+  );
+  const cancelledBookings = sortBookingsByStart(
+    bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id))
+  );
 
   const totalActive = bookings.filter((b) =>
     ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(b.status)
@@ -837,13 +870,33 @@ export default function SupplierDashboardPage() {
     const bookingId = notification.referenceId || notification.booking?.id;
     if (!bookingId) return;
 
+    const matchingSectionKey =
+      pendingBookings.some((b) => b.id === bookingId) ? "pending"
+      : confirmedBookings.some((b) => b.id === bookingId) ? "confirmed"
+      : inProgressBookings.some((b) => b.id === bookingId) ? "inProgress"
+      : completedUnbilledBookings.some((b) => b.id === bookingId) ? "completedUnbilled"
+      : completedBookings.some((b) => b.id === bookingId) ? "completed"
+      : cancelledBookings.some((b) => b.id === bookingId) ? "cancelled"
+      : todayBookings.some((b) => b.id === bookingId) ? "today"
+      : null;
+
+    if (matchingSectionKey) {
+      setOpenSections((prev) => ({ ...prev, [matchingSectionKey]: true }));
+    }
+
     setTimeout(() => {
-      document.getElementById(`booking-${bookingId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(`booking-${bookingId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }, 300);
   }
 
   function handleDecline(booking: SupplierBooking) {
-    const message = window.prompt("Add a message for the owner. You can suggest another time here.", "");
+    const message = window.prompt(
+      "Add a message for the owner. You can suggest another time here.",
+      ""
+    );
     if (message === null) return;
 
     declineMutation.mutate({
@@ -851,6 +904,49 @@ export default function SupplierDashboardPage() {
       message: message.trim() || undefined,
     });
   }
+
+  useEffect(() => {
+    if (!focusBookingId) return;
+
+    const matchingSectionKey =
+      pendingBookings.some((b) => b.id === focusBookingId) ? "pending"
+      : confirmedBookings.some((b) => b.id === focusBookingId) ? "confirmed"
+      : inProgressBookings.some((b) => b.id === focusBookingId) ? "inProgress"
+      : completedUnbilledBookings.some((b) => b.id === focusBookingId) ? "completedUnbilled"
+      : completedBookings.some((b) => b.id === focusBookingId) ? "completed"
+      : cancelledBookings.some((b) => b.id === focusBookingId) ? "cancelled"
+      : todayBookings.some((b) => b.id === focusBookingId) ? "today"
+      : null;
+
+    if (!matchingSectionKey) return;
+
+    setOpenSections((prev) => ({
+      ...prev,
+      [matchingSectionKey]: true,
+    }));
+
+    setTimeout(() => {
+      const targetId =
+        focusAction === "review"
+          ? `review-${focusBookingId}`
+          : `booking-${focusBookingId}`;
+
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 300);
+  }, [
+    focusBookingId,
+    focusAction,
+    pendingBookings,
+    confirmedBookings,
+    inProgressBookings,
+    completedUnbilledBookings,
+    completedBookings,
+    cancelledBookings,
+    todayBookings,
+  ]);
 
   function renderSection(
     id: string,
@@ -879,6 +975,8 @@ export default function SupplierDashboardPage() {
         activeReviewBookingId={activeReviewBookingId}
         onReviewChange={handleReviewChange}
         onSubmitReview={(id) => submitSupplierReviewMutation.mutate(id)}
+        focusBookingId={focusBookingId}
+        focusAction={focusAction}
       />
     );
   }
@@ -895,11 +993,17 @@ export default function SupplierDashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link to="/supplier/business-profile" className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <Link
+              to="/supplier/business-profile"
+              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
               Edit Business Profile
             </Link>
 
-            <Link to="/supplier/availability" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Link
+              to="/supplier/availability"
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
               Update Availability
             </Link>
           </div>
@@ -907,8 +1011,8 @@ export default function SupplierDashboardPage() {
       </div>
 
       <SupplierBookingJourney
-  onViewBookings={() => openAndScroll("pending", "pending-bookings")}
-/>
+        onViewBookings={() => openAndScroll("pending", "pending-bookings")}
+      />
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
         <p className="text-sm font-medium text-gray-800">
@@ -919,32 +1023,44 @@ export default function SupplierDashboardPage() {
           type="button"
           onClick={() => submitForReviewMutation.mutate()}
           disabled={
-  submitForReviewMutation.isPending ||
-  completionData?.approvalStatus === "APPROVED" ||
-  completionData?.completionPercent !== 100
-}
+            submitForReviewMutation.isPending ||
+            completionData?.approvalStatus === "APPROVED" ||
+            completionData?.completionPercent !== 100
+          }
           className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {completionData?.approvalStatus === "APPROVED"
-  ? "Approved supplier ✓"
-  : submitForReviewMutation.isPending
-  ? "Submitting..."
-  : "Submit for review"}
+            ? "Approved supplier ✓"
+            : submitForReviewMutation.isPending
+            ? "Submitting..."
+            : "Submit for review"}
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <button type="button" onClick={() => openAndScroll("pending", "pending-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
+        <button
+          type="button"
+          onClick={() => openAndScroll("pending", "pending-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
+        >
           <div className="text-xs text-gray-500 sm:text-sm">Pending bookings</div>
           <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">{pendingBookings.length}</div>
         </button>
 
-        <button type="button" onClick={() => openAndScroll("confirmed", "confirmed-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
+        <button
+          type="button"
+          onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
+        >
           <div className="text-xs text-gray-500 sm:text-sm">Confirmed bookings</div>
           <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">{confirmedBookings.length}</div>
         </button>
 
-        <button type="button" onClick={() => openAndScroll("inProgress", "in-progress-bookings")} className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5">
+        <button
+          type="button"
+          onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
+        >
           <div className="text-xs text-gray-500 sm:text-sm">In progress</div>
           <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">{inProgressBookings.length}</div>
         </button>
@@ -970,8 +1086,8 @@ export default function SupplierDashboardPage() {
               <p className="text-sm text-gray-600">
                 {notification.booking
                   ? `${notification.booking.serviceLabel} with ${
-                    firstNamesOnlyList(notification.booking.dogNames) || "the dog"
-                  } on ${formatDateTime(notification.booking.startAt)}`
+                      firstNamesOnlyList(notification.booking.dogNames) || "the dog"
+                    } on ${formatDateTime(notification.booking.startAt)}`
                   : notification.message}
               </p>
             </button>
@@ -984,7 +1100,13 @@ export default function SupplierDashboardPage() {
         {renderSection("pending-bookings", "Pending Bookings", "No pending bookings.", pendingBookings, "pending")}
         {renderSection("confirmed-bookings", "Confirmed Bookings", "No confirmed bookings.", confirmedBookings, "confirmed")}
         {renderSection("in-progress-bookings", "In Progress", "No bookings in progress.", inProgressBookings, "inProgress")}
-        {renderSection("completed-unbilled-bookings", "Completed - Awaiting Payment", "No completed unpaid bookings.", completedUnbilledBookings, "completedUnbilled")}
+        {renderSection(
+          "completed-unbilled-bookings",
+          "Completed - Awaiting Payment",
+          "No completed unpaid bookings.",
+          completedUnbilledBookings,
+          "completedUnbilled"
+        )}
         {renderSection("completed-bookings", "Completed - Paid", "No completed paid bookings.", completedBookings, "completed")}
         {renderSection("cancelled-bookings", "Cancelled", "No cancelled bookings.", cancelledBookings, "cancelled")}
       </div>

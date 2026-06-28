@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { registerPushNotifications } from "@/lib/pushNotifications";
 
@@ -28,7 +29,28 @@ function firstNamesOnlyList(value?: string | null) {
     .join(", ");
 }
 
+function getReviewPath(role?: string | null, bookingId?: string | null) {
+  if (!bookingId) return null;
+
+  if (role === "SUPPLIER") {
+    return `/supplier/dashboard?bookingId=${bookingId}&action=review`;
+  }
+
+  return `/owner/dashboard?bookingId=${bookingId}&action=review`;
+}
+
+function getBookingPath(role?: string | null, bookingId?: string | null) {
+  if (!bookingId) return null;
+
+  if (role === "SUPPLIER") {
+    return `/supplier/dashboard?bookingId=${bookingId}`;
+  }
+
+  return `/owner/dashboard?bookingId=${bookingId}`;
+}
+
 export default function NotificationsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [isEnablingPush, setIsEnablingPush] = useState(false);
@@ -40,6 +62,19 @@ export default function NotificationsPage() {
       return res.data;
     },
   });
+
+  const { data: meData } = useQuery({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const res = await api.get("/api/me");
+      return res.data;
+    },
+  });
+
+  const currentRole =
+    meData?.user?.role ||
+    meData?.role ||
+    null;
 
   const notifications = Array.isArray(data?.notifications)
     ? data.notifications
@@ -82,6 +117,26 @@ export default function NotificationsPage() {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
+
+  async function handleNotificationClick(notification: any) {
+    if (!notification.read) {
+      await markAsReadMutation.mutateAsync(notification.id);
+    }
+
+    const bookingId = notification.referenceId || notification.booking?.id || null;
+    const title = String(notification.title || "").toLowerCase();
+
+    const isReviewNotification =
+      title.includes("leave a review") || title.includes("review");
+
+    const destination = isReviewNotification
+      ? getReviewPath(currentRole, bookingId)
+      : getBookingPath(currentRole, bookingId);
+
+    if (destination) {
+      navigate(destination);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-6 pb-10 pt-28">
@@ -141,9 +196,7 @@ export default function NotificationsPage() {
           <button
             key={n.id}
             type="button"
-            onClick={() => {
-              if (!n.read) markAsReadMutation.mutate(n.id);
-            }}
+            onClick={() => handleNotificationClick(n)}
             className={`w-full rounded-2xl border p-4 text-left ${
               n.read ? "border-gray-200 bg-white" : "border-yellow-200 bg-yellow-50"
             }`}

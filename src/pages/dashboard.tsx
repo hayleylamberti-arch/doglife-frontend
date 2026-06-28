@@ -1,5 +1,5 @@
-import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -263,14 +263,14 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
         </div>
 
         {hasDogs ? (
-  <Link
-    to="/search"
-    className="hidden text-sm font-medium text-blue-600 hover:text-blue-700 md:inline"
-  >
-    View all
-  </Link>
-) : null}
-</div>
+          <Link
+            to="/search"
+            className="hidden text-sm font-medium text-blue-600 hover:text-blue-700 md:inline"
+          >
+            View all
+          </Link>
+        ) : null}
+      </div>
 
       <div className="mt-5 overflow-x-auto pb-2">
         <div className="flex min-w-max gap-3 md:gap-4">
@@ -399,6 +399,11 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+
+  const focusBookingId = searchParams.get("bookingId");
+  const focusAction = searchParams.get("action");
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     today: true,
     pending: true,
@@ -410,10 +415,10 @@ export default function Dashboard() {
   });
 
   const [accessInstructionInputs, setAccessInstructionInputs] = useState<Record<string, string>>({});
-const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string | null>(null);
-const [reviewInputs, setReviewInputs] = useState<
-  Record<string, { rating: string; comment: string }>
->({});
+  const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string | null>(null);
+  const [reviewInputs, setReviewInputs] = useState<
+    Record<string, { rating: string; comment: string }>
+  >({});
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["bookings"],
@@ -452,27 +457,27 @@ const [reviewInputs, setReviewInputs] = useState<
   });
 
   const updateAccessInstructionsMutation = useMutation({
-  mutationFn: async ({
-    bookingId,
-    accessInstructions,
-  }: {
-    bookingId: string;
-    accessInstructions: string;
-  }) => {
-    await api.patch(`/api/bookings/${bookingId}/access-instructions`, {
+    mutationFn: async ({
+      bookingId,
       accessInstructions,
-    });
-  },
-  onSuccess: (_data, variables) => {
-  setSavedAccessInstructionId(variables.bookingId);
-  queryClient.invalidateQueries({ queryKey: ["bookings"] });
-  queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    }: {
+      bookingId: string;
+      accessInstructions: string;
+    }) => {
+      await api.patch(`/api/bookings/${bookingId}/access-instructions`, {
+        accessInstructions,
+      });
+    },
+    onSuccess: (_data, variables) => {
+      setSavedAccessInstructionId(variables.bookingId);
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
 
-  window.setTimeout(() => {
-    setSavedAccessInstructionId(null);
-  }, 3000);
-},
-});
+      window.setTimeout(() => {
+        setSavedAccessInstructionId(null);
+      }, 3000);
+    },
+  });
 
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -484,25 +489,26 @@ const [reviewInputs, setReviewInputs] = useState<
   });
 
   const submitReviewMutation = useMutation({
-  mutationFn: async ({
-    bookingId,
-    rating,
-    comment,
-  }: {
-    bookingId: string;
-    rating: string;
-    comment: string;
-  }) => {
-    await api.post("/api/reviews", {
+    mutationFn: async ({
       bookingId,
-      rating: Number(rating),
-      comment: comment.trim() || null,
-    });
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["bookings"] });
-  },
-});
+      rating,
+      comment,
+    }: {
+      bookingId: string;
+      rating: string;
+      comment: string;
+    }) => {
+      await api.post("/api/reviews", {
+        bookingId,
+        rating: Number(rating),
+        comment: comment.trim() || null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
 
   const todayStart = useMemo(() => {
     const date = new Date();
@@ -624,7 +630,7 @@ const [reviewInputs, setReviewInputs] = useState<
 
     const bookingId = notification.referenceId || notification.booking?.id;
 
-if (!bookingId) return;
+    if (!bookingId) return;
 
     const section = bookingSections.find((bookingSection) =>
       bookingSection.bookings.some(
@@ -640,11 +646,40 @@ if (!bookingId) return;
     }
 
     setTimeout(() => {
-  document
-    .getElementById(`booking-${bookingId}`)
-    ?.scrollIntoView({ behavior: "smooth", block: "center" });
-}, 300);
+      document
+        .getElementById(`booking-${bookingId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 300);
   }
+
+  useEffect(() => {
+    if (!focusBookingId) return;
+
+    const section = bookingSections.find((bookingSection) =>
+      bookingSection.bookings.some(
+        (booking: any) => booking.id === focusBookingId
+      )
+    );
+
+    if (!section) return;
+
+    setOpenSections((prev) => ({
+      ...prev,
+      [section.key]: true,
+    }));
+
+    setTimeout(() => {
+      const targetId =
+        focusAction === "review"
+          ? `review-${focusBookingId}`
+          : `booking-${focusBookingId}`;
+
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 300);
+  }, [focusBookingId, focusAction, bookingSections]);
 
   const renderBookingCard = (booking: any, isToday = false) => {
     const supplierMessage =
@@ -654,6 +689,9 @@ if (!bookingId) return;
     const canShowAccessInstructions =
       booking.serviceLocationSummary?.type === "OWNER_HOME" ||
       booking.serviceLocationSummary?.type === "TRANSPORT";
+
+    const highlightReview =
+      focusAction === "review" && focusBookingId === booking.id;
 
     return (
       <div
@@ -750,53 +788,53 @@ if (!bookingId) return;
 
             {canShowAccessInstructions &&
             ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
-  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
-    <p className="text-sm font-medium text-blue-900">
-      Access instructions for supplier
-    </p>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <p className="text-sm font-medium text-blue-900">
+                  Access instructions for supplier
+                </p>
 
-    <textarea
-      rows={3}
-      value={
-        accessInstructionInputs[booking.id] ??
-        booking.accessInstructions ??
-        ""
-      }
-      onChange={(e) =>
-        setAccessInstructionInputs((prev) => ({
-          ...prev,
-          [booking.id]: e.target.value,
-        }))
-      }
-      placeholder="Gate code, parking, key access, security notes..."
-      className="mt-2 w-full rounded-lg border border-blue-200 p-2 text-sm"
-    />
+                <textarea
+                  rows={3}
+                  value={
+                    accessInstructionInputs[booking.id] ??
+                    booking.accessInstructions ??
+                    ""
+                  }
+                  onChange={(e) =>
+                    setAccessInstructionInputs((prev) => ({
+                      ...prev,
+                      [booking.id]: e.target.value,
+                    }))
+                  }
+                  placeholder="Gate code, parking, key access, security notes..."
+                  className="mt-2 w-full rounded-lg border border-blue-200 p-2 text-sm"
+                />
 
-    <button
-      type="button"
-      onClick={() =>
-        updateAccessInstructionsMutation.mutate({
-          bookingId: booking.id,
-          accessInstructions:
-            accessInstructionInputs[booking.id] ??
-            booking.accessInstructions ??
-            "",
-        })
-      }
-      disabled={updateAccessInstructionsMutation.isPending}
-      className="mt-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-    >
-      {updateAccessInstructionsMutation.isPending
-        ? "Saving..."
-        : "Save access instructions"}
-    </button>
-    {savedAccessInstructionId === booking.id ? (
-  <p className="mt-2 text-sm font-medium text-green-700">
-    Access instructions sent ✓
-  </p>
-) : null}
-  </div>
-) : null}
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateAccessInstructionsMutation.mutate({
+                      bookingId: booking.id,
+                      accessInstructions:
+                        accessInstructionInputs[booking.id] ??
+                        booking.accessInstructions ??
+                        "",
+                    })
+                  }
+                  disabled={updateAccessInstructionsMutation.isPending}
+                  className="mt-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                >
+                  {updateAccessInstructionsMutation.isPending
+                    ? "Saving..."
+                    : "Save access instructions"}
+                </button>
+                {savedAccessInstructionId === booking.id ? (
+                  <p className="mt-2 text-sm font-medium text-green-700">
+                    Access instructions sent ✓
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {supplierMessage ? (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">
@@ -806,71 +844,80 @@ if (!bookingId) return;
                 <p className="mt-1 text-sm text-red-700">{supplierMessage}</p>
               </div>
             ) : null}
+
             {booking.status === "COMPLETED" && !booking.hasOwnerReviewed ? (
-  <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-    <p className="text-sm font-medium text-green-900">
-      Rate this booking
-    </p>
+              <div
+                id={`review-${booking.id}`}
+                className={`rounded-lg border p-3 ${
+                  highlightReview
+                    ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200"
+                    : "border-green-200 bg-green-50"
+                }`}
+              >
+                <p className="text-sm font-medium text-green-900">
+                  Rate this booking
+                </p>
 
-    <select
-      value={reviewInputs[booking.id]?.rating || ""}
-      onChange={(e) =>
-        setReviewInputs((prev) => ({
-          ...prev,
-          [booking.id]: {
-            rating: e.target.value,
-            comment: prev[booking.id]?.comment || "",
-          },
-        }))
-      }
-      className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
-    >
-      <option value="">Select rating</option>
-      <option value="5">5 - Excellent</option>
-      <option value="4">4 - Good</option>
-      <option value="3">3 - Okay</option>
-      <option value="2">2 - Poor</option>
-      <option value="1">1 - Very poor</option>
-    </select>
+                <select
+                  value={reviewInputs[booking.id]?.rating || ""}
+                  onChange={(e) =>
+                    setReviewInputs((prev) => ({
+                      ...prev,
+                      [booking.id]: {
+                        rating: e.target.value,
+                        comment: prev[booking.id]?.comment || "",
+                      },
+                    }))
+                  }
+                  className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+                >
+                  <option value="">Select rating</option>
+                  <option value="5">5 - Excellent</option>
+                  <option value="4">4 - Good</option>
+                  <option value="3">3 - Okay</option>
+                  <option value="2">2 - Poor</option>
+                  <option value="1">1 - Very poor</option>
+                </select>
 
-    <textarea
-      rows={3}
-      value={reviewInputs[booking.id]?.comment || ""}
-      onChange={(e) =>
-        setReviewInputs((prev) => ({
-          ...prev,
-          [booking.id]: {
-            rating: prev[booking.id]?.rating || "",
-            comment: e.target.value,
-          },
-        }))
-      }
-      placeholder="Optional comment"
-      className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
-    />
+                <textarea
+                  rows={3}
+                  value={reviewInputs[booking.id]?.comment || ""}
+                  onChange={(e) =>
+                    setReviewInputs((prev) => ({
+                      ...prev,
+                      [booking.id]: {
+                        rating: prev[booking.id]?.rating || "",
+                        comment: e.target.value,
+                      },
+                    }))
+                  }
+                  placeholder="Optional comment"
+                  className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
+                />
 
-    <button
-      type="button"
-      disabled={
-        !reviewInputs[booking.id]?.rating ||
-        submitReviewMutation.isPending
-      }
-      onClick={() =>
-        submitReviewMutation.mutate({
-          bookingId: booking.id,
-          rating: reviewInputs[booking.id]?.rating || "",
-          comment: reviewInputs[booking.id]?.comment || "",
-        })
-      }
-      className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-    >
-      {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
-    </button>
-  </div>
-) : null}
-{booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
-  <p className="text-sm font-medium text-green-700">Reviewed ✓</p>
-) : null}
+                <button
+                  type="button"
+                  disabled={
+                    !reviewInputs[booking.id]?.rating ||
+                    submitReviewMutation.isPending
+                  }
+                  onClick={() =>
+                    submitReviewMutation.mutate({
+                      bookingId: booking.id,
+                      rating: reviewInputs[booking.id]?.rating || "",
+                      comment: reviewInputs[booking.id]?.comment || "",
+                    })
+                  }
+                  className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                >
+                  {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
+                </button>
+              </div>
+            ) : null}
+
+            {booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
+              <p className="text-sm font-medium text-green-700">Reviewed ✓</p>
+            ) : null}
           </div>
 
           <div className="space-y-3 text-left md:text-right">
@@ -913,17 +960,17 @@ if (!bookingId) return;
               Welcome to DogLife 🐾
             </h1>
             <p className="mt-2 text-sm text-gray-600">
-  Manage your Dog Passport, bookings, care reminders and trusted dog
-  services — all in one place.
-</p>
+              Manage your Dog Passport, bookings, care reminders and trusted dog
+              services — all in one place.
+            </p>
           </div>
 
           <Link
-  to="/owner/my-dogs"
-  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
->
-  {hasDogs ? "View Dog Passport" : "Create Dog Passport"}
-</Link>
+            to="/owner/my-dogs"
+            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+          >
+            {hasDogs ? "View Dog Passport" : "Create Dog Passport"}
+          </Link>
         </div>
       </div>
 
