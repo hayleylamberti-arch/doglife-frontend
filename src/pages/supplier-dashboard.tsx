@@ -917,15 +917,26 @@ export default function SupplierDashboardPage() {
     )
   ).length;
 
-  const sectionMap = [
-    { key: "today", bookings: todayBookings },
-    { key: "pending", bookings: pendingBookings },
-    { key: "confirmed", bookings: confirmedBookings },
-    { key: "inProgress", bookings: inProgressBookings },
-    { key: "completedUnbilled", bookings: completedUnbilledBookings },
-    { key: "completed", bookings: completedBookings },
-    { key: "cancelled", bookings: cancelledBookings },
-  ];
+    const sectionMap = useMemo(
+    () => [
+      { key: "today", bookings: todayBookings },
+      { key: "pending", bookings: pendingBookings },
+      { key: "confirmed", bookings: confirmedBookings },
+      { key: "inProgress", bookings: inProgressBookings },
+      { key: "completedUnbilled", bookings: completedUnbilledBookings },
+      { key: "completed", bookings: completedBookings },
+      { key: "cancelled", bookings: cancelledBookings },
+    ],
+    [
+      todayBookings,
+      pendingBookings,
+      confirmedBookings,
+      inProgressBookings,
+      completedUnbilledBookings,
+      completedBookings,
+      cancelledBookings,
+    ]
+  );
 
   function handleReviewChange(bookingId: string, values: ReviewInput) {
     setReviewInputs((prev) => ({
