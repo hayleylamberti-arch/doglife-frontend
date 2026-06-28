@@ -89,7 +89,7 @@ export default function OwnerNavbar() {
                 Home
               </Link>
 
-              <Link to="/search" onClick={closeMobileMenu} className="rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+              <Link to="/owner/search" onClick={closeMobileMenu} className="rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
                 Search
               </Link>
 
