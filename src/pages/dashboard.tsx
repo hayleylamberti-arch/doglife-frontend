@@ -552,9 +552,18 @@ export default function Dashboard() {
     (b: any) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
   );
 
-  const completedPaidBookings = sortedBookings.filter(
-    (b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)
-  );
+  const completedPaidBookings = [...sortedBookings]
+    .filter((b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
+    .sort((a: any, b: any) => {
+      const aPendingReview = !a.hasOwnerReviewed;
+      const bPendingReview = !b.hasOwnerReviewed;
+
+      if (aPendingReview !== bPendingReview) {
+        return aPendingReview ? -1 : 1;
+      }
+
+      return new Date(b.startAt).getTime() - new Date(a.startAt).getTime();
+    });
 
   const cancelledBookings = sortedBookings.filter(
     (b: any) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)
@@ -731,6 +740,18 @@ export default function Dashboard() {
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                   {booking.supplierService.durationMinutes} mins
                 </span>
+              ) : null}
+
+              {booking.status === "COMPLETED" ? (
+                booking.hasOwnerReviewed ? (
+                  <span className="inline-block rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                    Reviewed ✓
+                  </span>
+                ) : (
+                  <span className="inline-block rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
+                    Review pending
+                  </span>
+                )
               ) : null}
             </div>
 
@@ -913,10 +934,6 @@ export default function Dashboard() {
                   {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
                 </button>
               </div>
-            ) : null}
-
-            {booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
-              <p className="text-sm font-medium text-green-700">Reviewed ✓</p>
             ) : null}
           </div>
 
