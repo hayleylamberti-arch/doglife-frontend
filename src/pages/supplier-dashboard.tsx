@@ -195,8 +195,12 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
     return (
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
         <div className="font-medium">Pickup and drop-off</div>
-        {location.pickupAddress ? <div>Pickup: {location.pickupAddress}</div> : null}
-        {location.dropoffAddress ? <div>Drop-off: {location.dropoffAddress}</div> : null}
+        {location.pickupAddress ? (
+          <div>Pickup: {location.pickupAddress}</div>
+        ) : null}
+        {location.dropoffAddress ? (
+          <div>Drop-off: {location.dropoffAddress}</div>
+        ) : null}
       </div>
     );
   }
@@ -233,7 +237,10 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
       {isOpen ? (
         <div className="space-y-3 p-3 pt-0">
           {dogs.map((dog) => (
-            <div key={dog!.id} className="rounded-lg border border-amber-200 bg-white p-3">
+            <div
+              key={dog!.id}
+              className="rounded-lg border border-amber-200 bg-white p-3"
+            >
               <div className="font-medium">{dog!.name}</div>
 
               <div className="mt-2 grid gap-1 sm:grid-cols-2">
@@ -247,10 +254,14 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
 
                 {booking.status !== "PENDING" ? (
                   <>
-                    <div>Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}</div>
+                    <div>
+                      Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}
+                    </div>
                     <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
                     <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
-                    <div>Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}</div>
+                    <div>
+                      Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}
+                    </div>
                     <div>Vet: {dog!.vetName || "—"}</div>
                     <div>Vet phone: {dog!.vetPhone || "—"}</div>
                   </>
@@ -277,20 +288,27 @@ function SupplierOwnerReview({
   isSubmitting,
   onChange,
   onSubmit,
-  isHighlighted,
+  highlight,
 }: {
   booking: SupplierBooking;
   reviewInput?: ReviewInput;
   isSubmitting: boolean;
   onChange: (bookingId: string, values: ReviewInput) => void;
   onSubmit: (bookingId: string) => void;
-  isHighlighted: boolean;
+  highlight?: boolean;
 }) {
   if (booking.status !== "COMPLETED") return null;
 
   if (booking.hasSupplierReviewed) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-700">
+      <div
+        id={`review-${booking.id}`}
+        className={`rounded-lg border p-3 text-sm font-medium ${
+          highlight
+            ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200 text-blue-700"
+            : "border-green-200 bg-green-50 text-green-700"
+        }`}
+      >
         Owner reviewed ✓
       </div>
     );
@@ -302,7 +320,7 @@ function SupplierOwnerReview({
     <div
       id={`review-${booking.id}`}
       className={`rounded-lg border p-3 text-sm ${
-        isHighlighted
+        highlight
           ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200"
           : "border-green-200 bg-green-50"
       }`}
@@ -377,12 +395,14 @@ function BookingCard({
   reviewLoading: boolean;
   onReviewChange: (bookingId: string, values: ReviewInput) => void;
   onSubmitReview: (bookingId: string) => void;
-  highlightReview: boolean;
+  highlightReview?: boolean;
 }) {
   return (
     <div
       id={`booking-${booking.id}`}
-      className="space-y-4 rounded-xl border border-gray-200 bg-white p-4"
+      className={`space-y-4 rounded-xl border bg-white p-4 ${
+        highlightReview ? "border-blue-300 ring-2 ring-blue-100" : "border-gray-200"
+      }`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -444,7 +464,7 @@ function BookingCard({
         isSubmitting={reviewLoading}
         onChange={onReviewChange}
         onSubmit={onSubmitReview}
-        isHighlighted={highlightReview}
+        highlight={highlightReview}
       />
 
       {booking.status === "PENDING" ? (
@@ -545,8 +565,8 @@ function BookingSection({
   onSubmitReview: (bookingId: string) => void;
   isOpen: boolean;
   onToggle: () => void;
-  focusBookingId: string | null;
-  focusAction: string | null;
+  focusBookingId?: string | null;
+  focusAction?: string | null;
 }) {
   return (
     <section
@@ -620,20 +640,46 @@ function BookingSection({
   );
 }
 
-function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void }) {
+function SupplierBookingJourney({
+  onViewBookings,
+}: {
+  onViewBookings: () => void;
+}) {
   const steps = [
-    { icon: "📩", title: "Receive request", text: "Owner sends booking, dog and timing details." },
-    { icon: "🐶", title: "Review Dog Passport", text: "Check health, behaviour and care notes." },
-    { icon: "✅", title: "Confirm booking", text: "Accept or suggest another time." },
-    { icon: "🚶", title: "Deliver service", text: "Start and complete the booking." },
-    { icon: "💳", title: "Mark paid", text: "Track payment and booking history." },
+    {
+      icon: "📩",
+      title: "Receive request",
+      text: "Owner sends booking, dog and timing details.",
+    },
+    {
+      icon: "🐶",
+      title: "Review Dog Passport",
+      text: "Check health, behaviour and care notes.",
+    },
+    {
+      icon: "✅",
+      title: "Confirm booking",
+      text: "Accept or suggest another time.",
+    },
+    {
+      icon: "🚶",
+      title: "Deliver service",
+      text: "Start and complete the booking.",
+    },
+    {
+      icon: "💳",
+      title: "Mark paid",
+      text: "Track payment and booking history.",
+    },
   ];
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Your booking journey</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Your booking journey
+          </h2>
           <p className="mt-1 text-sm text-gray-500">
             From request to completed care, DogLife helps you manage each step.
           </p>
@@ -650,7 +696,10 @@ function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void
 
       <div className="mt-5 grid gap-3 md:grid-cols-5">
         {steps.map((step, index) => (
-          <div key={step.title} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div
+            key={step.title}
+            className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+          >
             <div className="text-2xl">{step.icon}</div>
             <p className="mt-2 text-sm font-semibold text-gray-900">
               {index + 1}. {step.title}
@@ -666,12 +715,15 @@ function SupplierBookingJourney({ onViewBookings }: { onViewBookings: () => void
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
-  const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
-  const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>({});
 
   const focusBookingId = searchParams.get("bookingId");
   const focusAction = searchParams.get("action");
+
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
+  const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>(
+    {}
+  );
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     today: true,
@@ -713,7 +765,6 @@ export default function SupplierDashboardPage() {
 
   const refreshBookings = () => {
     queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
   };
 
   const submitSupplierReviewMutation = useMutation({
@@ -729,6 +780,7 @@ export default function SupplierDashboardPage() {
     onMutate: (bookingId) => setActiveReviewBookingId(bookingId),
     onSuccess: (_data, bookingId) => {
       refreshBookings();
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       setReviewInputs((prev) => {
         const next = { ...prev };
         delete next[bookingId];
@@ -753,44 +805,60 @@ export default function SupplierDashboardPage() {
     },
     onSuccess: () => {
       alert("Profile submitted for DogLife review.");
-      queryClient.invalidateQueries({ queryKey: ["supplier-profile-completion"] });
+      queryClient.invalidateQueries({
+        queryKey: ["supplier-profile-completion"],
+      });
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.error || "Failed to submit profile for review");
+      alert(
+        err?.response?.data?.error || "Failed to submit profile for review"
+      );
     },
   });
 
   const acceptMutation = useMutation({
-    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/accept`),
+    mutationFn: async (bookingId: string) =>
+      api.patch(`/api/supplier/bookings/${bookingId}/accept`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const startMutation = useMutation({
-    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/start`),
+    mutationFn: async (bookingId: string) =>
+      api.patch(`/api/supplier/bookings/${bookingId}/start`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const completeMutation = useMutation({
-    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/complete`),
+    mutationFn: async (bookingId: string) =>
+      api.patch(`/api/supplier/bookings/${bookingId}/complete`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const markPaidMutation = useMutation({
-    mutationFn: async (bookingId: string) => api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
+    mutationFn: async (bookingId: string) =>
+      api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
     onMutate: (bookingId) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
     onSettled: () => setActiveBookingId(null),
   });
 
   const declineMutation = useMutation({
-    mutationFn: async ({ bookingId, message }: { bookingId: string; message?: string }) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, { message });
+    mutationFn: async ({
+      bookingId,
+      message,
+    }: {
+      bookingId: string;
+      message?: string;
+    }) => {
+      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
+        message,
+      });
     },
     onMutate: ({ bookingId }) => setActiveBookingId(bookingId),
     onSuccess: refreshBookings,
@@ -821,13 +889,20 @@ export default function SupplierDashboardPage() {
     bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id))
   );
   const confirmedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id))
+    bookings.filter(
+      (b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
+    )
   );
   const inProgressBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id))
+    bookings.filter(
+      (b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
+    )
   );
   const completedUnbilledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id))
+    bookings.filter(
+      (b) =>
+        b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+    )
   );
   const completedBookings = sortBookingsByStart(
     bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
@@ -837,8 +912,20 @@ export default function SupplierDashboardPage() {
   );
 
   const totalActive = bookings.filter((b) =>
-    ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(b.status)
+    ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(
+      b.status
+    )
   ).length;
+
+  const sectionMap = [
+    { key: "today", bookings: todayBookings },
+    { key: "pending", bookings: pendingBookings },
+    { key: "confirmed", bookings: confirmedBookings },
+    { key: "inProgress", bookings: inProgressBookings },
+    { key: "completedUnbilled", bookings: completedUnbilledBookings },
+    { key: "completed", bookings: completedBookings },
+    { key: "cancelled", bookings: cancelledBookings },
+  ];
 
   function handleReviewChange(bookingId: string, values: ReviewInput) {
     setReviewInputs((prev) => ({
@@ -858,7 +945,9 @@ export default function SupplierDashboardPage() {
     setOpenSections((prev) => ({ ...prev, [sectionKey]: true }));
 
     setTimeout(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      document
+        .getElementById(sectionId)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   }
 
@@ -870,59 +959,44 @@ export default function SupplierDashboardPage() {
     const bookingId = notification.referenceId || notification.booking?.id;
     if (!bookingId) return;
 
-    const matchingSectionKey =
-      pendingBookings.some((b) => b.id === bookingId) ? "pending"
-      : confirmedBookings.some((b) => b.id === bookingId) ? "confirmed"
-      : inProgressBookings.some((b) => b.id === bookingId) ? "inProgress"
-      : completedUnbilledBookings.some((b) => b.id === bookingId) ? "completedUnbilled"
-      : completedBookings.some((b) => b.id === bookingId) ? "completed"
-      : cancelledBookings.some((b) => b.id === bookingId) ? "cancelled"
-      : todayBookings.some((b) => b.id === bookingId) ? "today"
-      : null;
+    const matchingSection = sectionMap.find((section) =>
+      section.bookings.some((booking) => booking.id === bookingId)
+    );
 
-    if (matchingSectionKey) {
-      setOpenSections((prev) => ({ ...prev, [matchingSectionKey]: true }));
+    if (matchingSection) {
+      setOpenSections((prev) => ({
+        ...prev,
+        [matchingSection.key]: true,
+      }));
     }
 
+    const isReviewNotification = String(notification.title || "")
+      .toLowerCase()
+      .includes("review");
+
     setTimeout(() => {
-      document.getElementById(`booking-${bookingId}`)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      const targetId = isReviewNotification
+        ? `review-${bookingId}`
+        : `booking-${bookingId}`;
+
+      document
+        .getElementById(targetId)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 300);
-  }
-
-  function handleDecline(booking: SupplierBooking) {
-    const message = window.prompt(
-      "Add a message for the owner. You can suggest another time here.",
-      ""
-    );
-    if (message === null) return;
-
-    declineMutation.mutate({
-      bookingId: booking.id,
-      message: message.trim() || undefined,
-    });
   }
 
   useEffect(() => {
     if (!focusBookingId) return;
 
-    const matchingSectionKey =
-      pendingBookings.some((b) => b.id === focusBookingId) ? "pending"
-      : confirmedBookings.some((b) => b.id === focusBookingId) ? "confirmed"
-      : inProgressBookings.some((b) => b.id === focusBookingId) ? "inProgress"
-      : completedUnbilledBookings.some((b) => b.id === focusBookingId) ? "completedUnbilled"
-      : completedBookings.some((b) => b.id === focusBookingId) ? "completed"
-      : cancelledBookings.some((b) => b.id === focusBookingId) ? "cancelled"
-      : todayBookings.some((b) => b.id === focusBookingId) ? "today"
-      : null;
+    const matchingSection = sectionMap.find((section) =>
+      section.bookings.some((booking) => booking.id === focusBookingId)
+    );
 
-    if (!matchingSectionKey) return;
+    if (!matchingSection) return;
 
     setOpenSections((prev) => ({
       ...prev,
-      [matchingSectionKey]: true,
+      [matchingSection.key]: true,
     }));
 
     setTimeout(() => {
@@ -936,17 +1010,20 @@ export default function SupplierDashboardPage() {
         block: "center",
       });
     }, 300);
-  }, [
-    focusBookingId,
-    focusAction,
-    pendingBookings,
-    confirmedBookings,
-    inProgressBookings,
-    completedUnbilledBookings,
-    completedBookings,
-    cancelledBookings,
-    todayBookings,
-  ]);
+  }, [focusBookingId, focusAction, sectionMap]);
+
+  function handleDecline(booking: SupplierBooking) {
+    const message = window.prompt(
+      "Add a message for the owner. You can suggest another time here.",
+      ""
+    );
+    if (message === null) return;
+
+    declineMutation.mutate({
+      bookingId: booking.id,
+      message: message.trim() || undefined,
+    });
+  }
 
   function renderSection(
     id: string,
@@ -986,7 +1063,9 @@ export default function SupplierDashboardPage() {
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Welcome to DogLife 🐾</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Welcome to DogLife 🐾
+            </h1>
             <p className="mt-2 text-sm text-gray-600">
               Complete your supplier setup so dog owners can find and book you.
             </p>
@@ -1044,7 +1123,9 @@ export default function SupplierDashboardPage() {
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">Pending bookings</div>
-          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">{pendingBookings.length}</div>
+          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
+            {pendingBookings.length}
+          </div>
         </button>
 
         <button
@@ -1052,8 +1133,12 @@ export default function SupplierDashboardPage() {
           onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">Confirmed bookings</div>
-          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">{confirmedBookings.length}</div>
+          <div className="text-xs text-gray-500 sm:text-sm">
+            Confirmed bookings
+          </div>
+          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
+            {confirmedBookings.length}
+          </div>
         </button>
 
         <button
@@ -1062,12 +1147,18 @@ export default function SupplierDashboardPage() {
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">In progress</div>
-          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">{inProgressBookings.length}</div>
+          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
+            {inProgressBookings.length}
+          </div>
         </button>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
-          <div className="text-xs text-gray-500 sm:text-sm">Total active bookings</div>
-          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">{totalActive}</div>
+          <div className="text-xs text-gray-500 sm:text-sm">
+            Total active bookings
+          </div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
+            {totalActive}
+          </div>
         </div>
       </div>
 
@@ -1079,14 +1170,17 @@ export default function SupplierDashboardPage() {
               type="button"
               onClick={() => handleNotificationClick(notification)}
               className={`w-full rounded-lg border p-4 text-left ${
-                notification.read ? "border-gray-200 bg-gray-50" : "border-yellow-200 bg-yellow-50"
+                notification.read
+                  ? "border-gray-200 bg-gray-50"
+                  : "border-yellow-200 bg-yellow-50"
               }`}
             >
               <p className="font-semibold text-gray-800">{notification.title}</p>
               <p className="text-sm text-gray-600">
                 {notification.booking
                   ? `${notification.booking.serviceLabel} with ${
-                      firstNamesOnlyList(notification.booking.dogNames) || "the dog"
+                      firstNamesOnlyList(notification.booking.dogNames) ||
+                      "the dog"
                     } on ${formatDateTime(notification.booking.startAt)}`
                   : notification.message}
               </p>
@@ -1096,10 +1190,34 @@ export default function SupplierDashboardPage() {
       ) : null}
 
       <div className="space-y-6">
-        {renderSection("today-bookings", "Today", "No bookings today.", todayBookings, "today")}
-        {renderSection("pending-bookings", "Pending Bookings", "No pending bookings.", pendingBookings, "pending")}
-        {renderSection("confirmed-bookings", "Confirmed Bookings", "No confirmed bookings.", confirmedBookings, "confirmed")}
-        {renderSection("in-progress-bookings", "In Progress", "No bookings in progress.", inProgressBookings, "inProgress")}
+        {renderSection(
+          "today-bookings",
+          "Today",
+          "No bookings today.",
+          todayBookings,
+          "today"
+        )}
+        {renderSection(
+          "pending-bookings",
+          "Pending Bookings",
+          "No pending bookings.",
+          pendingBookings,
+          "pending"
+        )}
+        {renderSection(
+          "confirmed-bookings",
+          "Confirmed Bookings",
+          "No confirmed bookings.",
+          confirmedBookings,
+          "confirmed"
+        )}
+        {renderSection(
+          "in-progress-bookings",
+          "In Progress",
+          "No bookings in progress.",
+          inProgressBookings,
+          "inProgress"
+        )}
         {renderSection(
           "completed-unbilled-bookings",
           "Completed - Awaiting Payment",
@@ -1107,8 +1225,20 @@ export default function SupplierDashboardPage() {
           completedUnbilledBookings,
           "completedUnbilled"
         )}
-        {renderSection("completed-bookings", "Completed - Paid", "No completed paid bookings.", completedBookings, "completed")}
-        {renderSection("cancelled-bookings", "Cancelled", "No cancelled bookings.", cancelledBookings, "cancelled")}
+        {renderSection(
+          "completed-bookings",
+          "Completed - Paid",
+          "No completed paid bookings.",
+          completedBookings,
+          "completed"
+        )}
+        {renderSection(
+          "cancelled-bookings",
+          "Cancelled",
+          "No cancelled bookings.",
+          cancelledBookings,
+          "cancelled"
+        )}
       </div>
     </div>
   );
