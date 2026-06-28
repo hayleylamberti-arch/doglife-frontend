@@ -186,6 +186,16 @@ function isTodayBooking(
   return date >= todayStart && date <= todayEnd;
 }
 
+function canStartBookingNow(booking: SupplierBooking, now: Date) {
+  if (booking.status !== "CONFIRMED") return false;
+  return new Date(booking.startAt).getTime() <= now.getTime();
+}
+
+function canCompleteBookingNow(booking: SupplierBooking, now: Date) {
+  if (booking.status !== "IN_PROGRESS") return false;
+  return new Date(booking.endAt).getTime() <= now.getTime();
+}
+
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
   const location = booking.serviceLocationSummary;
 
@@ -383,6 +393,7 @@ function BookingCard({
   onReviewChange,
   onSubmitReview,
   highlightReview,
+  now,
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
@@ -396,7 +407,11 @@ function BookingCard({
   onReviewChange: (bookingId: string, values: ReviewInput) => void;
   onSubmitReview: (bookingId: string) => void;
   highlightReview?: boolean;
+  now: Date;
 }) {
+  const startAllowed = canStartBookingNow(booking, now);
+  const completeAllowed = canCompleteBookingNow(booking, now);
+
   return (
     <div
       id={`booking-${booking.id}`}
@@ -490,25 +505,49 @@ function BookingCard({
       ) : null}
 
       {booking.status === "CONFIRMED" ? (
-        <button
-          type="button"
-          onClick={() => onStart(booking.id)}
-          disabled={actionLoading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {actionLoading ? "Starting..." : "Start Service"}
-        </button>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => onStart(booking.id)}
+            disabled={actionLoading || !startAllowed}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {actionLoading
+              ? "Starting..."
+              : startAllowed
+              ? "Start Service"
+              : "Start Service"}
+          </button>
+
+          {!startAllowed ? (
+            <p className="mt-2 text-xs text-gray-500">
+              This service can be started at {formatDateTime(booking.startAt)}.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {booking.status === "IN_PROGRESS" ? (
-        <button
-          type="button"
-          onClick={() => onComplete(booking.id)}
-          disabled={actionLoading}
-          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {actionLoading ? "Completing..." : "Complete Service"}
-        </button>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => onComplete(booking.id)}
+            disabled={actionLoading || !completeAllowed}
+            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {actionLoading
+              ? "Completing..."
+              : completeAllowed
+              ? "Complete Service"
+              : "Complete Service"}
+          </button>
+
+          {!completeAllowed ? (
+            <p className="mt-2 text-xs text-gray-500">
+              This service can be completed after {formatDateTime(booking.endAt)}.
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       {booking.status === "COMPLETED_UNBILLED" ? (
@@ -546,6 +585,7 @@ function BookingSection({
   onToggle,
   focusBookingId,
   focusAction,
+  now,
 }: {
   id: string;
   title: string;
@@ -567,6 +607,7 @@ function BookingSection({
   onToggle: () => void;
   focusBookingId?: string | null;
   focusAction?: string | null;
+  now: Date;
 }) {
   return (
     <section
@@ -630,6 +671,7 @@ function BookingSection({
                   highlightReview={
                     focusAction === "review" && focusBookingId === booking.id
                   }
+                  now={now}
                 />
               ))}
             </div>
@@ -719,6 +761,7 @@ export default function SupplierDashboardPage() {
   const focusBookingId = searchParams.get("bookingId");
   const focusAction = searchParams.get("action");
 
+  const [now, setNow] = useState(() => new Date());
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
   const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>(
@@ -734,6 +777,14 @@ export default function SupplierDashboardPage() {
     completed: false,
     cancelled: false,
   });
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier-dashboard-bookings"],
@@ -917,7 +968,7 @@ export default function SupplierDashboardPage() {
     )
   ).length;
 
-    const sectionMap = useMemo(
+  const sectionMap = useMemo(
     () => [
       { key: "today", bookings: todayBookings },
       { key: "pending", bookings: pendingBookings },
@@ -1065,6 +1116,7 @@ export default function SupplierDashboardPage() {
         onSubmitReview={(id) => submitSupplierReviewMutation.mutate(id)}
         focusBookingId={focusBookingId}
         focusAction={focusAction}
+        now={now}
       />
     );
   }
