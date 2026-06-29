@@ -49,6 +49,40 @@ function getBookingPath(role?: string | null, bookingId?: string | null) {
   return `/owner/dashboard?bookingId=${bookingId}`;
 }
 
+function hasAlreadyReviewed(role?: string | null, booking?: any) {
+  if (!booking) return false;
+
+  if (role === "SUPPLIER") {
+    return Boolean(booking.hasSupplierReviewed);
+  }
+
+  return Boolean(booking.hasOwnerReviewed);
+}
+
+function shouldOpenReview(role?: string | null, notification?: any) {
+  const booking = notification?.booking;
+  const bookingId = notification?.referenceId || booking?.id;
+
+  if (!bookingId || !booking) return false;
+
+  const title = String(notification?.title || "").toLowerCase();
+  const message = String(notification?.message || "").toLowerCase();
+
+  const looksLikeReviewNotification =
+    title.includes("leave a review") ||
+    title.includes("review") ||
+    message.includes("leave a review") ||
+    message.includes("how was your experience");
+
+  if (!looksLikeReviewNotification) return false;
+
+  if (booking.status !== "COMPLETED") return false;
+
+  if (hasAlreadyReviewed(role, booking)) return false;
+
+  return true;
+}
+
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -71,10 +105,7 @@ export default function NotificationsPage() {
     },
   });
 
-  const currentRole =
-    meData?.user?.role ||
-    meData?.role ||
-    null;
+  const currentRole = meData?.user?.role || meData?.role || null;
 
   const notifications = Array.isArray(data?.notifications)
     ? data.notifications
@@ -124,12 +155,10 @@ export default function NotificationsPage() {
     }
 
     const bookingId = notification.referenceId || notification.booking?.id || null;
-    const title = String(notification.title || "").toLowerCase();
 
-    const isReviewNotification =
-      title.includes("leave a review") || title.includes("review");
+    if (!bookingId) return;
 
-    const destination = isReviewNotification
+    const destination = shouldOpenReview(currentRole, notification)
       ? getReviewPath(currentRole, bookingId)
       : getBookingPath(currentRole, bookingId);
 
