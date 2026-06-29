@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -184,16 +184,6 @@ function isTodayBooking(
 ) {
   const date = new Date(booking.startAt);
   return date >= todayStart && date <= todayEnd;
-}
-
-function canStartBookingNow(booking: SupplierBooking, now: Date) {
-  if (booking.status !== "CONFIRMED") return false;
-  return new Date(booking.startAt).getTime() <= now.getTime();
-}
-
-function canCompleteBookingNow(booking: SupplierBooking, now: Date) {
-  if (booking.status !== "IN_PROGRESS") return false;
-  return new Date(booking.endAt).getTime() <= now.getTime();
 }
 
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
@@ -393,7 +383,6 @@ function BookingCard({
   onReviewChange,
   onSubmitReview,
   highlightReview,
-  now,
 }: {
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
@@ -407,11 +396,7 @@ function BookingCard({
   onReviewChange: (bookingId: string, values: ReviewInput) => void;
   onSubmitReview: (bookingId: string) => void;
   highlightReview?: boolean;
-  now: Date;
 }) {
-  const startAllowed = canStartBookingNow(booking, now);
-  const completeAllowed = canCompleteBookingNow(booking, now);
-
   return (
     <div
       id={`booking-${booking.id}`}
@@ -505,49 +490,25 @@ function BookingCard({
       ) : null}
 
       {booking.status === "CONFIRMED" ? (
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => onStart(booking.id)}
-            disabled={actionLoading || !startAllowed}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {actionLoading
-              ? "Starting..."
-              : startAllowed
-              ? "Start Service"
-              : "Start Service"}
-          </button>
-
-          {!startAllowed ? (
-            <p className="mt-2 text-xs text-gray-500">
-              This service can be started at {formatDateTime(booking.startAt)}.
-            </p>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          onClick={() => onStart(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Starting..." : "Start Service"}
+        </button>
       ) : null}
 
       {booking.status === "IN_PROGRESS" ? (
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => onComplete(booking.id)}
-            disabled={actionLoading || !completeAllowed}
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {actionLoading
-              ? "Completing..."
-              : completeAllowed
-              ? "Complete Service"
-              : "Complete Service"}
-          </button>
-
-          {!completeAllowed ? (
-            <p className="mt-2 text-xs text-gray-500">
-              This service can be completed after {formatDateTime(booking.endAt)}.
-            </p>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          onClick={() => onComplete(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Completing..." : "Complete Service"}
+        </button>
       ) : null}
 
       {booking.status === "COMPLETED_UNBILLED" ? (
@@ -585,7 +546,6 @@ function BookingSection({
   onToggle,
   focusBookingId,
   focusAction,
-  now,
 }: {
   id: string;
   title: string;
@@ -607,7 +567,6 @@ function BookingSection({
   onToggle: () => void;
   focusBookingId?: string | null;
   focusAction?: string | null;
-  now: Date;
 }) {
   return (
     <section
@@ -671,7 +630,6 @@ function BookingSection({
                   highlightReview={
                     focusAction === "review" && focusBookingId === booking.id
                   }
-                  now={now}
                 />
               ))}
             </div>
@@ -756,12 +714,12 @@ function SupplierBookingJourney({
 
 export default function SupplierDashboardPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const focusBookingId = searchParams.get("bookingId");
   const focusAction = searchParams.get("action");
 
-  const [now, setNow] = useState(() => new Date());
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
   const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>(
@@ -777,14 +735,6 @@ export default function SupplierDashboardPage() {
     completed: false,
     cancelled: false,
   });
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setNow(new Date());
-    }, 60000);
-
-    return () => window.clearInterval(interval);
-  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["supplier-dashboard-bookings"],
@@ -929,65 +879,80 @@ export default function SupplierDashboardPage() {
   }, []);
 
   const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
-  const bookings = Array.isArray(rawBookings) ? rawBookings : [];
-
-  const todayBookings = sortBookingsByStart(
-    bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
-  );
-  const todayBookingIds = new Set(todayBookings.map((b) => b.id));
-
-  const pendingBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "PENDING" && !todayBookingIds.has(b.id))
-  );
-  const confirmedBookings = sortBookingsByStart(
-    bookings.filter(
-      (b) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
-    )
-  );
-  const inProgressBookings = sortBookingsByStart(
-    bookings.filter(
-      (b) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
-    )
-  );
-  const completedUnbilledBookings = sortBookingsByStart(
-    bookings.filter(
-      (b) =>
-        b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
-    )
-  );
-  const completedBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "COMPLETED" && !todayBookingIds.has(b.id))
-  );
-  const cancelledBookings = sortBookingsByStart(
-    bookings.filter((b) => b.status === "CANCELLED" && !todayBookingIds.has(b.id))
+  const bookings = useMemo(
+    () => (Array.isArray(rawBookings) ? rawBookings : []),
+    [rawBookings]
   );
 
-  const totalActive = bookings.filter((b) =>
-    ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(
-      b.status
-    )
-  ).length;
+  const {
+    todayBookings,
+    pendingBookings,
+    confirmedBookings,
+    inProgressBookings,
+    completedUnbilledBookings,
+    completedBookings,
+    cancelledBookings,
+    totalActive,
+    sectionMap,
+  } = useMemo(() => {
+    const today = sortBookingsByStart(
+      bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
+    );
 
-  const sectionMap = useMemo(
-    () => [
-      { key: "today", bookings: todayBookings },
-      { key: "pending", bookings: pendingBookings },
-      { key: "confirmed", bookings: confirmedBookings },
-      { key: "inProgress", bookings: inProgressBookings },
-      { key: "completedUnbilled", bookings: completedUnbilledBookings },
-      { key: "completed", bookings: completedBookings },
-      { key: "cancelled", bookings: cancelledBookings },
-    ],
-    [
-      todayBookings,
-      pendingBookings,
-      confirmedBookings,
-      inProgressBookings,
-      completedUnbilledBookings,
-      completedBookings,
-      cancelledBookings,
-    ]
-  );
+    const todayIds = new Set(today.map((b) => b.id));
+
+    const pending = sortBookingsByStart(
+      bookings.filter((b) => b.status === "PENDING" && !todayIds.has(b.id))
+    );
+
+    const confirmed = sortBookingsByStart(
+      bookings.filter((b) => b.status === "CONFIRMED" && !todayIds.has(b.id))
+    );
+
+    const inProgress = sortBookingsByStart(
+      bookings.filter((b) => b.status === "IN_PROGRESS" && !todayIds.has(b.id))
+    );
+
+    const completedUnbilled = sortBookingsByStart(
+      bookings.filter(
+        (b) => b.status === "COMPLETED_UNBILLED" && !todayIds.has(b.id)
+      )
+    );
+
+    const completed = sortBookingsByStart(
+      bookings.filter((b) => b.status === "COMPLETED" && !todayIds.has(b.id))
+    );
+
+    const cancelled = sortBookingsByStart(
+      bookings.filter((b) => b.status === "CANCELLED" && !todayIds.has(b.id))
+    );
+
+    const active = bookings.filter((b) =>
+      ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(
+        b.status
+      )
+    ).length;
+
+    return {
+      todayBookings: today,
+      pendingBookings: pending,
+      confirmedBookings: confirmed,
+      inProgressBookings: inProgress,
+      completedUnbilledBookings: completedUnbilled,
+      completedBookings: completed,
+      cancelledBookings: cancelled,
+      totalActive: active,
+      sectionMap: [
+        { key: "today", bookings: today },
+        { key: "pending", bookings: pending },
+        { key: "confirmed", bookings: confirmed },
+        { key: "inProgress", bookings: inProgress },
+        { key: "completedUnbilled", bookings: completedUnbilled },
+        { key: "completed", bookings: completed },
+        { key: "cancelled", bookings: cancelled },
+      ],
+    };
+  }, [bookings, todayStart, todayEnd]);
 
   function handleReviewChange(bookingId: string, values: ReviewInput) {
     setReviewInputs((prev) => ({
@@ -1061,7 +1026,7 @@ export default function SupplierDashboardPage() {
       [matchingSection.key]: true,
     }));
 
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
       const targetId =
         focusAction === "review"
           ? `review-${focusBookingId}`
@@ -1071,8 +1036,12 @@ export default function SupplierDashboardPage() {
         behavior: "smooth",
         block: "center",
       });
+
+      navigate("/supplier/dashboard", { replace: true });
     }, 300);
-  }, [focusBookingId, focusAction, sectionMap]);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [focusBookingId, focusAction, sectionMap, navigate]);
 
   function handleDecline(booking: SupplierBooking) {
     const message = window.prompt(
@@ -1116,7 +1085,6 @@ export default function SupplierDashboardPage() {
         onSubmitReview={(id) => submitSupplierReviewMutation.mutate(id)}
         focusBookingId={focusBookingId}
         focusAction={focusAction}
-        now={now}
       />
     );
   }
