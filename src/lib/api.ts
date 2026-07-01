@@ -1,6 +1,13 @@
 import axios from "axios";
 
 /* ================================
+   SESSION KEYS
+================================ */
+
+const TOKEN_KEY = "authToken";
+const ROLE_KEY = "role";
+
+/* ================================
    AXIOS INSTANCE
 ================================ */
 
@@ -11,13 +18,29 @@ export const api = axios.create({
 console.log("API BASE:", import.meta.env.VITE_API_BASE);
 
 /* ================================
+   SESSION HELPERS
+================================ */
+
+function getToken() {
+  return sessionStorage.getItem(TOKEN_KEY);
+}
+
+function clearAuthSession() {
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(ROLE_KEY);
+
+  // Clean up old localStorage auth values
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+}
+
+/* ================================
    REQUEST INTERCEPTOR (TOKEN)
 ================================ */
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
-
-  console.log("TOKEN USED:", token);
+  const token = getToken();
 
   if (token) {
     config.headers = config.headers || {};
@@ -40,9 +63,8 @@ api.interceptors.response.use(
     console.error("API ERROR:", error?.response || error);
 
     if (error?.response?.status === 401) {
-      console.warn("Unauthorized — clearing token");
-
-      localStorage.removeItem("authToken");
+      console.warn("Unauthorized — clearing session");
+      clearAuthSession();
     }
 
     return Promise.reject(error);
@@ -54,7 +76,7 @@ api.interceptors.response.use(
 ================================ */
 
 export const getMe = async () => {
-  const token = localStorage.getItem("authToken");
+  const token = getToken();
 
   if (!token) {
     return null;
@@ -65,6 +87,7 @@ export const getMe = async () => {
     return res.data.user;
   } catch (error: any) {
     if (error?.response?.status === 401) {
+      clearAuthSession();
       return null;
     }
 
@@ -73,10 +96,10 @@ export const getMe = async () => {
 };
 
 export const logout = () => {
-  localStorage.removeItem("authToken");
+  clearAuthSession();
   window.location.href = "/auth/login";
 };
 
 export const isAuthenticated = () => {
-  return !!localStorage.getItem("authToken");
+  return !!getToken();
 };

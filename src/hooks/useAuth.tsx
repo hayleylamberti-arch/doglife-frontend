@@ -78,8 +78,15 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = "authToken";
-const LEGACY_TOKEN_KEY = "token";
 const ROLE_KEY = "role";
+
+function getStoredToken() {
+  return sessionStorage.getItem(TOKEN_KEY);
+}
+
+function getStoredRole() {
+  return sessionStorage.getItem(ROLE_KEY) as UserRole | null;
+}
 
 function setApiToken(token: string | null) {
   if (token) {
@@ -90,17 +97,26 @@ function setApiToken(token: string | null) {
 }
 
 function persistSession(token: string, role: UserRole) {
-  localStorage.setItem(TOKEN_KEY, token);
-  localStorage.setItem(LEGACY_TOKEN_KEY, token);
-  localStorage.setItem("token", token);
-  localStorage.setItem(ROLE_KEY, role);
+  sessionStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.setItem(ROLE_KEY, role);
+
+  // Clean up old localStorage auth values
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+
   setApiToken(token);
 }
 
 function clearSession() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
-  localStorage.removeItem(ROLE_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(ROLE_KEY);
+
+  // Clean up old localStorage auth values
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("token");
+  localStorage.removeItem("role");
+
   setApiToken(null);
 }
 
@@ -129,19 +145,15 @@ function getAuthErrorMessage(error: any) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const storedToken =
-    localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+  const storedToken = getStoredToken();
 
   const [token, setToken] = useState<string | null>(storedToken);
-  const [role, setRole] = useState<UserRole | null>(
-    (localStorage.getItem(ROLE_KEY) as UserRole | null) ?? null
-  );
+  const [role, setRole] = useState<UserRole | null>(getStoredRole());
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshMe = useCallback(async (): Promise<AuthUser | null> => {
-    const currentToken =
-      localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const currentToken = getStoredToken();
 
     if (!currentToken) {
       clearSession();
@@ -179,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setApiToken(storedToken);
     refreshMe().finally(() => setIsLoading(false));
-  }, [refreshMe]);
+  }, [refreshMe, storedToken]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
@@ -255,7 +267,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout,
       refreshMe,
     }),
-    [token, role, user, isLoading, login, register, registerMutation, logout, refreshMe]
+    [
+      token,
+      role,
+      user,
+      isLoading,
+      login,
+      register,
+      registerMutation,
+      logout,
+      refreshMe,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
