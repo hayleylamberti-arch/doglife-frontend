@@ -127,6 +127,11 @@ function buildDaycareTimes(
   };
 }
 
+function firstNameOnly(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().split(/\s+/)[0] || "";
+}
+
 export default function BookingModal({
   supplierId,
   supplierName,
@@ -520,7 +525,7 @@ export default function BookingModal({
 
     api
       .get(
-       `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&dogCount=${Math.max(1, selectedDogIds.length || 1)}&limit=50` 
+        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&dogCount=${Math.max(1, selectedDogIds.length || 1)}&limit=50`
       )
       .then((res) => {
         const groupedSlots = res.data?.slots || {};
@@ -583,10 +588,11 @@ export default function BookingModal({
         parts.push("Training location: owner home.");
       } else {
         parts.push("Service location: OWNER_HOME.");
+      }
+
+      parts.push(`Owner address: ${ownerAddress}.`);
     }
 
-  parts.push(`Owner address: ${ownerAddress}.`);
-}
     if (isBoarding) parts.push(`Kennel type: ${kennelType}.`);
 
     if (isPetSitting) {
@@ -602,16 +608,22 @@ export default function BookingModal({
     if (isMobileVet) parts.push(`Mobile vet service: ${mobileVetService}.`);
 
     if (isGrooming) {
-      selectedDogIds.forEach((dogId) => {
-        const dog = dogs.find((item) => item.id === dogId);
-        const selection = groomingSelections[dogId];
+      const groomingLines = selectedDogIds
+        .map((dogId) => {
+          const dog = dogs.find((item) => item.id === dogId);
+          const selection = groomingSelections[dogId];
 
-        if (selection) {
-          parts.push(
-            `Grooming for ${dog?.name || dogId}: ${selection.category} ${selection.size}.`
-          );
-        }
-      });
+          if (!selection) return null;
+
+          return `${firstNameOnly(dog?.name || dogId)} - ${formatLabel(
+            selection.category
+          )}, ${formatLabel(selection.size)}.`;
+        })
+        .filter(Boolean) as string[];
+
+      if (groomingLines.length > 0) {
+        parts.push(`Grooming selections:\n${groomingLines.join("\n")}`);
+      }
 
       if (isMobileGrooming) parts.push("Mobile grooming.");
     }
@@ -626,7 +638,7 @@ export default function BookingModal({
 
     if (notes.trim()) parts.push(notes.trim());
 
-    return parts.join(" ");
+    return parts.join("\n");
   }
 
   async function handleBooking() {
@@ -709,7 +721,7 @@ export default function BookingModal({
         endAt = daycareTimes.endAt;
       } else {
         startAt = new Date(selectedSlot!);
-        
+
         const bookingDurationMinutes = isGrooming
           ? appointmentDurationMinutes * Math.max(1, selectedDogIds.length)
           : appointmentDurationMinutes;
@@ -728,8 +740,8 @@ export default function BookingModal({
         kennelType: isBoarding ? kennelType : undefined,
         notes: buildNotes() || undefined,
         accessInstructions: shouldShowAccessInstructions
-        ? accessInstructions.trim() || undefined
-        : undefined,
+          ? accessInstructions.trim() || undefined
+          : undefined,
         healthSafetyAccepted: acceptedHealthSafety,
         petSittingLocation: isPetSitting ? petSittingLocation : undefined,
         mobileVetOffering: isMobileVet ? mobileVetService : undefined,
@@ -1161,21 +1173,21 @@ export default function BookingModal({
             ) : null}
 
             {shouldShowAccessInstructions ? (
-  <div>
-    <textarea
-      className="min-h-[90px] w-full rounded border px-3 py-2"
-      placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
-      value={accessInstructions}
-      disabled={authRequired}
-      onChange={(e) => setAccessInstructions(e.target.value)}
-    />
+              <div>
+                <textarea
+                  className="min-h-[90px] w-full rounded border px-3 py-2"
+                  placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
+                  value={accessInstructions}
+                  disabled={authRequired}
+                  onChange={(e) => setAccessInstructions(e.target.value)}
+                />
 
-    <p className="mt-1 text-xs text-gray-500">
-      Please don&apos;t add gate codes yet. You can share secure access details
-      with the supplier once the booking is confirmed.
-    </p>
-  </div>
-) : null}
+                <p className="mt-1 text-xs text-gray-500">
+                  Please don&apos;t add gate codes yet. You can share secure access
+                  details with the supplier once the booking is confirmed.
+                </p>
+              </div>
+            ) : null}
 
             <textarea
               className="min-h-[100px] w-full rounded border px-3 py-2"

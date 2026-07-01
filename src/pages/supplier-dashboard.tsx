@@ -117,6 +117,11 @@ function formatMoney(cents?: number | null) {
   return `R${amount.toFixed(0)}`;
 }
 
+function firstNameOnly(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().split(/\s+/)[0];
+}
+
 function formatOwnerName(booking: SupplierBooking) {
   const first = booking.owner?.firstName || "";
   const last = booking.owner?.lastName || "";
@@ -127,15 +132,10 @@ function formatOwnerName(booking: SupplierBooking) {
 function formatDogNames(booking: SupplierBooking) {
   return (
     booking.dogs
-      ?.map((item) => item?.dog?.name)
+      ?.map((item) => firstNameOnly(item?.dog?.name))
       .filter(Boolean)
       .join(", ") || "No dogs linked"
   );
-}
-
-function firstNameOnly(value?: string | null) {
-  if (!value) return "";
-  return String(value).trim().split(/\s+/)[0];
 }
 
 function firstNamesOnlyList(value?: string | null) {
@@ -241,7 +241,7 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
               key={dog!.id}
               className="rounded-lg border border-amber-200 bg-white p-3"
             >
-              <div className="font-medium">{dog!.name}</div>
+              <div className="font-medium">{firstNameOnly(dog!.name)}</div>
 
               <div className="mt-2 grid gap-1 sm:grid-cols-2">
                 <div>Breed: {dog!.breed || "—"}</div>
@@ -454,7 +454,8 @@ function BookingCard({
 
       {booking.notes ? (
         <div className="text-sm text-gray-600">
-          <span className="font-medium">Notes:</span> {booking.notes}
+          <span className="font-medium">Notes:</span>{" "}
+          <span className="whitespace-pre-line">{booking.notes}</span>
         </div>
       ) : null}
 
