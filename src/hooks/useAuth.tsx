@@ -21,6 +21,8 @@ export interface AuthUser {
   mobilePhone?: string;
   onboardingCompleted?: boolean;
   onboardingStep?: number;
+  emailVerified?: boolean;
+  subscriptionType?: "free" | "basic" | "premium" | "enterprise" | "owner_plus";
 }
 
 export interface LoginCredentials {
