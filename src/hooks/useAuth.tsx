@@ -19,27 +19,8 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   mobilePhone?: string;
-  phone?: string;
-  phoneNumber?: string;
-  address?: string;
-  city?: string;
-  province?: string;
-  postalCode?: string;
-  profileImageUrl?: string;
-  bio?: string;
-  businessName?: string;
-  serviceTypes?: string[];
   onboardingCompleted?: boolean;
   onboardingStep?: number;
-  userType?: "owner" | "provider" | "admin";
-  emailVerified?: boolean;
-  isSubscribed?: boolean;
-  subscriptionType?: "free" | "basic" | "premium" | "enterprise" | "owner_plus";
-  isVerified?: boolean;
-  verificationStatus?: string | null;
-  emergencyContact?: string | null;
-  emergencyContactName?: string | null;
-  emergencyContactPhone?: string | null;
 }
 
 export interface LoginCredentials {
@@ -58,7 +39,6 @@ export interface RegisterData {
 }
 
 interface AuthResponse {
-  token: string;
   user: AuthUser;
 }
 
@@ -71,68 +51,33 @@ interface AuthContextValue {
   login: (data: LoginCredentials) => Promise<AuthResponse>;
   register: (data: RegisterData) => Promise<AuthResponse>;
   registerMutation: UseMutationResult<AuthResponse, unknown, RegisterData, unknown>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshMe: () => Promise<AuthUser | null>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const TOKEN_KEY = "authToken";
-const ROLE_KEY = "role";
+function clearOldBrowserTokens() {
+  sessionStorage.removeItem("authToken");
+  sessionStorage.removeItem("role");
 
-function getStoredToken() {
-  return sessionStorage.getItem(TOKEN_KEY);
-}
-
-function getStoredRole() {
-  return sessionStorage.getItem(ROLE_KEY) as UserRole | null;
-}
-
-function setApiToken(token: string | null) {
-  if (token) {
-    api.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common.Authorization;
-  }
-}
-
-function persistSession(token: string, role: UserRole) {
-  sessionStorage.setItem(TOKEN_KEY, token);
-  sessionStorage.setItem(ROLE_KEY, role);
-
-  // Clean up old localStorage auth values
   localStorage.removeItem("authToken");
   localStorage.removeItem("token");
   localStorage.removeItem("role");
-
-  setApiToken(token);
-}
-
-function clearSession() {
-  sessionStorage.removeItem(TOKEN_KEY);
-  sessionStorage.removeItem(ROLE_KEY);
-
-  // Clean up old localStorage auth values
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("token");
-  localStorage.removeItem("role");
-
-  setApiToken(null);
 }
 
 function extractUser(data: any): AuthUser | null {
-  return data?.user || data?.data?.user || data || null;
+  return data?.user || data?.data?.user || null;
 }
 
 function extractAuthResponse(data: any): AuthResponse {
-  const token = data?.token || data?.data?.token;
   const user = data?.user || data?.data?.user;
 
-  if (!token || !user?.role) {
-    throw new Error("Invalid login response");
+  if (!user?.role) {
+    throw new Error("Invalid auth response");
   }
 
-  return { token, user };
+  return { user };
 }
 
 function getAuthErrorMessage(error: any) {
@@ -145,43 +90,28 @@ function getAuthErrorMessage(error: any) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const storedToken = getStoredToken();
-
-  const [token, setToken] = useState<string | null>(storedToken);
-  const [role, setRole] = useState<UserRole | null>(getStoredRole());
+  const [token] = useState<string | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshMe = useCallback(async (): Promise<AuthUser | null> => {
-    const currentToken = getStoredToken();
-
-    if (!currentToken) {
-      clearSession();
-      setToken(null);
-      setRole(null);
-      setUser(null);
-      return null;
-    }
-
     try {
-      setApiToken(currentToken);
+      clearOldBrowserTokens();
 
-      const response = await api.get("/api/me");
+      const response = await api.get("/api/auth/me");
       const me = extractUser(response.data);
 
       if (!me?.role) {
-        throw new Error("Invalid /api/me response");
+        throw new Error("Invalid /api/auth/me response");
       }
 
-      persistSession(currentToken, me.role);
-      setToken(currentToken);
       setRole(me.role);
       setUser(me);
 
       return me;
     } catch {
-      clearSession();
-      setToken(null);
+      clearOldBrowserTokens();
       setRole(null);
       setUser(null);
       return null;
@@ -189,9 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setApiToken(storedToken);
     refreshMe().finally(() => setIsLoading(false));
-  }, [refreshMe, storedToken]);
+  }, [refreshMe]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginCredentials) => {
@@ -219,8 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (data: LoginCredentials) => {
       const response = await loginMutation.mutateAsync(data);
 
-      persistSession(response.token, response.user.role);
-      setToken(response.token);
+      clearOldBrowserTokens();
       setRole(response.user.role);
       setUser(response.user);
 
@@ -235,8 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (data: RegisterData) => {
       const response = await registerMutation.mutateAsync(data);
 
-      persistSession(response.token, response.user.role);
-      setToken(response.token);
+      clearOldBrowserTokens();
       setRole(response.user.role);
       setUser(response.user);
 
@@ -247,11 +174,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [registerMutation, refreshMe]
   );
 
-  const logout = useCallback(() => {
-    clearSession();
-    setToken(null);
-    setRole(null);
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await api.post("/api/auth/logout");
+    } finally {
+      clearOldBrowserTokens();
+      setRole(null);
+      setUser(null);
+    }
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -260,24 +190,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role,
       user,
       isLoading,
-      isAuthenticated: Boolean(token),
+      isAuthenticated: Boolean(user),
       login,
       register,
       registerMutation,
       logout,
       refreshMe,
     }),
-    [
-      token,
-      role,
-      user,
-      isLoading,
-      login,
-      register,
-      registerMutation,
-      logout,
-      refreshMe,
-    ]
+    [token, role, user, isLoading, login, register, registerMutation, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
