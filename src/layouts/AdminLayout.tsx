@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { label: "Dashboard", to: "/admin" },
@@ -8,6 +9,8 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
+  const { logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="border-b bg-white">
@@ -17,7 +20,7 @@ export default function AdminLayout() {
             <p className="text-sm text-gray-500">Internal operations dashboard</p>
           </div>
 
-          <nav className="flex gap-3">
+          <nav className="flex items-center gap-3">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -34,6 +37,14 @@ export default function AdminLayout() {
                 {item.label}
               </NavLink>
             ))}
+
+            <button
+              type="button"
+              onClick={logout}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              Logout
+            </button>
           </nav>
         </div>
       </header>
