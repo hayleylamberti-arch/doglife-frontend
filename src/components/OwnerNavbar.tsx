@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Brand from "@/components/Brand";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function OwnerNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { logout } = useAuth();
 
   const { data: notificationsData } = useQuery({
     queryKey: ["notifications"],
@@ -17,15 +19,13 @@ export default function OwnerNavbar() {
 
   const unreadCount = notificationsData?.unreadCount || 0;
 
-  const handleLogout = () => {
-    try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("authToken");
-    } catch (err) {
-      console.error("Failed to clear auth token", err);
-    }
+  const handleLogout = async () => {
+    await logout();
+  };
 
-    window.location.href = "/";
+  const handleMobileLogout = async () => {
+    setMobileMenuOpen(false);
+    await logout();
   };
 
   const closeMobileMenu = () => {
@@ -105,7 +105,7 @@ export default function OwnerNavbar() {
                 Notifications {unreadCount > 0 ? `(${unreadCount})` : ""}
               </Link>
 
-              <button type="button" onClick={handleLogout} className="rounded-md px-3 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">
+              <button type="button" onClick={handleMobileLogout} className="rounded-md px-3 py-2 text-left text-base font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-gray-700">
                 Logout
               </button>
             </div>
