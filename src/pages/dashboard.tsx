@@ -699,36 +699,37 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    if (!focusBookingId) return;
+  if (!focusBookingId) return;
 
-    const section = bookingSections.find((bookingSection) =>
-      bookingSection.bookings.some(
-        (booking: any) => booking.id === focusBookingId
-      )
-    );
+  const section = bookingSections.find((bookingSection) =>
+    bookingSection.bookings.some(
+      (booking: any) => booking.id === focusBookingId
+    )
+  );
 
-    if (!section) return;
+  if (!section) return;
 
-    setOpenSections((prev) => {
-      if (prev[section.key]) return prev;
-      return {
-        ...prev,
-        [section.key]: true,
-      };
+  setOpenSections((prev) => ({
+    ...prev,
+    [section.key]: true,
+  }));
+
+  const targetId =
+    focusAction === "review"
+      ? `review-${focusBookingId}`
+      : `booking-${focusBookingId}`;
+
+  const scrollToBooking = () => {
+    document.getElementById(targetId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
     });
+  };
 
-    setTimeout(() => {
-      const targetId =
-        focusAction === "review"
-          ? `review-${focusBookingId}`
-          : `booking-${focusBookingId}`;
-
-      document.getElementById(targetId)?.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }, 300);
-  }, [focusBookingId, focusAction, bookingSections]);
+  window.setTimeout(scrollToBooking, 300);
+  window.setTimeout(scrollToBooking, 800);
+  window.setTimeout(scrollToBooking, 1200);
+}, [focusBookingId, focusAction, bookingSections]);
 
   const renderBookingCard = (booking: any, isToday = false) => {
     const supplierMessage =
@@ -747,8 +748,12 @@ export default function Dashboard() {
         id={`booking-${booking.id}`}
         key={booking.id}
         className={`rounded-xl border p-5 shadow-sm transition hover:shadow-md ${
-          isToday ? "border-blue-200 bg-blue-50" : "border-gray-200 bg-white"
-        }`}
+          focusBookingId === booking.id
+            ? "border-blue-400 bg-blue-50 ring-2 ring-blue-200"
+            : isToday
+            ? "border-blue-200 bg-blue-50"
+            : "border-gray-200 bg-white"
+          }`}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-3">
