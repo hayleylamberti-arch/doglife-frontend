@@ -1,12 +1,13 @@
-import React, { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Brand from "@/components/Brand";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function SupplierNavbar() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { data: notificationsData } = useQuery({
@@ -19,32 +20,28 @@ export default function SupplierNavbar() {
 
   const unreadCount = notificationsData?.unreadCount || 0;
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("authToken");
-    navigate("/");
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const handleMobileLogout = async () => {
+    setMobileMenuOpen(false);
+    await logout();
   };
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
   };
 
-  const handleMobileLogout = () => {
-    setMobileMenuOpen(false);
-    handleLogout();
-  };
-
-  const isActive = (path: string) => {
-    return location.pathname.includes(path)
+  const isActive = (path: string) =>
+    location.pathname.includes(path)
       ? "text-black font-semibold"
       : "text-gray-600 hover:text-black";
-  };
 
-  const mobileLinkClass = (path: string) => {
-    return location.pathname.includes(path)
+  const mobileLinkClass = (path: string) =>
+    location.pathname.includes(path)
       ? "rounded-md bg-gray-100 px-3 py-2 text-base font-semibold text-black"
       : "rounded-md px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-100";
-  };
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-gray-200 bg-white">
@@ -71,10 +68,7 @@ export default function SupplierNavbar() {
               Availability
             </Link>
 
-            <Link
-              to="/supplier/notifications"
-              className={isActive("/supplier/notifications")}
-            >
+            <Link to="/supplier/notifications" className={isActive("/supplier/notifications")}>
               Notifications
               {unreadCount > 0 ? (
                 <span className="ml-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white">
