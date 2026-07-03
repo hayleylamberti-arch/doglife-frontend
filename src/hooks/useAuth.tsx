@@ -177,14 +177,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    try {
-      await api.post("/api/auth/logout");
-    } finally {
-      clearOldBrowserTokens();
-      setRole(null);
-      setUser(null);
-    }
-  }, []);
+  try {
+    await api.post("/api/auth/logout");
+  } finally {
+    clearOldBrowserTokens();
+    setRole(null);
+    setUser(null);
+    window.location.replace("/auth/login");
+  }
+}, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
