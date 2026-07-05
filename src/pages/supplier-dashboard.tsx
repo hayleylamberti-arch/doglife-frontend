@@ -189,28 +189,44 @@ function isTodayBooking(
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
   const location = booking.serviceLocationSummary;
 
-  if (!location) return null;
+  if (!location) {
+    if (booking.serviceArea) {
+      return (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          <div className="font-medium">Service area</div>
+          <div className="mt-1">{booking.serviceArea}</div>
+        </div>
+      );
+    }
+
+    return null;
+  }
 
   if (location.type === "TRANSPORT") {
     return (
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
         <div className="font-medium">Pickup and drop-off</div>
         {location.pickupAddress ? (
-          <div>Pickup: {location.pickupAddress}</div>
+          <div className="mt-1 whitespace-pre-line">Pickup: {location.pickupAddress}</div>
         ) : null}
         {location.dropoffAddress ? (
-          <div>Drop-off: {location.dropoffAddress}</div>
+          <div className="mt-1 whitespace-pre-line">Drop-off: {location.dropoffAddress}</div>
         ) : null}
       </div>
     );
   }
 
-  if (!location.addressLine) return null;
-
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
       <div className="font-medium">{location.label || "Service location"}</div>
-      <div className="mt-1 whitespace-pre-line">{location.addressLine}</div>
+
+      {location.addressLine ? (
+        <div className="mt-1 whitespace-pre-line">{location.addressLine}</div>
+      ) : booking.serviceArea ? (
+        <div className="mt-1">{booking.serviceArea}</div>
+      ) : (
+        <div className="mt-1 text-blue-700">Location details not provided.</div>
+      )}
     </div>
   );
 }
