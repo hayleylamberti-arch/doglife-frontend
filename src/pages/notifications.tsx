@@ -29,6 +29,56 @@ function firstNamesOnlyList(value?: string | null) {
     .join(", ");
 }
 
+function formatLabel(value?: string | null) {
+  if (!value) return "";
+
+  const labelMap: Record<string, string> = {
+    WALKING: "Dog Walking",
+    TRAINING: "Dog Training",
+    GROOMING: "Dog Grooming",
+    BOARDING: "Dog Boarding",
+    DAYCARE: "Doggy Daycare",
+    PET_SITTING: "Pet Sitting",
+    PET_TRANSPORT: "Pet Transport",
+    MOBILE_VET: "Mobile Vet",
+    OWNER_HOME: "Owner’s home",
+    SUPPLIER_HOME: "Supplier’s premises",
+    SUPPLIER_LOCATION: "Supplier’s premises",
+    HALF_DAY: "Half Day",
+    FULL_DAY: "Full Day",
+    RETURN: "Return Journey",
+    ONE_WAY: "One-way Journey",
+  };
+
+  if (labelMap[value]) return labelMap[value];
+
+  return String(value)
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getNotificationBookingText(notification: any) {
+  const booking = notification.booking;
+
+  if (!booking) return notification.message || "";
+
+  const serviceLabel = formatLabel(booking.serviceLabel);
+  const dogNames = firstNamesOnlyList(booking.dogNames) || "your dog";
+
+  return `${serviceLabel} with ${dogNames} on ${formatDate(booking.startAt)}`;
+}
+
+function shouldShowMessage(notification: any) {
+  if (!notification.message) return false;
+  if (!notification.booking) return true;
+
+  const bookingText = getNotificationBookingText(notification).toLowerCase();
+  const message = String(notification.message).toLowerCase();
+
+  return !message.includes(bookingText);
+}
+
 function getReviewPath(role?: string | null, bookingId?: string | null) {
   if (!bookingId) return null;
 
@@ -75,9 +125,7 @@ function shouldOpenReview(role?: string | null, notification?: any) {
     message.includes("how was your experience");
 
   if (!looksLikeReviewNotification) return false;
-
   if (booking.status !== "COMPLETED") return false;
-
   if (hasAlreadyReviewed(role, booking)) return false;
 
   return true;
@@ -233,14 +281,10 @@ export default function NotificationsPage() {
             <p className="font-semibold text-gray-900">{n.title}</p>
 
             <p className="mt-1 text-sm text-gray-600">
-              {n.booking
-                ? `${n.booking.serviceLabel} with ${
-                    firstNamesOnlyList(n.booking.dogNames) || "your dog"
-                  } on ${formatDate(n.booking.startAt)}`
-                : n.message}
+              {getNotificationBookingText(n)}
             </p>
 
-            {n.message ? (
+            {shouldShowMessage(n) ? (
               <p className="mt-1 text-sm text-gray-500">{n.message}</p>
             ) : null}
 

@@ -25,10 +25,69 @@ function formatPrice(cents?: number | null) {
 
 function formatLabel(value?: string | null) {
   if (!value) return "";
+
+  const labelMap: Record<string, string> = {
+    OWNER_HOME: "Owner’s home",
+    SUPPLIER_HOME: "Supplier’s premises",
+    SUPPLIER_LOCATION: "Supplier’s premises",
+    SITTER_HOME: "Sitter’s home",
+    HALF_DAY: "Half Day",
+    FULL_DAY: "Full Day",
+    MORNING: "Morning",
+    AFTERNOON: "Afternoon",
+    RETURN: "Return Journey",
+    ONE_WAY: "One-way Journey",
+    WASH_BRUSH_SMALL: "Wash & Brush (Small)",
+    WASH_BRUSH_MEDIUM: "Wash & Brush (Medium)",
+    WASH_BRUSH_LARGE: "Wash & Brush (Large)",
+    WASH_CUT_SMALL: "Wash & Cut (Small)",
+    WASH_CUT_MEDIUM: "Wash & Cut (Medium)",
+    WASH_CUT_LARGE: "Wash & Cut (Large)",
+  };
+
+  if (labelMap[value]) return labelMap[value];
+
   return value
     .toLowerCase()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatServiceLabel(value?: string | null) {
+  const serviceMap: Record<string, string> = {
+    WALKING: "Dog Walking",
+    TRAINING: "Dog Training",
+    GROOMING: "Dog Grooming",
+    BOARDING: "Dog Boarding",
+    DAYCARE: "Doggy Daycare",
+    PET_SITTING: "Pet Sitting",
+    PET_TRANSPORT: "Pet Transport",
+    MOBILE_VET: "Mobile Vet",
+  };
+
+  if (!value) return "Service";
+  return serviceMap[value] || formatLabel(value);
+}
+
+function formatBookingStatusLabel(status: string) {
+  const statusMap: Record<string, string> = {
+    PENDING: "Pending",
+    CONFIRMED: "Confirmed",
+    IN_PROGRESS: "In Progress",
+    COMPLETED_UNBILLED: "Awaiting Payment",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+  };
+
+  return statusMap[status] || formatLabel(status);
+}
+
+function formatNoteLabel(label: string) {
+  return formatLabel(label.trim());
+}
+
+function formatNoteValue(value: string) {
+  return formatLabel(value.trim());
 }
 
 function getStatusColor(status: string) {
@@ -104,6 +163,7 @@ function parseBookingNotes(notes?: string | null) {
 
     if (
       lower.startsWith("grooming option:") ||
+      lower.startsWith("grooming selections:") ||
       lower.startsWith("size:") ||
       lower.startsWith("daycare type:") ||
       lower.startsWith("half day period:") ||
@@ -130,10 +190,17 @@ function parseBookingNotes(notes?: string | null) {
     }
 
     if (
+      lower.startsWith("access instructions:") ||
+      lower.startsWith("gate code:") ||
+      lower.startsWith("estate access:") ||
+      lower.startsWith("alarm:") ||
+      lower.startsWith("key:") ||
       lower.startsWith("service location:") ||
       lower.startsWith("training location:") ||
       lower === "owner home" ||
-      lower === "supplier location"
+      lower === "owner_home" ||
+      lower === "supplier location" ||
+      lower === "supplier_location"
     ) {
       return;
     }
@@ -144,11 +211,31 @@ function parseBookingNotes(notes?: string | null) {
   return { details, addresses, general };
 }
 
+function getOwnerReviewPrompt(booking: any) {
+  const supplierName = booking.supplier?.businessName || "your supplier";
+  const service = booking.supplierService?.service || booking.serviceType;
+
+  const serviceMap: Record<string, string> = {
+    WALKING: "dog walking",
+    TRAINING: "training",
+    GROOMING: "grooming",
+    BOARDING: "boarding",
+    DAYCARE: "daycare",
+    PET_SITTING: "pet sitting",
+    PET_TRANSPORT: "pet transport",
+    MOBILE_VET: "mobile vet",
+  };
+
+  const serviceText = serviceMap[service] || "service";
+
+  return `How was your ${serviceText} experience with ${supplierName}?`;
+}
+
 function BookingMetaPill({ label, value }: { label: string; value: string }) {
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
-      <span className="mr-1 font-medium">{label}:</span>
-      <span>{value}</span>
+      <span className="mr-1 font-medium">{formatNoteLabel(label)}:</span>
+      <span>{formatNoteValue(value)}</span>
     </span>
   );
 }
@@ -617,21 +704,21 @@ export default function Dashboard() {
       },
       {
         key: "in-progress",
-        title: "Started / In Progress",
+        title: "In Progress",
         bookings: inProgressBookings,
         titleColor: "text-blue-700",
         isToday: false,
       },
       {
         key: "completed-unbilled",
-        title: "Completed - Awaiting Payment",
+        title: "Awaiting Payment",
         bookings: completedAwaitingPaymentBookings,
         titleColor: "text-purple-700",
         isToday: false,
       },
       {
         key: "completed",
-        title: "Completed - Paid",
+        title: "Completed",
         bookings: completedPaidBookings,
         titleColor: "text-gray-800",
         isToday: false,
@@ -699,37 +786,37 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-  if (!focusBookingId) return;
+    if (!focusBookingId) return;
 
-  const section = bookingSections.find((bookingSection) =>
-    bookingSection.bookings.some(
-      (booking: any) => booking.id === focusBookingId
-    )
-  );
+    const section = bookingSections.find((bookingSection) =>
+      bookingSection.bookings.some(
+        (booking: any) => booking.id === focusBookingId
+      )
+    );
 
-  if (!section) return;
+    if (!section) return;
 
-  setOpenSections((prev) => ({
-    ...prev,
-    [section.key]: true,
-  }));
+    setOpenSections((prev) => ({
+      ...prev,
+      [section.key]: true,
+    }));
 
-  const targetId =
-    focusAction === "review"
-      ? `review-${focusBookingId}`
-      : `booking-${focusBookingId}`;
+    const targetId =
+      focusAction === "review"
+        ? `review-${focusBookingId}`
+        : `booking-${focusBookingId}`;
 
-  const scrollToBooking = () => {
-    document.getElementById(targetId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "center",
-    });
-  };
+    const scrollToBooking = () => {
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    };
 
-  window.setTimeout(scrollToBooking, 300);
-  window.setTimeout(scrollToBooking, 800);
-  window.setTimeout(scrollToBooking, 1200);
-}, [focusBookingId, focusAction, bookingSections]);
+    window.setTimeout(scrollToBooking, 300);
+    window.setTimeout(scrollToBooking, 800);
+    window.setTimeout(scrollToBooking, 1200);
+  }, [focusBookingId, focusAction, bookingSections]);
 
   const renderBookingCard = (booking: any, isToday = false) => {
     const supplierMessage =
@@ -769,8 +856,10 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs uppercase tracking-wide text-gray-700">
-                {booking.supplierService?.service || booking.serviceType}
+              <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                {formatServiceLabel(
+                  booking.supplierService?.service || booking.serviceType
+                )}
               </span>
 
               {booking.supplierService?.unit ? (
@@ -884,7 +973,7 @@ export default function Dashboard() {
                 </button>
                 {savedAccessInstructionId === booking.id ? (
                   <p className="mt-2 text-sm font-medium text-green-700">
-                    Access instructions sent ✓
+                    ✅ Access instructions sent
                   </p>
                 ) : null}
               </div>
@@ -909,7 +998,7 @@ export default function Dashboard() {
                 }`}
               >
                 <p className="text-sm font-medium text-green-900">
-                  Rate this booking
+                  {getOwnerReviewPrompt(booking)}
                 </p>
 
                 <select
@@ -945,7 +1034,7 @@ export default function Dashboard() {
                       },
                     }))
                   }
-                  placeholder="Optional comment"
+                  placeholder="Share anything helpful about your experience..."
                   className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
                 />
 
@@ -976,7 +1065,7 @@ export default function Dashboard() {
                   highlightReview ? "text-blue-700" : "text-green-700"
                 }`}
               >
-                Reviewed ✓
+                ✅ Thank you for your review
               </p>
             ) : null}
           </div>
@@ -987,7 +1076,7 @@ export default function Dashboard() {
                 booking.status
               )}`}
             >
-              {booking.status}
+              {formatBookingStatusLabel(booking.status)}
             </span>
 
             <p className="text-lg font-semibold text-gray-900">
@@ -1056,7 +1145,7 @@ export default function Dashboard() {
               <p className="font-semibold text-gray-800">{n.title}</p>
               <p className="text-sm text-gray-600">
                 {n.booking
-                  ? `${n.booking.serviceLabel} with ${
+                  ? `${formatServiceLabel(n.booking.serviceLabel)} with ${
                       n.booking.dogNames || "your dog"
                     } on ${formatDate(n.booking.startAt)}`
                   : n.message}

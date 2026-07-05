@@ -148,8 +148,63 @@ function firstNamesOnlyList(value?: string | null) {
     .join(", ");
 }
 
+function formatLabel(value?: string | null) {
+  if (!value) return "";
+
+  const labelMap: Record<string, string> = {
+    OWNER_HOME: "Owner’s home",
+    SUPPLIER_HOME: "Supplier’s premises",
+    SUPPLIER_LOCATION: "Supplier’s premises",
+    SITTER_HOME: "Sitter’s home",
+    HALF_DAY: "Half Day",
+    FULL_DAY: "Full Day",
+    MORNING: "Morning",
+    AFTERNOON: "Afternoon",
+    RETURN: "Return Journey",
+    ONE_WAY: "One-way Journey",
+    WASH_BRUSH_SMALL: "Wash & Brush (Small)",
+    WASH_BRUSH_MEDIUM: "Wash & Brush (Medium)",
+    WASH_BRUSH_LARGE: "Wash & Brush (Large)",
+    WASH_CUT_SMALL: "Wash & Cut (Small)",
+    WASH_CUT_MEDIUM: "Wash & Cut (Medium)",
+    WASH_CUT_LARGE: "Wash & Cut (Large)",
+  };
+
+  if (labelMap[value]) return labelMap[value];
+
+  return value
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function formatServiceName(value?: string | null) {
-  return String(value || "Booking").replace(/_/g, " ");
+  const serviceMap: Record<string, string> = {
+    WALKING: "Dog Walking",
+    TRAINING: "Dog Training",
+    GROOMING: "Dog Grooming",
+    BOARDING: "Dog Boarding",
+    DAYCARE: "Doggy Daycare",
+    PET_SITTING: "Pet Sitting",
+    PET_TRANSPORT: "Pet Transport",
+    MOBILE_VET: "Mobile Vet",
+  };
+
+  if (!value) return "Booking";
+  return serviceMap[value] || formatLabel(value);
+}
+
+function formatBookingStatusLabel(status: BookingStatus) {
+  const statusMap: Record<BookingStatus, string> = {
+    PENDING: "Pending",
+    CONFIRMED: "Confirmed",
+    IN_PROGRESS: "In Progress",
+    COMPLETED_UNBILLED: "Awaiting Payment",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+  };
+
+  return statusMap[status] || formatLabel(status);
 }
 
 function getStatusBadgeClass(status: BookingStatus) {
@@ -169,6 +224,39 @@ function getStatusBadgeClass(status: BookingStatus) {
     default:
       return "bg-gray-100 text-gray-700";
   }
+}
+
+function cleanNotesForDisplay(notes?: string | null) {
+  if (!notes) return null;
+
+  const cleaned = String(notes)
+    .split(".")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .filter((part) => {
+      const lower = part.toLowerCase();
+
+      return !(
+        lower.startsWith("owner address:") ||
+        lower.startsWith("supplier address:") ||
+        lower.startsWith("service address:") ||
+        lower.startsWith("pickup point:") ||
+        lower.startsWith("drop-off point:") ||
+        lower.startsWith("pickup address:") ||
+        lower.startsWith("drop-off address:") ||
+        lower.startsWith("access instructions:") ||
+        lower.startsWith("gate code:") ||
+        lower.startsWith("estate access:") ||
+        lower.startsWith("alarm:") ||
+        lower.startsWith("key:") ||
+        lower.startsWith("service location:") ||
+        lower.startsWith("training location:")
+      );
+    })
+    .join(". ")
+    .trim();
+
+  return cleaned ? `${cleaned}.` : null;
 }
 
 function sortBookingsByStart(bookings: SupplierBooking[]) {
@@ -207,10 +295,14 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
         <div className="font-medium">Pickup and drop-off</div>
         {location.pickupAddress ? (
-          <div className="mt-1 whitespace-pre-line">Pickup: {location.pickupAddress}</div>
+          <div className="mt-1 whitespace-pre-line">
+            Pickup: {location.pickupAddress}
+          </div>
         ) : null}
         {location.dropoffAddress ? (
-          <div className="mt-1 whitespace-pre-line">Drop-off: {location.dropoffAddress}</div>
+          <div className="mt-1 whitespace-pre-line">
+            Drop-off: {location.dropoffAddress}
+          </div>
         ) : null}
       </div>
     );
@@ -218,7 +310,9 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
 
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-      <div className="font-medium">{location.label || "Service location"}</div>
+      <div className="font-medium">
+        {location.label ? formatLabel(location.label) : "Service location"}
+      </div>
 
       {location.addressLine ? (
         <div className="mt-1 whitespace-pre-line">{location.addressLine}</div>
@@ -261,8 +355,8 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
 
               <div className="mt-2 grid gap-1 sm:grid-cols-2">
                 <div>Breed: {dog!.breed || "—"}</div>
-                <div>Size: {dog!.size || "—"}</div>
-                <div>Sex: {dog!.sex || "—"}</div>
+                <div>Size: {formatLabel(dog!.size) || "—"}</div>
+                <div>Sex: {formatLabel(dog!.sex) || "—"}</div>
                 <div>Neutered: {yesNo(dog!.isNeutered)}</div>
                 <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
                 <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
@@ -298,6 +392,17 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
   );
 }
 
+function getSupplierReviewPrompt(booking: SupplierBooking) {
+  const ownerName = formatOwnerName(booking);
+  const dogNames = formatDogNames(booking);
+
+  if (dogNames && dogNames !== "No dogs linked") {
+    return `How was your experience working with ${ownerName} and ${dogNames}?`;
+  }
+
+  return `How was your experience working with ${ownerName}?`;
+}
+
 function SupplierOwnerReview({
   booking,
   reviewInput,
@@ -325,7 +430,7 @@ function SupplierOwnerReview({
             : "border-green-200 bg-green-50 text-green-700"
         }`}
       >
-        Owner reviewed ✓
+        ✅ Review submitted
       </div>
     );
   }
@@ -341,7 +446,9 @@ function SupplierOwnerReview({
           : "border-green-200 bg-green-50"
       }`}
     >
-      <p className="font-medium text-green-900">Rate this owner</p>
+      <p className="font-medium text-green-900">
+        {getSupplierReviewPrompt(booking)}
+      </p>
 
       <select
         value={currentInput.rating}
@@ -370,7 +477,7 @@ function SupplierOwnerReview({
             comment: event.target.value,
           })
         }
-        placeholder="Optional comment"
+        placeholder="Share anything helpful about the booking..."
         className="mt-2 w-full rounded-lg border border-green-200 p-2 text-sm"
       />
 
@@ -380,7 +487,7 @@ function SupplierOwnerReview({
         onClick={() => onSubmit(booking.id)}
         className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
       >
-        {isSubmitting ? "Submitting..." : "Submit owner review"}
+        {isSubmitting ? "Submitting..." : "Submit review"}
       </button>
     </div>
   );
@@ -413,6 +520,8 @@ function BookingCard({
   onSubmitReview: (bookingId: string) => void;
   highlightReview?: boolean;
 }) {
+  const displayNotes = cleanNotesForDisplay(booking.notes);
+
   return (
     <div
       id={`booking-${booking.id}`}
@@ -436,7 +545,7 @@ function BookingCard({
               booking.status
             )}`}
           >
-            {booking.status}
+            {formatBookingStatusLabel(booking.status)}
           </div>
           <div className="font-semibold text-gray-900">
             {formatMoney(booking.totalCents)}
@@ -468,10 +577,10 @@ function BookingCard({
         </div>
       ) : null}
 
-      {booking.notes ? (
-        <div className="text-sm text-gray-600">
-          <span className="font-medium">Notes:</span>{" "}
-          <span className="whitespace-pre-line">{booking.notes}</span>
+      {displayNotes ? (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+          <div className="font-medium text-gray-800">Notes</div>
+          <div className="mt-1 whitespace-pre-line">{displayNotes}</div>
         </div>
       ) : null}
 
@@ -513,7 +622,7 @@ function BookingCard({
           disabled={actionLoading}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {actionLoading ? "Starting..." : "Start Service"}
+          {actionLoading ? "Starting..." : "Start service"}
         </button>
       ) : null}
 
@@ -524,7 +633,7 @@ function BookingCard({
           disabled={actionLoading}
           className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {actionLoading ? "Completing..." : "Complete Service"}
+          {actionLoading ? "Completing..." : "Complete service"}
         </button>
       ) : null}
 
@@ -535,7 +644,7 @@ function BookingCard({
           disabled={actionLoading}
           className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {actionLoading ? "Saving..." : "Mark Paid"}
+          {actionLoading ? "Saving..." : "Mark paid"}
         </button>
       ) : null}
     </div>
@@ -1170,7 +1279,7 @@ export default function SupplierDashboardPage() {
           onClick={() => openAndScroll("pending", "pending-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">Pending bookings</div>
+          <div className="text-xs text-gray-500 sm:text-sm">Pending</div>
           <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
             {pendingBookings.length}
           </div>
@@ -1181,9 +1290,7 @@ export default function SupplierDashboardPage() {
           onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">
-            Confirmed bookings
-          </div>
+          <div className="text-xs text-gray-500 sm:text-sm">Confirmed</div>
           <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
             {confirmedBookings.length}
           </div>
@@ -1194,7 +1301,7 @@ export default function SupplierDashboardPage() {
           onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">In progress</div>
+          <div className="text-xs text-gray-500 sm:text-sm">In Progress</div>
           <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
             {inProgressBookings.length}
           </div>
@@ -1202,7 +1309,7 @@ export default function SupplierDashboardPage() {
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
           <div className="text-xs text-gray-500 sm:text-sm">
-            Total active bookings
+            Active Bookings
           </div>
           <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
             {totalActive}
@@ -1226,7 +1333,7 @@ export default function SupplierDashboardPage() {
               <p className="font-semibold text-gray-800">{notification.title}</p>
               <p className="text-sm text-gray-600">
                 {notification.booking
-                  ? `${notification.booking.serviceLabel} with ${
+                  ? `${formatServiceName(notification.booking.serviceLabel)} with ${
                       firstNamesOnlyList(notification.booking.dogNames) ||
                       "the dog"
                     } on ${formatDateTime(notification.booking.startAt)}`
@@ -1247,14 +1354,14 @@ export default function SupplierDashboardPage() {
         )}
         {renderSection(
           "pending-bookings",
-          "Pending Bookings",
+          "Pending",
           "No pending bookings.",
           pendingBookings,
           "pending"
         )}
         {renderSection(
           "confirmed-bookings",
-          "Confirmed Bookings",
+          "Confirmed",
           "No confirmed bookings.",
           confirmedBookings,
           "confirmed"
@@ -1268,15 +1375,15 @@ export default function SupplierDashboardPage() {
         )}
         {renderSection(
           "completed-unbilled-bookings",
-          "Completed - Awaiting Payment",
-          "No completed unpaid bookings.",
+          "Awaiting Payment",
+          "No bookings awaiting payment.",
           completedUnbilledBookings,
           "completedUnbilled"
         )}
         {renderSection(
           "completed-bookings",
-          "Completed - Paid",
-          "No completed paid bookings.",
+          "Completed",
+          "No completed bookings.",
           completedBookings,
           "completed"
         )}
