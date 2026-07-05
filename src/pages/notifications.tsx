@@ -70,13 +70,12 @@ function getNotificationBookingText(notification: any) {
 }
 
 function shouldShowMessage(notification: any) {
-  if (!notification.message) return false;
-  if (!notification.booking) return true;
+  // If the notification has booking details, the booking summary already explains it.
+  // This prevents duplicate lines like:
+  // "Dog Walking with Moose..." + "Hayley requested walking for Moose."
+  if (notification.booking) return false;
 
-  const bookingText = getNotificationBookingText(notification).toLowerCase();
-  const message = String(notification.message).toLowerCase();
-
-  return !message.includes(bookingText);
+  return Boolean(notification.message);
 }
 
 function getReviewPath(role?: string | null, bookingId?: string | null) {

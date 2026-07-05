@@ -250,7 +250,20 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("alarm:") ||
         lower.startsWith("key:") ||
         lower.startsWith("service location:") ||
-        lower.startsWith("training location:")
+        lower.startsWith("training location:") ||
+        lower.startsWith("grooming option:") ||
+        lower.startsWith("grooming selections:") ||
+        lower.startsWith("size:") ||
+        lower.startsWith("daycare type:") ||
+        lower.startsWith("half day period:") ||
+        lower.startsWith("mobile vet service:") ||
+        lower.startsWith("pet sitting location:") ||
+        lower.startsWith("kennel type:") ||
+        lower.startsWith("journey type:") ||
+        lower === "owner home" ||
+        lower === "owner_home" ||
+        lower === "supplier location" ||
+        lower === "supplier_location"
       );
     })
     .join(". ")
