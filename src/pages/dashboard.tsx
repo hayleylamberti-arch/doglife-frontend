@@ -197,6 +197,8 @@ function parseBookingNotes(notes?: string | null) {
       lower.startsWith("key:") ||
       lower.startsWith("service location:") ||
       lower.startsWith("training location:") ||
+      lower.startsWith("mobile grooming") ||
+      lower === "mobile grooming" ||
       lower === "owner home" ||
       lower === "owner_home" ||
       lower === "supplier location" ||
@@ -904,7 +906,7 @@ export default function Dashboard() {
             {parsedNotes.addresses.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-sm font-medium text-gray-800">
-                  Location details
+                  Service location
                 </p>
                 <div className="mt-2 space-y-1">
                   {parsedNotes.addresses.map((address) => (
@@ -933,7 +935,7 @@ export default function Dashboard() {
             ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <p className="text-sm font-medium text-blue-900">
-                  Access instructions for supplier
+                  Access instructions
                 </p>
 
                 <textarea
@@ -1082,8 +1084,6 @@ export default function Dashboard() {
             <p className="text-lg font-semibold text-gray-900">
               {formatPrice(booking.totalCents)}
             </p>
-
-            <p className="text-xs text-gray-400">#{booking.id.slice(-6)}</p>
 
             {(booking.status === "PENDING" ||
               booking.status === "CONFIRMED") && (
