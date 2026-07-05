@@ -338,6 +338,29 @@ function DogProfilePrompt() {
   );
 }
 
+function OwnerProfilePrompt() {
+  return (
+    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+      <h2 className="text-xl font-semibold text-blue-900">
+        Complete your owner profile 📍
+      </h2>
+
+      <p className="mt-2 text-sm text-blue-800">
+        Add your suburb and home address so DogLife can show nearby providers
+        and prepare home-based services like walking, grooming, training and
+        mobile vet visits.
+      </p>
+
+      <Link
+        to="/owner/profile"
+        className="mt-4 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+      >
+        Complete owner profile
+      </Link>
+    </div>
+  );
+}
+
 function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6 shadow-sm">
@@ -525,8 +548,20 @@ export default function Dashboard() {
     },
   });
 
+  const { data: ownerProfileData, isLoading: isOwnerProfileLoading } = useQuery({
+  queryKey: ["owner-profile"],
+  queryFn: async () => {
+    const res = await api.get("/api/owner/profile");
+    return res.data?.profile || null;
+  },
+});
+
   const dogs = dogsData?.dogs || [];
   const hasDogs = dogs.length > 0;
+
+  const hasOwnerSuburb = Boolean(ownerProfileData?.suburb?.trim());
+  const hasOwnerAddress = Boolean(ownerProfileData?.address?.trim());
+  const hasOwnerProfile = hasOwnerSuburb && hasOwnerAddress;
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -1126,9 +1161,11 @@ export default function Dashboard() {
 
       <OwnerBookingJourney hasDogs={hasDogs} />
 
+      {!isOwnerProfileLoading && !hasOwnerProfile ? <OwnerProfilePrompt /> : null}
+
       {!isDogsLoading && !hasDogs ? <DogProfilePrompt /> : null}
 
-      <ServiceShortcuts hasDogs={hasDogs} />
+      <ServiceShortcuts hasDogs={hasDogs && hasOwnerProfile} />
 
       {notifications.length > 0 && (
         <div className="space-y-2">
