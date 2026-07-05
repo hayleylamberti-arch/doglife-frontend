@@ -253,6 +253,7 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("training location:") ||
         lower.startsWith("grooming option:") ||
         lower.startsWith("grooming selections:") ||
+        lower.startsWith("grooming for ") ||
         lower.startsWith("size:") ||
         lower.startsWith("daycare type:") ||
         lower.startsWith("half day period:") ||
@@ -260,6 +261,7 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("pet sitting location:") ||
         lower.startsWith("kennel type:") ||
         lower.startsWith("journey type:") ||
+        lower === "mobile grooming" ||
         lower === "owner home" ||
         lower === "owner_home" ||
         lower === "supplier location" ||
@@ -324,7 +326,7 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
       <div className="font-medium">
-        {location.label ? formatLabel(location.label) : "Service location"}
+        Service location
       </div>
 
       {location.addressLine ? (
@@ -567,16 +569,16 @@ function BookingCard({
       </div>
 
       <div className="text-sm text-gray-700">
-        <span className="font-medium">Owner:</span> {formatOwnerName(booking)}
+        <span className="font-medium">👤 Owner:</span> {formatOwnerName(booking)}
       </div>
 
       <div className="text-sm text-gray-700">
-        <span className="font-medium">Dogs:</span> {formatDogNames(booking)}
+        <span className="font-medium">🐶 Dogs:</span> {formatDogNames(booking)}
       </div>
 
       {booking.serviceArea ? (
         <div className="text-sm text-gray-700">
-          <span className="font-medium">Service area:</span> {booking.serviceArea}
+          <span className="font-medium">📍 Service area:</span> {booking.serviceArea}
         </div>
       ) : null}
 
