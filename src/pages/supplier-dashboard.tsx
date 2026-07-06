@@ -330,7 +330,9 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
       </div>
 
       {location.addressLine ? (
-        <div className="mt-1 whitespace-pre-line">{location.addressLine}</div>
+        <div className="mt-1 whitespace-pre-line">
+          {String(location.addressLine).replace(/^Owner address:\s*/i, "")}
+        </div>
       ) : booking.serviceArea ? (
         <div className="mt-1">{booking.serviceArea}</div>
       ) : (
@@ -412,10 +414,10 @@ function getSupplierReviewPrompt(booking: SupplierBooking) {
   const dogNames = formatDogNames(booking);
 
   if (dogNames && dogNames !== "No dogs linked") {
-    return `How was your experience working with ${ownerName} and ${dogNames}?`;
+    return `How was the booking with ${ownerName} and ${dogNames}?`;
   }
 
-  return `How was your experience working with ${ownerName}?`;
+  return `How was the booking with ${ownerName}?`;
 }
 
 function SupplierOwnerReview({
@@ -576,7 +578,7 @@ function BookingCard({
         <span className="font-medium">🐶 Dogs:</span> {formatDogNames(booking)}
       </div>
 
-      {booking.serviceArea ? (
+      {booking.serviceArea && !booking.serviceLocationSummary ? (
         <div className="text-sm text-gray-700">
           <span className="font-medium">📍 Service area:</span> {booking.serviceArea}
         </div>
