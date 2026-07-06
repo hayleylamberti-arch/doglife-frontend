@@ -265,8 +265,13 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower === "owner home" ||
         lower === "owner_home" ||
         lower === "supplier location" ||
-        lower === "supplier_location"
-      );
+        lower === "supplier_location" ||
+        Boolean(
+  lower.match(
+    /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/
+  )
+)
+        )
     })
     .join(". ")
     .trim();
