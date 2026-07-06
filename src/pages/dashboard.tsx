@@ -23,6 +23,11 @@ function formatPrice(cents?: number | null) {
   return `R${(cents / 100).toFixed(0)}`;
 }
 
+function firstNameOnly(value?: string | null) {
+  if (!value) return "";
+  return String(value).trim().split(/\s+/)[0];
+}
+
 function formatLabel(value?: string | null) {
   if (!value) return "";
 
@@ -202,7 +207,10 @@ function parseBookingNotes(notes?: string | null) {
       lower === "owner home" ||
       lower === "owner_home" ||
       lower === "supplier location" ||
-      lower === "supplier_location"
+      lower === "supplier_location" ||
+      lower.match(
+        /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/
+      )
     ) {
       return;
     }
@@ -927,7 +935,7 @@ export default function Dashboard() {
             <p className="text-sm text-gray-700">
               🐶{" "}
               {booking.dogs?.length
-                ? booking.dogs.map((d: any) => d.dog.name).join(", ")
+                ? booking.dogs.map((d: any) => firstNameOnly(d.dog.name)).join(", ")
                 : "No dogs selected"}
             </p>
 
