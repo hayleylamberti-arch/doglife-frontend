@@ -213,6 +213,16 @@ function parseBookingNotes(notes?: string | null) {
   return { details, addresses, general };
 }
 
+function cleanAddressForDisplay(address: string) {
+  return address
+    .replace(/^Owner address:\s*/i, "")
+    .replace(/^Supplier address:\s*/i, "")
+    .replace(/^Service address:\s*/i, "")
+    .replace(/^Pickup point:\s*/i, "Pickup: ")
+    .replace(/^Drop-off point:\s*/i, "Drop-off: ")
+    .trim();
+}
+
 function getOwnerReviewPrompt(booking: any) {
   const supplierName = booking.supplier?.businessName || "your supplier";
   const service = booking.supplierService?.service || booking.serviceType;
@@ -944,11 +954,11 @@ export default function Dashboard() {
                   Service location
                 </p>
                 <div className="mt-2 space-y-1">
-                  {parsedNotes.addresses.map((address) => (
-                    <p key={address} className="text-sm text-gray-700">
-                      {address}
-                    </p>
-                  ))}
+               {parsedNotes.addresses.map((address) => (
+                  <p key={address} className="whitespace-pre-line text-sm text-gray-700">
+                    {cleanAddressForDisplay(address)}
+                </p>
+          ))}   
                 </div>
               </div>
             ) : null}
