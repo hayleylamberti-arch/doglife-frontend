@@ -275,6 +275,13 @@ function cleanNotesForDisplay(notes?: string | null) {
   return cleaned ? `${cleaned}.` : null;
 }
 
+function extractNoteValue(notes?: string | null, label?: string) {
+  if (!notes || !label) return null;
+
+  const regex = new RegExp(`${label}:\\s*([^\\.]+)`, "i");
+  return notes.match(regex)?.[1]?.trim() || null;
+}
+
 function sortBookingsByStart(bookings: SupplierBooking[]) {
   return [...bookings].sort(
     (a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
@@ -540,6 +547,11 @@ function BookingCard({
 }) {
   const displayNotes = cleanNotesForDisplay(booking.notes);
 
+  const petSittingLocation =
+  booking.serviceType === "PET_SITTING"
+    ? extractNoteValue(booking.notes, "Pet sitting location")
+    : null;
+
   return (
     <div
       id={`booking-${booking.id}`}
@@ -578,6 +590,13 @@ function BookingCard({
       <div className="text-sm text-gray-700">
         <span className="font-medium">🐶 Dogs:</span> {formatDogNames(booking)}
       </div>
+
+      {petSittingLocation ? (
+      <div className="text-sm text-gray-700">
+      <span className="font-medium">🏠 Pet sitting location:</span>{" "}
+      {formatLabel(petSittingLocation)}
+      </div>
+      ) : null}
 
       {booking.serviceArea && !booking.serviceLocationSummary ? (
         <div className="text-sm text-gray-700">
