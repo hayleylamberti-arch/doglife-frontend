@@ -166,6 +166,15 @@ function parseBookingNotes(notes?: string | null) {
   parts.forEach((part) => {
     const lower = part.toLowerCase();
 
+    const isGroomingSelectionLine =
+      /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/.test(
+        lower
+      );
+
+    if (isGroomingSelectionLine) {
+      return;
+    }
+
     if (
       lower.startsWith("grooming option:") ||
       lower.startsWith("grooming selections:") ||
@@ -187,14 +196,14 @@ function parseBookingNotes(notes?: string | null) {
       lower.startsWith("pickup address:") ||
       lower.startsWith("drop-off address:") ||
       lower.startsWith("service address:") ||
-      lower.startsWith("owner address:") ||
-      lower.startsWith("supplier address:")
+      lower.startsWith("owner address:")
     ) {
       addresses.push(part);
       return;
     }
 
     if (
+      lower.startsWith("supplier address:") ||
       lower.startsWith("access instructions:") ||
       lower.startsWith("gate code:") ||
       lower.startsWith("estate access:") ||
@@ -207,10 +216,7 @@ function parseBookingNotes(notes?: string | null) {
       lower === "owner home" ||
       lower === "owner_home" ||
       lower === "supplier location" ||
-      lower === "supplier_location" ||
-      lower.match(
-        /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/
-      )
+      lower === "supplier_location"
     ) {
       return;
     }
@@ -229,6 +235,13 @@ function cleanAddressForDisplay(address: string) {
     .replace(/^Pickup point:\s*/i, "Pickup: ")
     .replace(/^Drop-off point:\s*/i, "Drop-off: ")
     .trim();
+}
+
+function canShowServiceLocationOnOwnerDashboard(booking: any) {
+  return (
+    booking.serviceLocationSummary?.type === "OWNER_HOME" ||
+    booking.serviceLocationSummary?.type === "TRANSPORT"
+  );
 }
 
 function getOwnerReviewPrompt(booking: any) {
@@ -956,18 +969,22 @@ export default function Dashboard() {
               </div>
             ) : null}
 
-            {parsedNotes.addresses.length > 0 ? (
+            {parsedNotes.addresses.length > 0 &&
+            canShowServiceLocationOnOwnerDashboard(booking) ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-sm font-medium text-gray-800">
                   Service location
                 </p>
                 <div className="mt-2 space-y-1">
-               {parsedNotes.addresses.map((address) => (
-                  <p key={address} className="whitespace-pre-line text-sm text-gray-700">
-                    {cleanAddressForDisplay(address)}
-                </p>
-          ))}   
-                </div>
+                {parsedNotes.addresses.map((address) => (
+                  <p
+                    key={address}
+                    className="whitespace-pre-line text-sm text-gray-700"
+                  >
+                {cleanAddressForDisplay(address)}
+                  </p>
+              ))}
+              </div>
               </div>
             ) : null}
 
