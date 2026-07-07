@@ -295,6 +295,30 @@ export default function BookingModal({
     kennelType,
   ]);
 
+  const estimatedPetSittingTotalCents = useMemo(() => {
+  if (!isPetSitting) return null;
+
+  const dogCount = Math.max(1, selectedDogIds.length || 1);
+  let total = boardingBaseRateCents * stayDays;
+
+  if (dogCount > 1) {
+    if (boardingAdditionalDogEnabled && boardingAdditionalDogPriceCents > 0) {
+      total += boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
+    } else {
+      total = boardingBaseRateCents * dogCount * stayDays;
+    }
+  }
+
+  return total;
+}, [
+  isPetSitting,
+  selectedDogIds.length,
+  boardingBaseRateCents,
+  boardingAdditionalDogEnabled,
+  boardingAdditionalDogPriceCents,
+  stayDays,
+]);
+
   const daycareHalfDayPriceCents = useMemo(() => {
     return toNumber(service?.pricingJson?.halfDayPriceCents);
   }, [service?.pricingJson?.halfDayPriceCents]);
@@ -375,6 +399,10 @@ export default function BookingModal({
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
     }
 
+    if (isPetSitting) {
+      return estimatedPetSittingTotalCents ?? boardingBaseRateCents;
+    }
+
     if (isDaycare) {
       return estimatedDaycareTotalCents ?? daycareBaseSessionPriceCents;
     }
@@ -389,6 +417,14 @@ export default function BookingModal({
       }, 0);
     }
 
+    if (isMobileVet) {
+      const offeringPrices = service?.pricingJson?.offeringPrices || {};
+      return (
+      toNumber(offeringPrices[mobileVetService]) ||
+      toNumber(service?.baseRateCents)
+      );
+    }
+
     return service?.baseRateCents;
   }, [
     isBoarding,
@@ -400,6 +436,11 @@ export default function BookingModal({
     isGrooming,
     groomingSelections,
     selectedDogIds,
+    isPetSitting,
+    estimatedPetSittingTotalCents,
+    isMobileVet,
+    mobileVetService,
+    service?.pricingJson?.offeringPrices,
     service?.baseRateCents,
   ]);
 
@@ -414,6 +455,17 @@ export default function BookingModal({
 
       return `${formatPrice(boardingBaseRateCents)} per night`;
     }
+
+    if (isPetSitting) {
+      if (arrivalDate && departureDate) {
+        const dogCount = Math.max(1, selectedDogIds.length || 1);
+        return `${formatPrice(displayPrice)} total • ${stayDays} night${
+          stayDays > 1 ? "s" : ""
+        } • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
+      }
+
+  return `${formatPrice(boardingBaseRateCents)} per night`;
+}
 
     if (isDaycare) {
       const dogCount = Math.max(1, selectedDogIds.length || 1);
@@ -441,6 +493,7 @@ export default function BookingModal({
     }`;
   }, [
     isBoarding,
+    isPetSitting,
     arrivalDate,
     departureDate,
     selectedDogIds.length,
