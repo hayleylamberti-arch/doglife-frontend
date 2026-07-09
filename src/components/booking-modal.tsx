@@ -204,13 +204,21 @@ export default function BookingModal({
       (tier) => tier.category === category && tier.dogSize === size
     ) || null;
 
-  const mobileOptions: string[] = Array.isArray(service?.pricingJson?.offerings)
-    ? service.pricingJson.offerings
-    : ["CHECK_UP", "INOCULATIONS", "FOLLOW_UP", "OTHER"];
+  const mobileVetServices: any[] = Array.isArray(
+  service?.pricingJson?.mobileVetServices
+)
+  ? service.pricingJson.mobileVetServices
+  : [];
 
-  const [mobileVetService, setMobileVetService] = useState(
-    mobileOptions[0] || "CHECK_UP"
-  );
+const mobileOptions = mobileVetServices.length
+  ? mobileVetServices
+  : [
+      { key: "CHECK_UP", label: "Check-up / consultation", priceCents: service?.baseRateCents || 0 },
+    ];
+
+const [mobileVetService, setMobileVetService] = useState(
+  mobileOptions[0]?.key || "CHECK_UP"
+);
 
   const shouldRequireOwnerAddress =
     isWalking ||
@@ -418,12 +426,15 @@ export default function BookingModal({
     }
 
     if (isMobileVet) {
-      const offeringPrices = service?.pricingJson?.offeringPrices || {};
-      return (
-      toNumber(offeringPrices[mobileVetService]) ||
-      toNumber(service?.baseRateCents)
-      );
-    }
+  const selectedMobileVetService = mobileOptions.find(
+    (option) => option.key === mobileVetService
+  );
+
+  return (
+    toNumber(selectedMobileVetService?.priceCents) ||
+    toNumber(service?.baseRateCents)
+  );
+}
 
     return service?.baseRateCents;
   }, [
@@ -440,7 +451,7 @@ export default function BookingModal({
     estimatedPetSittingTotalCents,
     isMobileVet,
     mobileVetService,
-    service?.pricingJson?.offeringPrices,
+    mobileOptions,
     service?.baseRateCents,
   ]);
 
@@ -1218,8 +1229,8 @@ export default function BookingModal({
                 onChange={(e) => setMobileVetService(e.target.value)}
               >
                 {mobileOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {formatLabel(option)}
+                  <option key={option.key} value={option.key}>
+                    {option.label || formatLabel(option.key)}
                   </option>
                 ))}
               </select>
