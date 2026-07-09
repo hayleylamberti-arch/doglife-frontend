@@ -430,10 +430,13 @@ const [mobileVetService, setMobileVetService] = useState(
     (option) => option.key === mobileVetService
   );
 
-  return (
+  const pricePerDog =
     toNumber(selectedMobileVetService?.priceCents) ||
-    toNumber(service?.baseRateCents)
-  );
+    toNumber(service?.baseRateCents);
+
+  const dogCount = Math.max(1, selectedDogIds.length || 1);
+
+  return pricePerDog * dogCount;
 }
 
     return service?.baseRateCents;
