@@ -257,7 +257,6 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("size:") ||
         lower.startsWith("daycare type:") ||
         lower.startsWith("half day period:") ||
-        lower.startsWith("mobile vet service:") ||
         lower.startsWith("pet sitting location:") ||
         lower.startsWith("kennel type:") ||
         lower.startsWith("journey type:") ||
