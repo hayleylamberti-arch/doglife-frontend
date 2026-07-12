@@ -735,15 +735,6 @@ function BookingCard({
         </div>
       ) : null}
 
-      {booking.serviceType !== "PET_TRANSPORT" &&
-      booking.serviceArea &&
-      !booking.serviceLocationSummary ? (
-        <div className="text-sm text-gray-700">
-          <span className="font-medium">📍 Service area:</span>{" "}
-          {booking.serviceArea}
-        </div>
-      ) : null}
-
       <DogDetails booking={booking} />
 
       <LocationSummary booking={booking} />
