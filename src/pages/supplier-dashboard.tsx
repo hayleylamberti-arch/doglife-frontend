@@ -11,9 +11,8 @@ import type {
 
 function formatDateTime(value?: string) {
   if (!value) return "—";
-  const date = new Date(value);
 
-  return date.toLocaleString("en-ZA", {
+  return new Date(value).toLocaleString("en-ZA", {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -22,7 +21,8 @@ function formatDateTime(value?: string) {
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return "—";
+  if (!value) return "";
+
   return new Date(value).toLocaleDateString("en-ZA", {
     day: "2-digit",
     month: "short",
@@ -33,7 +33,15 @@ function formatDate(value?: string | null) {
 function yesNo(value?: boolean | null) {
   if (value === true) return "Yes";
   if (value === false) return "No";
-  return "—";
+  return "";
+}
+
+function hasText(value?: string | null) {
+  return Boolean(value && String(value).trim());
+}
+
+function hasBoolean(value?: boolean | null) {
+  return typeof value === "boolean";
 }
 
 function formatMoney(cents?: number | null) {
@@ -50,6 +58,7 @@ function formatOwnerName(booking: SupplierBooking) {
   const first = booking.owner?.firstName || "";
   const last = booking.owner?.lastName || "";
   const full = `${first} ${last}`.trim();
+
   return full || booking.owner?.email || "Owner";
 }
 
@@ -233,10 +242,6 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
   const exactLocation = booking.serviceLocationSummary;
   const transportAreas = booking.transportAreaSummary;
 
-  /*
-   * Confirmed and later transport bookings:
-   * show the exact pickup and drop-off addresses.
-   */
   if (
     booking.serviceType === "PET_TRANSPORT" &&
     exactLocation?.type === "TRANSPORT"
@@ -282,10 +287,6 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
     );
   }
 
-  /*
-   * Pending transport bookings:
-   * show suburbs only, protecting exact addresses.
-   */
   if (
     booking.serviceType === "PET_TRANSPORT" &&
     (transportAreas?.pickupSuburb ||
@@ -355,7 +356,7 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
 
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-      <div className="font-medium">Service location</div>
+      <div className="font-medium">Service address</div>
 
       {exactLocation.addressLine ? (
         <div className="mt-1 whitespace-pre-line">
@@ -368,7 +369,7 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
         <div className="mt-1">{booking.serviceArea}</div>
       ) : (
         <div className="mt-1 text-blue-700">
-          Location details not provided.
+          Address details not provided.
         </div>
       )}
     </div>
@@ -381,6 +382,9 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
 
   if (!dogs.length) return null;
 
+  const passportHeading =
+    dogs.length === 1 ? "Dog Passport (1)" : `Dog Passports (${dogs.length})`;
+
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-950">
       <button
@@ -388,54 +392,137 @@ function DogDetails({ booking }: { booking: SupplierBooking }) {
         onClick={() => setIsOpen((current) => !current)}
         className="flex w-full items-center justify-between p-3 text-left font-semibold"
       >
-        <span>
-          Dog care details ({dogs.length} dog{dogs.length === 1 ? "" : "s"})
-        </span>
+        <span>{passportHeading}</span>
         <span>{isOpen ? "−" : "+"}</span>
       </button>
 
       {isOpen ? (
         <div className="space-y-3 p-3 pt-0">
-          {dogs.map((dog) => (
-            <div
-              key={dog!.id}
-              className="rounded-lg border border-amber-200 bg-white p-3"
-            >
-              <div className="font-medium">{firstNameOnly(dog!.name)}</div>
+          {dogs.map((dog) => {
+            if (!dog) return null;
 
-              <div className="mt-2 grid gap-1 sm:grid-cols-2">
-                <div>Breed: {dog!.breed || "—"}</div>
-                <div>Size: {formatLabel(dog!.size) || "—"}</div>
-                <div>Sex: {formatLabel(dog!.sex) || "—"}</div>
-                <div>Neutered: {yesNo(dog!.isNeutered)}</div>
-                <div>Vaccinated: {yesNo(dog!.isVaccinated)}</div>
-                <div>Good with dogs: {yesNo(dog!.goodWithDogs)}</div>
-                <div>Good with children: {yesNo(dog!.goodWithChildren)}</div>
+            const hasBasicDetails =
+              hasText(dog.breed) ||
+              hasText(dog.size) ||
+              hasText(dog.sex) ||
+              hasBoolean(dog.isNeutered) ||
+              hasBoolean(dog.isVaccinated) ||
+              hasBoolean(dog.goodWithDogs) ||
+              hasBoolean(dog.goodWithChildren);
 
-                {booking.status !== "PENDING" ? (
-                  <>
-                    <div>
-                      Vaccination expiry: {formatDate(dog!.vaccinationExpiryDate)}
-                    </div>
-                    <div>Kennel cough: {formatDate(dog!.kennelCoughAt)}</div>
-                    <div>Dewormed: {formatDate(dog!.dewormedAt)}</div>
-                    <div>
-                      Tick/flea treated: {formatDate(dog!.tickFleaTreatedAt)}
-                    </div>
-                    <div>Vet: {dog!.vetName || "—"}</div>
-                    <div>Vet phone: {dog!.vetPhone || "—"}</div>
-                  </>
+            const hasConfirmedHealthDetails =
+              booking.status !== "PENDING" &&
+              (hasText(dog.vaccinationExpiryDate) ||
+                hasText(dog.kennelCoughAt) ||
+                hasText(dog.dewormedAt) ||
+                hasText(dog.tickFleaTreatedAt) ||
+                hasText(dog.vetName) ||
+                hasText(dog.vetPhone));
+
+            const hasCareNotes =
+              hasText(dog.behavioralNotes) || hasText(dog.medicalNotes);
+
+            return (
+              <div
+                key={dog.id}
+                className="rounded-lg border border-amber-200 bg-white p-3"
+              >
+                <div className="font-medium">{firstNameOnly(dog.name)}</div>
+
+                {hasBasicDetails || hasConfirmedHealthDetails ? (
+                  <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                    {hasText(dog.breed) ? (
+                      <div>Breed: {dog.breed}</div>
+                    ) : null}
+
+                    {hasText(dog.size) ? (
+                      <div>Size: {formatLabel(dog.size)}</div>
+                    ) : null}
+
+                    {hasText(dog.sex) ? (
+                      <div>Sex: {formatLabel(dog.sex)}</div>
+                    ) : null}
+
+                    {hasBoolean(dog.isNeutered) ? (
+                      <div>Neutered: {yesNo(dog.isNeutered)}</div>
+                    ) : null}
+
+                    {hasBoolean(dog.isVaccinated) ? (
+                      <div>Vaccinated: {yesNo(dog.isVaccinated)}</div>
+                    ) : null}
+
+                    {hasBoolean(dog.goodWithDogs) ? (
+                      <div>Good with dogs: {yesNo(dog.goodWithDogs)}</div>
+                    ) : null}
+
+                    {hasBoolean(dog.goodWithChildren) ? (
+                      <div>
+                        Good with children: {yesNo(dog.goodWithChildren)}
+                      </div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.vaccinationExpiryDate) ? (
+                      <div>
+                        Vaccination expiry:{" "}
+                        {formatDate(dog.vaccinationExpiryDate)}
+                      </div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.kennelCoughAt) ? (
+                      <div>
+                        Kennel cough: {formatDate(dog.kennelCoughAt)}
+                      </div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.dewormedAt) ? (
+                      <div>Dewormed: {formatDate(dog.dewormedAt)}</div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.tickFleaTreatedAt) ? (
+                      <div>
+                        Tick/flea treated:{" "}
+                        {formatDate(dog.tickFleaTreatedAt)}
+                      </div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.vetName) ? (
+                      <div>Vet: {dog.vetName}</div>
+                    ) : null}
+
+                    {booking.status !== "PENDING" &&
+                    hasText(dog.vetPhone) ? (
+                      <div>Vet phone: {dog.vetPhone}</div>
+                    ) : null}
+                  </div>
                 ) : null}
 
-                <div className="sm:col-span-2">
-                  Behaviour notes: {dog!.behavioralNotes || "—"}
-                </div>
-                <div className="sm:col-span-2">
-                  Medical notes: {dog!.medicalNotes || "—"}
-                </div>
+                {hasCareNotes ? (
+                  <div className="mt-2 space-y-1">
+                    {hasText(dog.behavioralNotes) ? (
+                      <div>Behaviour notes: {dog.behavioralNotes}</div>
+                    ) : null}
+
+                    {hasText(dog.medicalNotes) ? (
+                      <div>Medical notes: {dog.medicalNotes}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {!hasBasicDetails &&
+                !hasConfirmedHealthDetails &&
+                !hasCareNotes ? (
+                  <p className="mt-2 text-sm text-amber-800">
+                    No additional Dog Passport information has been provided.
+                  </p>
+                ) : null}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -573,15 +660,17 @@ function BookingCard({
   const displayNotes = cleanNotesForDisplay(booking.notes);
 
   const petSittingLocation =
-  booking.serviceType === "PET_SITTING"
-    ? extractNoteValue(booking.notes, "Pet sitting location")
-    : null;
+    booking.serviceType === "PET_SITTING"
+      ? extractNoteValue(booking.notes, "Pet sitting location")
+      : null;
 
   return (
     <div
       id={`booking-${booking.id}`}
       className={`space-y-4 rounded-xl border bg-white p-4 ${
-        highlightReview ? "border-blue-300 ring-2 ring-blue-100" : "border-gray-200"
+        highlightReview
+          ? "border-blue-300 ring-2 ring-blue-100"
+          : "border-gray-200"
       }`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -589,26 +678,29 @@ function BookingCard({
           <div className="font-semibold text-gray-900">
             {formatServiceName(booking.serviceType)}
           </div>
-          <div className="text-sm text-gray-500">
-            {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
-          </div>
-          {booking.serviceType === "PET_TRANSPORT" ? (
-  <div className="mt-1 text-sm text-gray-600">
-    {booking.journeyType === "RETURN"
-      ? "Return journey"
-      : "One-way journey"}
-  </div>
-) : null}
 
-{booking.serviceType === "PET_TRANSPORT" &&
-booking.journeyType === "RETURN" &&
-booking.returnStartAt &&
-booking.returnEndAt ? (
-  <div className="mt-1 text-sm text-gray-500">
-    Return: {formatDateTime(booking.returnStartAt)} –{" "}
-    {formatDateTime(booking.returnEndAt)}
-  </div>
-) : null}
+          <div className="text-sm text-gray-500">
+            {formatDateTime(booking.startAt)} –{" "}
+            {formatDateTime(booking.endAt)}
+          </div>
+
+          {booking.serviceType === "PET_TRANSPORT" ? (
+            <div className="mt-1 text-sm text-gray-600">
+              {booking.journeyType === "RETURN"
+                ? "Return journey"
+                : "One-way journey"}
+            </div>
+          ) : null}
+
+          {booking.serviceType === "PET_TRANSPORT" &&
+          booking.journeyType === "RETURN" &&
+          booking.returnStartAt &&
+          booking.returnEndAt ? (
+            <div className="mt-1 text-sm text-gray-500">
+              Return: {formatDateTime(booking.returnStartAt)} –{" "}
+              {formatDateTime(booking.returnEndAt)}
+            </div>
+          ) : null}
         </div>
 
         <div className="space-y-2 text-right">
@@ -619,6 +711,7 @@ booking.returnEndAt ? (
           >
             {formatBookingStatusLabel(booking.status)}
           </div>
+
           <div className="font-semibold text-gray-900">
             {formatMoney(booking.totalCents)}
           </div>
@@ -626,35 +719,41 @@ booking.returnEndAt ? (
       </div>
 
       <div className="text-sm text-gray-700">
-        <span className="font-medium">👤 Owner:</span> {formatOwnerName(booking)}
+        <span className="font-medium">👤 Owner:</span>{" "}
+        {formatOwnerName(booking)}
       </div>
 
       <div className="text-sm text-gray-700">
-        <span className="font-medium">🐶 Dogs:</span> {formatDogNames(booking)}
+        <span className="font-medium">🐶 Dogs:</span>{" "}
+        {formatDogNames(booking)}
       </div>
 
       {petSittingLocation ? (
-      <div className="text-sm text-gray-700">
-      <span className="font-medium">🏠 Pet sitting location:</span>{" "}
-      {formatLabel(petSittingLocation)}
-      </div>
+        <div className="text-sm text-gray-700">
+          <span className="font-medium">🏠 Pet sitting location:</span>{" "}
+          {formatLabel(petSittingLocation)}
+        </div>
       ) : null}
 
       {booking.serviceType !== "PET_TRANSPORT" &&
-booking.serviceArea &&
-!booking.serviceLocationSummary ? (
+      booking.serviceArea &&
+      !booking.serviceLocationSummary ? (
         <div className="text-sm text-gray-700">
-          <span className="font-medium">📍 Service area:</span> {booking.serviceArea}
+          <span className="font-medium">📍 Service area:</span>{" "}
+          {booking.serviceArea}
         </div>
       ) : null}
 
       <DogDetails booking={booking} />
+
       <LocationSummary booking={booking} />
 
       {booking.accessInstructions ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
           <div className="font-medium">Access instructions</div>
-          <div className="mt-1 whitespace-pre-line">{booking.accessInstructions}</div>
+          <div className="mt-1 whitespace-pre-line">
+            {booking.accessInstructions}
+          </div>
         </div>
       ) : null}
 
@@ -887,6 +986,7 @@ function SupplierBookingJourney({
           <h2 className="text-xl font-semibold text-gray-900">
             Your booking journey
           </h2>
+
           <p className="mt-1 text-sm text-gray-500">
             From request to completed care, DogLife helps you manage each step.
           </p>
@@ -908,9 +1008,11 @@ function SupplierBookingJourney({
             className="rounded-xl border border-gray-200 bg-gray-50 p-4"
           >
             <div className="text-2xl">{step.icon}</div>
+
             <p className="mt-2 text-sm font-semibold text-gray-900">
               {index + 1}. {step.title}
             </p>
+
             <p className="mt-1 text-xs text-gray-500">{step.text}</p>
           </div>
         ))}
@@ -928,10 +1030,14 @@ export default function SupplierDashboardPage() {
   const focusAction = searchParams.get("action");
 
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
-  const [activeReviewBookingId, setActiveReviewBookingId] = useState<string | null>(null);
-  const [reviewInputs, setReviewInputs] = useState<Record<string, ReviewInput>>(
-    {}
-  );
+
+  const [activeReviewBookingId, setActiveReviewBookingId] = useState<
+    string | null
+  >(null);
+
+  const [reviewInputs, setReviewInputs] = useState<
+    Record<string, ReviewInput>
+  >({});
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     today: true,
@@ -972,7 +1078,9 @@ export default function SupplierDashboardPage() {
     : [];
 
   const refreshBookings = () => {
-    queryClient.invalidateQueries({ queryKey: ["supplier-dashboard-bookings"] });
+    queryClient.invalidateQueries({
+      queryKey: ["supplier-dashboard-bookings"],
+    });
   };
 
   const submitSupplierReviewMutation = useMutation({
@@ -988,7 +1096,11 @@ export default function SupplierDashboardPage() {
     onMutate: (bookingId) => setActiveReviewBookingId(bookingId),
     onSuccess: (_data, bookingId) => {
       refreshBookings();
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
+
       setReviewInputs((prev) => {
         const next = { ...prev };
         delete next[bookingId];
@@ -1003,7 +1115,9 @@ export default function SupplierDashboardPage() {
       await api.patch(`/api/notifications/${id}/read`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({
+        queryKey: ["notifications"],
+      });
     },
   });
 
@@ -1013,6 +1127,7 @@ export default function SupplierDashboardPage() {
     },
     onSuccess: () => {
       alert("Profile submitted for DogLife review.");
+
       queryClient.invalidateQueries({
         queryKey: ["supplier-profile-completion"],
       });
@@ -1085,7 +1200,9 @@ export default function SupplierDashboardPage() {
     return date;
   }, []);
 
-  const rawBookings: SupplierBooking[] = data?.bookings || data?.data || data || [];
+  const rawBookings: SupplierBooking[] =
+    data?.bookings || data?.data || data || [];
+
   const bookings = useMemo(
     () => (Array.isArray(rawBookings) ? rawBookings : []),
     [rawBookings]
@@ -1099,46 +1216,58 @@ export default function SupplierDashboardPage() {
     completedUnbilledBookings,
     completedBookings,
     cancelledBookings,
-    totalActive,
     sectionMap,
   } = useMemo(() => {
     const today = sortBookingsByStart(
-      bookings.filter((b) => isTodayBooking(b, todayStart, todayEnd))
+      bookings.filter((booking) =>
+        isTodayBooking(booking, todayStart, todayEnd)
+      )
     );
 
-    const todayIds = new Set(today.map((b) => b.id));
+    const todayIds = new Set(today.map((booking) => booking.id));
 
     const pending = sortBookingsByStart(
-      bookings.filter((b) => b.status === "PENDING" && !todayIds.has(b.id))
+      bookings.filter(
+        (booking) =>
+          booking.status === "PENDING" && !todayIds.has(booking.id)
+      )
     );
 
     const confirmed = sortBookingsByStart(
-      bookings.filter((b) => b.status === "CONFIRMED" && !todayIds.has(b.id))
+      bookings.filter(
+        (booking) =>
+          booking.status === "CONFIRMED" && !todayIds.has(booking.id)
+      )
     );
 
     const inProgress = sortBookingsByStart(
-      bookings.filter((b) => b.status === "IN_PROGRESS" && !todayIds.has(b.id))
+      bookings.filter(
+        (booking) =>
+          booking.status === "IN_PROGRESS" && !todayIds.has(booking.id)
+      )
     );
 
     const completedUnbilled = sortBookingsByStart(
       bookings.filter(
-        (b) => b.status === "COMPLETED_UNBILLED" && !todayIds.has(b.id)
+        (booking) =>
+          booking.status === "COMPLETED_UNBILLED" &&
+          !todayIds.has(booking.id)
       )
     );
 
     const completed = sortBookingsByStart(
-      bookings.filter((b) => b.status === "COMPLETED" && !todayIds.has(b.id))
+      bookings.filter(
+        (booking) =>
+          booking.status === "COMPLETED" && !todayIds.has(booking.id)
+      )
     );
 
     const cancelled = sortBookingsByStart(
-      bookings.filter((b) => b.status === "CANCELLED" && !todayIds.has(b.id))
-    );
-
-    const active = bookings.filter((b) =>
-      ["PENDING", "CONFIRMED", "IN_PROGRESS", "COMPLETED_UNBILLED"].includes(
-        b.status
+      bookings.filter(
+        (booking) =>
+          booking.status === "CANCELLED" && !todayIds.has(booking.id)
       )
-    ).length;
+    );
 
     return {
       todayBookings: today,
@@ -1148,7 +1277,6 @@ export default function SupplierDashboardPage() {
       completedUnbilledBookings: completedUnbilled,
       completedBookings: completed,
       cancelledBookings: cancelled,
-      totalActive: active,
       sectionMap: [
         { key: "today", bookings: today },
         { key: "pending", bookings: pending },
@@ -1176,12 +1304,16 @@ export default function SupplierDashboardPage() {
   }
 
   function openAndScroll(sectionKey: string, sectionId: string) {
-    setOpenSections((prev) => ({ ...prev, [sectionKey]: true }));
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionKey]: true,
+    }));
 
-    setTimeout(() => {
-      document
-        .getElementById(sectionId)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 50);
   }
 
@@ -1190,7 +1322,9 @@ export default function SupplierDashboardPage() {
       markAsReadMutation.mutate(notification.id);
     }
 
-    const bookingId = notification.referenceId || notification.booking?.id;
+    const bookingId =
+      notification.referenceId || notification.booking?.id;
+
     if (!bookingId) return;
 
     const matchingSection = sectionMap.find((section) =>
@@ -1208,14 +1342,15 @@ export default function SupplierDashboardPage() {
       .toLowerCase()
       .includes("review");
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       const targetId = isReviewNotification
         ? `review-${bookingId}`
         : `booking-${bookingId}`;
 
-      document
-        .getElementById(targetId)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }, 300);
   }
 
@@ -1223,7 +1358,9 @@ export default function SupplierDashboardPage() {
     if (!focusBookingId) return;
 
     const matchingSection = sectionMap.find((section) =>
-      section.bookings.some((booking) => booking.id === focusBookingId)
+      section.bookings.some(
+        (booking) => booking.id === focusBookingId
+      )
     );
 
     if (!matchingSection) return;
@@ -1244,7 +1381,9 @@ export default function SupplierDashboardPage() {
         block: "center",
       });
 
-      navigate("/supplier/dashboard", { replace: true });
+      navigate("/supplier/dashboard", {
+        replace: true,
+      });
     }, 300);
 
     return () => window.clearTimeout(timeoutId);
@@ -1255,6 +1394,7 @@ export default function SupplierDashboardPage() {
       "Add a message for the owner. You can suggest another time here.",
       ""
     );
+
     if (message === null) return;
 
     declineMutation.mutate({
@@ -1279,17 +1419,19 @@ export default function SupplierDashboardPage() {
         isLoading={isLoading}
         error={error}
         activeBookingId={activeBookingId}
-        onAccept={(id) => acceptMutation.mutate(id)}
+        onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
         onDecline={handleDecline}
-        onStart={(id) => startMutation.mutate(id)}
-        onComplete={(id) => completeMutation.mutate(id)}
-        onMarkPaid={(id) => markPaidMutation.mutate(id)}
+        onStart={(bookingId) => startMutation.mutate(bookingId)}
+        onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+        onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
         isOpen={Boolean(openSections[sectionKey])}
         onToggle={() => toggleSection(sectionKey)}
         reviewInputs={reviewInputs}
         activeReviewBookingId={activeReviewBookingId}
         onReviewChange={handleReviewChange}
-        onSubmitReview={(id) => submitSupplierReviewMutation.mutate(id)}
+        onSubmitReview={(bookingId) =>
+          submitSupplierReviewMutation.mutate(bookingId)
+        }
         focusBookingId={focusBookingId}
         focusAction={focusAction}
       />
@@ -1304,6 +1446,7 @@ export default function SupplierDashboardPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               Welcome to DogLife 🐾
             </h1>
+
             <p className="mt-2 text-sm text-gray-600">
               Complete your supplier setup so dog owners can find and book you.
             </p>
@@ -1327,8 +1470,80 @@ export default function SupplierDashboardPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
+        <button
+          type="button"
+          onClick={() => openAndScroll("today", "today-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-blue-300 hover:shadow-sm md:p-5"
+        >
+          <div className="text-xs text-gray-500 sm:text-sm">Today</div>
+          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
+            {todayBookings.length}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => openAndScroll("pending", "pending-bookings")}
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-amber-300 hover:shadow-sm md:p-5"
+        >
+          <div className="text-xs text-gray-500 sm:text-sm">Pending</div>
+          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
+            {pendingBookings.length}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openAndScroll("confirmed", "confirmed-bookings")
+          }
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-green-300 hover:shadow-sm md:p-5"
+        >
+          <div className="text-xs text-gray-500 sm:text-sm">Confirmed</div>
+          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
+            {confirmedBookings.length}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openAndScroll("inProgress", "in-progress-bookings")
+          }
+          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-blue-300 hover:shadow-sm md:p-5"
+        >
+          <div className="text-xs text-gray-500 sm:text-sm">
+            In Progress
+          </div>
+          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
+            {inProgressBookings.length}
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openAndScroll(
+              "completedUnbilled",
+              "completed-unbilled-bookings"
+            )
+          }
+          className="col-span-2 rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-purple-300 hover:shadow-sm md:col-span-1 md:p-5"
+        >
+          <div className="text-xs text-gray-500 sm:text-sm">
+            Awaiting Payment
+          </div>
+          <div className="mt-2 text-2xl font-bold text-purple-600 sm:text-3xl">
+            {completedUnbilledBookings.length}
+          </div>
+        </button>
+      </div>
+
       <SupplierBookingJourney
-        onViewBookings={() => openAndScroll("pending", "pending-bookings")}
+        onViewBookings={() =>
+          openAndScroll("pending", "pending-bookings")
+        }
       />
 
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
@@ -1349,53 +1564,9 @@ export default function SupplierDashboardPage() {
           {completionData?.approvalStatus === "APPROVED"
             ? "Approved supplier ✓"
             : submitForReviewMutation.isPending
-            ? "Submitting..."
-            : "Submit for review"}
+              ? "Submitting..."
+              : "Submit for review"}
         </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        <button
-          type="button"
-          onClick={() => openAndScroll("pending", "pending-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
-          <div className="text-xs text-gray-500 sm:text-sm">Pending</div>
-          <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
-            {pendingBookings.length}
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => openAndScroll("confirmed", "confirmed-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
-          <div className="text-xs text-gray-500 sm:text-sm">Confirmed</div>
-          <div className="mt-2 text-2xl font-bold text-green-600 sm:text-3xl">
-            {confirmedBookings.length}
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => openAndScroll("inProgress", "in-progress-bookings")}
-          className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-gray-300 md:p-5"
-        >
-          <div className="text-xs text-gray-500 sm:text-sm">In Progress</div>
-          <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
-            {inProgressBookings.length}
-          </div>
-        </button>
-
-        <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-5">
-          <div className="text-xs text-gray-500 sm:text-sm">
-            Active Bookings
-          </div>
-          <div className="mt-2 text-2xl font-bold text-gray-900 sm:text-3xl">
-            {totalActive}
-          </div>
-        </div>
       </div>
 
       {notifications.length > 0 ? (
@@ -1411,13 +1582,21 @@ export default function SupplierDashboardPage() {
                   : "border-yellow-200 bg-yellow-50"
               }`}
             >
-              <p className="font-semibold text-gray-800">{notification.title}</p>
+              <p className="font-semibold text-gray-800">
+                {notification.title}
+              </p>
+
               <p className="text-sm text-gray-600">
                 {notification.booking
-                  ? `${formatServiceName(notification.booking.serviceLabel)} with ${
-                      firstNamesOnlyList(notification.booking.dogNames) ||
-                      "the dog"
-                    } on ${formatDateTime(notification.booking.startAt)}`
+                  ? `${formatServiceName(
+                      notification.booking.serviceLabel
+                    )} with ${
+                      firstNamesOnlyList(
+                        notification.booking.dogNames
+                      ) || "the dog"
+                    } on ${formatDateTime(
+                      notification.booking.startAt
+                    )}`
                   : notification.message}
               </p>
             </button>
@@ -1433,6 +1612,7 @@ export default function SupplierDashboardPage() {
           todayBookings,
           "today"
         )}
+
         {renderSection(
           "pending-bookings",
           "Pending",
@@ -1440,6 +1620,7 @@ export default function SupplierDashboardPage() {
           pendingBookings,
           "pending"
         )}
+
         {renderSection(
           "confirmed-bookings",
           "Confirmed",
@@ -1447,6 +1628,7 @@ export default function SupplierDashboardPage() {
           confirmedBookings,
           "confirmed"
         )}
+
         {renderSection(
           "in-progress-bookings",
           "In Progress",
@@ -1454,6 +1636,7 @@ export default function SupplierDashboardPage() {
           inProgressBookings,
           "inProgress"
         )}
+
         {renderSection(
           "completed-unbilled-bookings",
           "Awaiting Payment",
@@ -1461,6 +1644,7 @@ export default function SupplierDashboardPage() {
           completedUnbilledBookings,
           "completedUnbilled"
         )}
+
         {renderSection(
           "completed-bookings",
           "Completed",
@@ -1468,6 +1652,7 @@ export default function SupplierDashboardPage() {
           completedBookings,
           "completed"
         )}
+
         {renderSection(
           "cancelled-bookings",
           "Cancelled",
