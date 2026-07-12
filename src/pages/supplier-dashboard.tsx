@@ -60,14 +60,27 @@ type ServiceLocationSummary = {
   dropoffAddress?: string | null;
 };
 
+type TransportAreaSummary = {
+  type: "TRANSPORT_AREAS";
+  label?: string | null;
+  pickupSuburb?: string | null;
+  dropoffSuburb?: string | null;
+};
+
 type SupplierBooking = {
   id: string;
   status: BookingStatus;
   startAt: string;
   endAt: string;
+  journeyType?: "ONE_WAY" | "RETURN" | null;
+  returnStartAt?: string | null;
+  returnEndAt?: string | null;
   totalCents?: number | null;
   serviceType?: string | null;
   serviceArea?: string | null;
+  pickupSuburb?: string | null;
+  dropoffSuburb?: string | null;
+  transportAreaSummary?: TransportAreaSummary | null;
   notes?: string | null;
   accessInstructions?: string | null;
   accessInstructionsUpdatedAt?: string | null;
@@ -244,6 +257,9 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("drop-off point:") ||
         lower.startsWith("pickup address:") ||
         lower.startsWith("drop-off address:") ||
+        lower.startsWith("return pickup point:") ||
+        lower.startsWith("return drop-off point:") ||
+        lower.startsWith("return date and time:") ||
         lower.startsWith("access instructions:") ||
         lower.startsWith("gate code:") ||
         lower.startsWith("estate access:") ||
@@ -260,12 +276,18 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("pet sitting location:") ||
         lower.startsWith("kennel type:") ||
         lower.startsWith("journey type:") ||
+        lower === "return" ||
+        lower === "return return" ||
+        lower === "one way" ||
+        lower === "one-way" ||
         lower === "mobile grooming" ||
         lower === "owner home" ||
         lower === "owner_home" ||
         lower === "supplier location" ||
         lower === "supplier_location" ||
-        /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/.test(lower)
+        /^[a-z\s'-]+-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)?$/.test(
+          lower
+        )
       );
     })
     .join(". ")
@@ -297,9 +319,117 @@ function isTodayBooking(
 }
 
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
-  const location = booking.serviceLocationSummary;
+  const exactLocation = booking.serviceLocationSummary;
+  const transportAreas = booking.transportAreaSummary;
 
-  if (!location) {
+  /*
+   * Confirmed and later transport bookings:
+   * show the exact pickup and drop-off addresses.
+   */
+  if (
+    booking.serviceType === "PET_TRANSPORT" &&
+    exactLocation?.type === "TRANSPORT"
+  ) {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        <div className="font-medium">Transport details</div>
+
+        <div className="mt-2">
+          <div className="font-medium text-blue-900">Outbound journey</div>
+
+          {exactLocation.pickupAddress ? (
+            <div className="mt-1 whitespace-pre-line">
+              Pickup: {exactLocation.pickupAddress}
+            </div>
+          ) : null}
+
+          {exactLocation.dropoffAddress ? (
+            <div className="mt-1 whitespace-pre-line">
+              Drop-off: {exactLocation.dropoffAddress}
+            </div>
+          ) : null}
+        </div>
+
+        {booking.journeyType === "RETURN" ? (
+          <div className="mt-3 border-t border-blue-200 pt-3">
+            <div className="font-medium text-blue-900">Return journey</div>
+
+            {exactLocation.dropoffAddress ? (
+              <div className="mt-1 whitespace-pre-line">
+                Pickup: {exactLocation.dropoffAddress}
+              </div>
+            ) : null}
+
+            {exactLocation.pickupAddress ? (
+              <div className="mt-1 whitespace-pre-line">
+                Drop-off: {exactLocation.pickupAddress}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  /*
+   * Pending transport bookings:
+   * show suburbs only, protecting exact addresses.
+   */
+  if (
+    booking.serviceType === "PET_TRANSPORT" &&
+    (transportAreas?.pickupSuburb ||
+      transportAreas?.dropoffSuburb ||
+      booking.pickupSuburb ||
+      booking.dropoffSuburb)
+  ) {
+    const pickupSuburb =
+      transportAreas?.pickupSuburb || booking.pickupSuburb || null;
+
+    const dropoffSuburb =
+      transportAreas?.dropoffSuburb || booking.dropoffSuburb || null;
+
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+        <div className="font-medium">
+          {booking.journeyType === "RETURN"
+            ? "Return transport areas"
+            : "Transport areas"}
+        </div>
+
+        <div className="mt-2">
+          <div className="font-medium text-blue-900">Outbound journey</div>
+
+          {pickupSuburb ? (
+            <div className="mt-1">Pickup area: {pickupSuburb}</div>
+          ) : null}
+
+          {dropoffSuburb ? (
+            <div className="mt-1">Drop-off area: {dropoffSuburb}</div>
+          ) : null}
+        </div>
+
+        {booking.journeyType === "RETURN" ? (
+          <div className="mt-3 border-t border-blue-200 pt-3">
+            <div className="font-medium text-blue-900">Return journey</div>
+
+            {dropoffSuburb ? (
+              <div className="mt-1">Pickup area: {dropoffSuburb}</div>
+            ) : null}
+
+            {pickupSuburb ? (
+              <div className="mt-1">Drop-off area: {pickupSuburb}</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="mt-3 text-xs text-blue-700">
+          Exact addresses will be available once the booking is confirmed.
+        </div>
+      </div>
+    );
+  }
+
+  if (!exactLocation) {
     if (booking.serviceArea) {
       return (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -312,38 +442,23 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
     return null;
   }
 
-  if (location.type === "TRANSPORT") {
-    return (
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-        <div className="font-medium">Pickup and drop-off</div>
-        {location.pickupAddress ? (
-          <div className="mt-1 whitespace-pre-line">
-            Pickup: {location.pickupAddress}
-          </div>
-        ) : null}
-        {location.dropoffAddress ? (
-          <div className="mt-1 whitespace-pre-line">
-            Drop-off: {location.dropoffAddress}
-          </div>
-        ) : null}
-      </div>
-    );
-  }
-
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-      <div className="font-medium">
-        Service location
-      </div>
+      <div className="font-medium">Service location</div>
 
-      {location.addressLine ? (
+      {exactLocation.addressLine ? (
         <div className="mt-1 whitespace-pre-line">
-          {String(location.addressLine).replace(/^Owner address:\s*/i, "")}
+          {String(exactLocation.addressLine).replace(
+            /^Owner address:\s*/i,
+            ""
+          )}
         </div>
       ) : booking.serviceArea ? (
         <div className="mt-1">{booking.serviceArea}</div>
       ) : (
-        <div className="mt-1 text-blue-700">Location details not provided.</div>
+        <div className="mt-1 text-blue-700">
+          Location details not provided.
+        </div>
       )}
     </div>
   );
@@ -566,6 +681,23 @@ function BookingCard({
           <div className="text-sm text-gray-500">
             {formatDateTime(booking.startAt)} – {formatDateTime(booking.endAt)}
           </div>
+          {booking.serviceType === "PET_TRANSPORT" ? (
+  <div className="mt-1 text-sm text-gray-600">
+    {booking.journeyType === "RETURN"
+      ? "Return journey"
+      : "One-way journey"}
+  </div>
+) : null}
+
+{booking.serviceType === "PET_TRANSPORT" &&
+booking.journeyType === "RETURN" &&
+booking.returnStartAt &&
+booking.returnEndAt ? (
+  <div className="mt-1 text-sm text-gray-500">
+    Return: {formatDateTime(booking.returnStartAt)} –{" "}
+    {formatDateTime(booking.returnEndAt)}
+  </div>
+) : null}
         </div>
 
         <div className="space-y-2 text-right">
@@ -597,7 +729,9 @@ function BookingCard({
       </div>
       ) : null}
 
-      {booking.serviceArea && !booking.serviceLocationSummary ? (
+      {booking.serviceType !== "PET_TRANSPORT" &&
+booking.serviceArea &&
+!booking.serviceLocationSummary ? (
         <div className="text-sm text-gray-700">
           <span className="font-medium">📍 Service area:</span> {booking.serviceArea}
         </div>
