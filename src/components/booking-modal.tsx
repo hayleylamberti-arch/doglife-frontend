@@ -64,7 +64,11 @@ function getStayDays(arrivalDate: string, departureDate: string) {
   if (end <= start) return 1;
 
   const msPerDay = 1000 * 60 * 60 * 24;
-  return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / msPerDay));
+
+  return Math.max(
+    1,
+    Math.ceil((end.getTime() - start.getTime()) / msPerDay)
+  );
 }
 
 function toNumber(value: unknown): number {
@@ -93,6 +97,18 @@ function normalizeSlot(slot: any): BookingSlotOption | null {
   }
 
   return null;
+}
+
+function flattenBookableSlots(payload: any): BookingSlotOption[] {
+  const groupedSlots = payload?.slots || {};
+
+  return [
+    ...(groupedSlots.morning || []),
+    ...(groupedSlots.afternoon || []),
+    ...(groupedSlots.evening || []),
+  ]
+    .map((slot) => normalizeSlot(slot?.start || slot?.startTime || slot))
+    .filter(Boolean) as BookingSlotOption[];
 }
 
 function buildDaycareTimes(
@@ -132,6 +148,19 @@ function firstNameOnly(value?: string | null) {
   return String(value).trim().split(/\s+/)[0] || "";
 }
 
+function formatBookingDateTime(value?: string | Date | null) {
+  if (!value) return "";
+
+  const parsed = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return parsed.toLocaleString("en-ZA", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 export default function BookingModal({
   supplierId,
   supplierName,
@@ -154,12 +183,19 @@ export default function BookingModal({
   const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
 
   const [ownerAddress, setOwnerAddress] = useState("");
+
   const [date, setDate] = useState("");
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
 
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+
+  const [returnDate, setReturnDate] = useState("");
+  const [returnSlots, setReturnSlots] = useState<BookingSlotOption[]>([]);
+  const [selectedReturnSlot, setSelectedReturnSlot] = useState<string | null>(
+    null
+  );
 
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [dogsLoading, setDogsLoading] = useState(true);
@@ -172,16 +208,19 @@ export default function BookingModal({
   const [loading, setLoading] = useState(false);
 
   const [kennelType, setKennelType] = useState<KennelType>("SOCIAL");
+
   const [petSittingLocation, setPetSittingLocation] =
     useState<PetSittingLocation>("OWNER_HOME");
 
   const [journeyType, setJourneyType] =
     useState<PetTransportJourneyType>("ONE_WAY");
+
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
 
   const [daycareSessionType, setDaycareSessionType] =
     useState<DaycareSessionType>("FULL_DAY");
+
   const [halfDayPeriod, setHalfDayPeriod] =
     useState<HalfDayPeriod>("MORNING");
 
@@ -205,20 +244,24 @@ export default function BookingModal({
     ) || null;
 
   const mobileVetServices: any[] = Array.isArray(
-  service?.pricingJson?.mobileVetServices
-)
-  ? service.pricingJson.mobileVetServices
-  : [];
+    service?.pricingJson?.mobileVetServices
+  )
+    ? service.pricingJson.mobileVetServices
+    : [];
 
-const mobileOptions = mobileVetServices.length
-  ? mobileVetServices
-  : [
-      { key: "CHECK_UP", label: "Check-up / consultation", priceCents: service?.baseRateCents || 0 },
-    ];
+  const mobileOptions = mobileVetServices.length
+    ? mobileVetServices
+    : [
+        {
+          key: "CHECK_UP",
+          label: "Check-up / consultation",
+          priceCents: service?.baseRateCents || 0,
+        },
+      ];
 
-const [mobileVetService, setMobileVetService] = useState(
-  mobileOptions[0]?.key || "CHECK_UP"
-);
+  const [mobileVetService, setMobileVetService] = useState(
+    mobileOptions[0]?.key || "CHECK_UP"
+  );
 
   const shouldRequireOwnerAddress =
     isWalking ||
@@ -245,9 +288,11 @@ const [mobileVetService, setMobileVetService] = useState(
 
   const boardingAdditionalDogEnabled = useMemo(() => {
     const directEnabled = toBoolean(service?.additionalDogEnabled);
+
     const pricingJsonEnabled = toBoolean(
       service?.pricingJson?.additionalDogEnabled
     );
+
     const additionalDogPriceExists =
       toNumber(service?.additionalDogPriceCents) > 0 ||
       toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
@@ -281,8 +326,12 @@ const [mobileVetService, setMobileVetService] = useState(
     let total = boardingBaseRateCents * stayDays;
 
     if (dogCount > 1) {
-      if (boardingAdditionalDogEnabled && boardingAdditionalDogPriceCents > 0) {
-        total += boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
+      if (
+        boardingAdditionalDogEnabled &&
+        boardingAdditionalDogPriceCents > 0
+      ) {
+        total +=
+          boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
       } else {
         total = boardingBaseRateCents * dogCount * stayDays;
       }
@@ -304,28 +353,32 @@ const [mobileVetService, setMobileVetService] = useState(
   ]);
 
   const estimatedPetSittingTotalCents = useMemo(() => {
-  if (!isPetSitting) return null;
+    if (!isPetSitting) return null;
 
-  const dogCount = Math.max(1, selectedDogIds.length || 1);
-  let total = boardingBaseRateCents * stayDays;
+    const dogCount = Math.max(1, selectedDogIds.length || 1);
+    let total = boardingBaseRateCents * stayDays;
 
-  if (dogCount > 1) {
-    if (boardingAdditionalDogEnabled && boardingAdditionalDogPriceCents > 0) {
-      total += boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
-    } else {
-      total = boardingBaseRateCents * dogCount * stayDays;
+    if (dogCount > 1) {
+      if (
+        boardingAdditionalDogEnabled &&
+        boardingAdditionalDogPriceCents > 0
+      ) {
+        total +=
+          boardingAdditionalDogPriceCents * (dogCount - 1) * stayDays;
+      } else {
+        total = boardingBaseRateCents * dogCount * stayDays;
+      }
     }
-  }
 
-  return total;
-}, [
-  isPetSitting,
-  selectedDogIds.length,
-  boardingBaseRateCents,
-  boardingAdditionalDogEnabled,
-  boardingAdditionalDogPriceCents,
-  stayDays,
-]);
+    return total;
+  }, [
+    isPetSitting,
+    selectedDogIds.length,
+    boardingBaseRateCents,
+    boardingAdditionalDogEnabled,
+    boardingAdditionalDogPriceCents,
+    stayDays,
+  ]);
 
   const daycareHalfDayPriceCents = useMemo(() => {
     return toNumber(service?.pricingJson?.halfDayPriceCents);
@@ -340,9 +393,11 @@ const [mobileVetService, setMobileVetService] = useState(
 
   const daycareAdditionalDogEnabled = useMemo(() => {
     const directEnabled = toBoolean(service?.additionalDogEnabled);
+
     const pricingJsonEnabled = toBoolean(
       service?.pricingJson?.additionalDogEnabled
     );
+
     const additionalDogPriceExists =
       toNumber(service?.additionalDogPriceCents) > 0 ||
       toNumber(service?.pricingJson?.additionalDogPriceCents) > 0 ||
@@ -386,7 +441,10 @@ const [mobileVetService, setMobileVetService] = useState(
     let total = daycareBaseSessionPriceCents;
 
     if (dogCount > 1) {
-      if (daycareAdditionalDogEnabled && daycareAdditionalDogPriceCents > 0) {
+      if (
+        daycareAdditionalDogEnabled &&
+        daycareAdditionalDogPriceCents > 0
+      ) {
         total += daycareAdditionalDogPriceCents * (dogCount - 1);
       } else {
         total = daycareBaseSessionPriceCents * dogCount;
@@ -402,6 +460,43 @@ const [mobileVetService, setMobileVetService] = useState(
     daycareAdditionalDogPriceCents,
   ]);
 
+  const petTransportOneWayPriceCents = useMemo(() => {
+    return (
+      toNumber(service?.pricingJson?.oneWayPriceCents) ||
+      toNumber(service?.pricingJson?.singleTripPriceCents) ||
+      toNumber(service?.baseRateCents)
+    );
+  }, [
+    service?.pricingJson?.oneWayPriceCents,
+    service?.pricingJson?.singleTripPriceCents,
+    service?.baseRateCents,
+  ]);
+
+  const petTransportReturnPriceCents = useMemo(() => {
+    return (
+      toNumber(service?.pricingJson?.returnPriceCents) ||
+      toNumber(service?.pricingJson?.roundTripPriceCents) ||
+      petTransportOneWayPriceCents * 2
+    );
+  }, [
+    service?.pricingJson?.returnPriceCents,
+    service?.pricingJson?.roundTripPriceCents,
+    petTransportOneWayPriceCents,
+  ]);
+
+  const estimatedPetTransportTotalCents = useMemo(() => {
+    if (!isPetTransport) return null;
+
+    return journeyType === "RETURN"
+      ? petTransportReturnPriceCents
+      : petTransportOneWayPriceCents;
+  }, [
+    isPetTransport,
+    journeyType,
+    petTransportReturnPriceCents,
+    petTransportOneWayPriceCents,
+  ]);
+
   const displayPrice = useMemo(() => {
     if (isBoarding) {
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
@@ -415,43 +510,57 @@ const [mobileVetService, setMobileVetService] = useState(
       return estimatedDaycareTotalCents ?? daycareBaseSessionPriceCents;
     }
 
+    if (isPetTransport) {
+      return (
+        estimatedPetTransportTotalCents ?? petTransportOneWayPriceCents
+      );
+    }
+
     if (isGrooming) {
       return selectedDogIds.reduce((sum, dogId) => {
         const selection = groomingSelections[dogId];
+
         if (!selection) return sum;
 
-        const tier = getGroomingTier(selection.category, selection.size);
+        const tier = getGroomingTier(
+          selection.category,
+          selection.size
+        );
+
         return sum + toNumber(tier?.priceCents);
       }, 0);
     }
 
     if (isMobileVet) {
-  const selectedMobileVetService = mobileOptions.find(
-    (option) => option.key === mobileVetService
-  );
+      const selectedMobileVetService = mobileOptions.find(
+        (option) => option.key === mobileVetService
+      );
 
-  const pricePerDog =
-    toNumber(selectedMobileVetService?.priceCents) ||
-    toNumber(service?.baseRateCents);
+      const pricePerDog =
+        toNumber(selectedMobileVetService?.priceCents) ||
+        toNumber(service?.baseRateCents);
 
-  const dogCount = Math.max(1, selectedDogIds.length || 1);
+      const dogCount = Math.max(1, selectedDogIds.length || 1);
 
-  return pricePerDog * dogCount;
-}
+      return pricePerDog * dogCount;
+    }
 
     return service?.baseRateCents;
   }, [
     isBoarding,
     estimatedBoardingTotalCents,
     boardingBaseRateCents,
+    isPetSitting,
+    estimatedPetSittingTotalCents,
     isDaycare,
     estimatedDaycareTotalCents,
     daycareBaseSessionPriceCents,
+    isPetTransport,
+    estimatedPetTransportTotalCents,
+    petTransportOneWayPriceCents,
     isGrooming,
     groomingSelections,
     selectedDogIds,
-    isPetSitting,
-    estimatedPetSittingTotalCents,
     isMobileVet,
     mobileVetService,
     mobileOptions,
@@ -462,6 +571,7 @@ const [mobileVetService, setMobileVetService] = useState(
     if (isBoarding) {
       if (arrivalDate && departureDate) {
         const dogCount = Math.max(1, selectedDogIds.length || 1);
+
         return `${formatPrice(displayPrice)} total • ${stayDays} night${
           stayDays > 1 ? "s" : ""
         } • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
@@ -473,28 +583,40 @@ const [mobileVetService, setMobileVetService] = useState(
     if (isPetSitting) {
       if (arrivalDate && departureDate) {
         const dogCount = Math.max(1, selectedDogIds.length || 1);
+
         return `${formatPrice(displayPrice)} total • ${stayDays} night${
           stayDays > 1 ? "s" : ""
         } • ${dogCount} dog${dogCount > 1 ? "s" : ""}`;
       }
 
-  return `${formatPrice(boardingBaseRateCents)} per night`;
-}
+      return `${formatPrice(boardingBaseRateCents)} per night`;
+    }
 
     if (isDaycare) {
       const dogCount = Math.max(1, selectedDogIds.length || 1);
+
       const sessionLabel =
         daycareSessionType === "HALF_DAY"
           ? `half day • ${halfDayPeriod.toLowerCase()}`
           : "full day";
 
-      return `${formatPrice(displayPrice)} total • ${sessionLabel} • ${dogCount} dog${
+      return `${formatPrice(
+        displayPrice
+      )} total • ${sessionLabel} • ${dogCount} dog${
         dogCount > 1 ? "s" : ""
       }`;
     }
 
+    if (isPetTransport) {
+      const journeyLabel =
+        journeyType === "RETURN" ? "return journey" : "one way";
+
+      return `${formatPrice(displayPrice)} total • ${journeyLabel}`;
+    }
+
     if (isGrooming) {
       const dogCount = Math.max(1, selectedDogIds.length || 1);
+
       return `${formatPrice(displayPrice)} total • ${dogCount} dog${
         dogCount > 1 ? "s" : ""
       }`;
@@ -508,16 +630,18 @@ const [mobileVetService, setMobileVetService] = useState(
   }, [
     isBoarding,
     isPetSitting,
+    isDaycare,
+    isPetTransport,
+    isGrooming,
     arrivalDate,
     departureDate,
     selectedDogIds.length,
     stayDays,
     displayPrice,
     boardingBaseRateCents,
-    isDaycare,
     daycareSessionType,
     halfDayPeriod,
-    isGrooming,
+    journeyType,
     service?.unit,
   ]);
 
@@ -536,9 +660,14 @@ const [mobileVetService, setMobileVetService] = useState(
       if (cancelled) return;
 
       const profileStatus =
-        profileRes.status === "rejected" ? getHttpStatus(profileRes.reason) : null;
+        profileRes.status === "rejected"
+          ? getHttpStatus(profileRes.reason)
+          : null;
+
       const dogsStatus =
-        dogsRes.status === "rejected" ? getHttpStatus(dogsRes.reason) : null;
+        dogsRes.status === "rejected"
+          ? getHttpStatus(dogsRes.reason)
+          : null;
 
       if (profileStatus === 401 || dogsStatus === 401) {
         setAuthRequired(true);
@@ -550,6 +679,7 @@ const [mobileVetService, setMobileVetService] = useState(
       if (profileRes.status === "fulfilled") {
         const profile = profileRes.value.data?.profile;
         const address = profile?.address || "";
+
         setOwnerAddress(address);
 
         if (isPetTransport && address) {
@@ -592,26 +722,82 @@ const [mobileVetService, setMobileVetService] = useState(
 
     api
       .get(
-        `/api/suppliers/${supplierId}/services/${service.id}/bookable-slots?date=${date}&dogCount=${Math.max(1, selectedDogIds.length || 1)}&limit=50`
+        `/api/suppliers/${supplierId}/services/${
+          service.id
+        }/bookable-slots?date=${date}&dogCount=${Math.max(
+          1,
+          selectedDogIds.length || 1
+        )}&limit=50`
       )
       .then((res) => {
-        const groupedSlots = res.data?.slots || {};
-        const nextSlots = [
-          ...(groupedSlots.morning || []),
-          ...(groupedSlots.afternoon || []),
-          ...(groupedSlots.evening || []),
-        ]
-          .map((slot) => normalizeSlot(slot?.start || slot?.startTime || slot))
-          .filter(Boolean);
-
-        setSlots(nextSlots as BookingSlotOption[]);
+        setSlots(flattenBookableSlots(res.data));
         setSelectedSlot(null);
       })
       .catch(() => {
         setSlots([]);
         setSelectedSlot(null);
       });
-  }, [date, supplierId, service.id, usesTimeSlots, selectedDogIds.length]);
+  }, [
+    date,
+    supplierId,
+    service.id,
+    usesTimeSlots,
+    selectedDogIds.length,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isPetTransport ||
+      journeyType !== "RETURN" ||
+      !returnDate
+    ) {
+      setReturnSlots([]);
+      setSelectedReturnSlot(null);
+      return;
+    }
+
+    api
+      .get(
+        `/api/suppliers/${supplierId}/services/${
+          service.id
+        }/bookable-slots?date=${returnDate}&dogCount=${Math.max(
+          1,
+          selectedDogIds.length || 1
+        )}&limit=50`
+      )
+      .then((res) => {
+        setReturnSlots(flattenBookableSlots(res.data));
+        setSelectedReturnSlot(null);
+      })
+      .catch(() => {
+        setReturnSlots([]);
+        setSelectedReturnSlot(null);
+      });
+  }, [
+    isPetTransport,
+    journeyType,
+    returnDate,
+    supplierId,
+    service.id,
+    selectedDogIds.length,
+  ]);
+
+  useEffect(() => {
+    if (journeyType === "ONE_WAY") {
+      setReturnDate("");
+      setReturnSlots([]);
+      setSelectedReturnSlot(null);
+    }
+  }, [journeyType]);
+
+  useEffect(() => {
+    if (!date || !returnDate) return;
+
+    if (returnDate < date) {
+      setReturnDate(date);
+      setSelectedReturnSlot(null);
+    }
+  }, [date, returnDate]);
 
   useEffect(() => {
     if (!isGrooming || groomingCategories.length === 0) return;
@@ -623,13 +809,18 @@ const [mobileVetService, setMobileVetService] = useState(
         const dog = dogs.find((item) => item.id === dogId);
         const existing = prev[dogId];
 
-        const category = existing?.category || String(groomingCategories[0]);
+        const category =
+          existing?.category || String(groomingCategories[0]);
+
         const tiersForCategory = groomingTiers.filter(
           (tier) => tier.category === category
         );
 
         const size =
-          existing?.size || dog?.size || tiersForCategory[0]?.dogSize || "";
+          existing?.size ||
+          dog?.size ||
+          tiersForCategory[0]?.dogSize ||
+          "";
 
         next[dogId] = {
           category,
@@ -639,15 +830,26 @@ const [mobileVetService, setMobileVetService] = useState(
 
       return next;
     });
-  }, [isGrooming, selectedDogIds, dogs, groomingCategories, groomingTiers]);
+  }, [
+    isGrooming,
+    selectedDogIds,
+    dogs,
+    groomingCategories,
+    groomingTiers,
+  ]);
 
   function toggleDog(id: string) {
     setSelectedDogIds((prev) =>
-      prev.includes(id) ? prev.filter((dogId) => dogId !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((dogId) => dogId !== id)
+        : [...prev, id]
     );
   }
 
-  function buildNotes() {
+  function buildNotes(params?: {
+    returnStartAt?: Date | null;
+    returnEndAt?: Date | null;
+  }) {
     const parts: string[] = [];
 
     if (shouldRequireOwnerAddress && ownerAddress) {
@@ -660,7 +862,9 @@ const [mobileVetService, setMobileVetService] = useState(
       parts.push(`Owner address: ${ownerAddress}.`);
     }
 
-    if (isBoarding) parts.push(`Kennel type: ${kennelType}.`);
+    if (isBoarding) {
+      parts.push(`Kennel preference: ${formatLabel(kennelType)} kennel.`);
+    }
 
     if (isPetSitting) {
       parts.push(`Pet sitting location: ${petSittingLocation}.`);
@@ -668,11 +872,29 @@ const [mobileVetService, setMobileVetService] = useState(
 
     if (isPetTransport) {
       parts.push(`Journey type: ${formatLabel(journeyType)}.`);
+
       parts.push(`Pickup point: ${pickup.trim()}.`);
       parts.push(`Drop-off point: ${dropoff.trim()}.`);
+
+      if (
+        journeyType === "RETURN" &&
+        params?.returnStartAt &&
+        params?.returnEndAt
+      ) {
+        parts.push(`Return pickup point: ${dropoff.trim()}.`);
+        parts.push(`Return drop-off point: ${pickup.trim()}.`);
+
+        parts.push(
+          `Return date and time: ${formatBookingDateTime(
+            params.returnStartAt
+          )} - ${formatBookingDateTime(params.returnEndAt)}.`
+        );
+      }
     }
 
-    if (isMobileVet) parts.push(`Mobile vet service: ${mobileVetService}.`);
+    if (isMobileVet) {
+      parts.push(`Mobile vet service: ${mobileVetService}.`);
+    }
 
     if (isGrooming) {
       const groomingLines = selectedDogIds
@@ -682,17 +904,23 @@ const [mobileVetService, setMobileVetService] = useState(
 
           if (!selection) return null;
 
-          return `${firstNameOnly(dog?.name || dogId)} - ${formatLabel(
-            selection.category
-          )}, ${formatLabel(selection.size)}.`;
+          return `${firstNameOnly(
+            dog?.name || dogId
+          )} - ${formatLabel(selection.category)}, ${formatLabel(
+            selection.size
+          )}.`;
         })
         .filter(Boolean) as string[];
 
       if (groomingLines.length > 0) {
-        parts.push(`Grooming selections:\n${groomingLines.join("\n")}`);
+        parts.push(
+          `Grooming selections:\n${groomingLines.join("\n")}`
+        );
       }
 
-      if (isMobileGrooming) parts.push("Mobile grooming.");
+      if (isMobileGrooming) {
+        parts.push("Mobile grooming.");
+      }
     }
 
     if (isDaycare) {
@@ -703,22 +931,35 @@ const [mobileVetService, setMobileVetService] = useState(
       }
     }
 
-    if (notes.trim()) parts.push(notes.trim());
+    if (notes.trim()) {
+      parts.push(notes.trim());
+    }
 
     return parts.join("\n");
   }
 
   async function handleBooking() {
-    if (authRequired) return alert("Please log in as an owner to book.");
-    if (selectedDogIds.length === 0) return alert("Select at least one dog");
+    if (authRequired) {
+      return alert("Please log in as an owner to book.");
+    }
 
-    if (maxDogsPerBooking > 0 && selectedDogIds.length > maxDogsPerBooking) {
+    if (selectedDogIds.length === 0) {
+      return alert("Select at least one dog");
+    }
+
+    if (
+      maxDogsPerBooking > 0 &&
+      selectedDogIds.length > maxDogsPerBooking
+    ) {
       return alert(
         `You can only book up to ${maxDogsPerBooking} dog(s) for this service`
       );
     }
 
-    if (isStayService && (!arrivalDate || !departureDate)) {
+    if (
+      isStayService &&
+      (!arrivalDate || !departureDate)
+    ) {
       return alert("Select arrival and departure dates");
     }
 
@@ -739,11 +980,42 @@ const [mobileVetService, setMobileVetService] = useState(
     }
 
     if (shouldRequireOwnerAddress && !ownerAddress) {
-      return alert("Please add your home address in your profile first");
+      return alert(
+        "Please add your home address in your profile first"
+      );
     }
 
-    if (isPetTransport && (!pickup.trim() || !dropoff.trim())) {
+    if (
+      isPetTransport &&
+      (!pickup.trim() || !dropoff.trim())
+    ) {
       return alert("Enter pickup and drop-off points");
+    }
+
+    if (
+      isPetTransport &&
+      journeyType === "RETURN" &&
+      !returnDate
+    ) {
+      return alert("Select a return date");
+    }
+
+    if (
+      isPetTransport &&
+      journeyType === "RETURN" &&
+      returnSlots.length === 0
+    ) {
+      return alert(
+        "No available return time slots for the selected date"
+      );
+    }
+
+    if (
+      isPetTransport &&
+      journeyType === "RETURN" &&
+      !selectedReturnSlot
+    ) {
+      return alert("Select a return time");
     }
 
     if (isGrooming) {
@@ -754,7 +1026,9 @@ const [mobileVetService, setMobileVetService] = useState(
       );
 
       if (missingSelection) {
-        return alert("Select grooming option and size for each dog");
+        return alert(
+          "Select grooming option and size for each dog"
+        );
       }
     }
 
@@ -769,6 +1043,9 @@ const [mobileVetService, setMobileVetService] = useState(
     try {
       let startAt: Date;
       let endAt: Date;
+
+      let returnStartAt: Date | null = null;
+      let returnEndAt: Date | null = null;
 
       if (isStayService) {
         startAt = new Date(`${arrivalDate}T09:00`);
@@ -790,10 +1067,45 @@ const [mobileVetService, setMobileVetService] = useState(
         startAt = new Date(selectedSlot!);
 
         const bookingDurationMinutes = isGrooming
-          ? appointmentDurationMinutes * Math.max(1, selectedDogIds.length)
+          ? appointmentDurationMinutes *
+            Math.max(1, selectedDogIds.length)
           : appointmentDurationMinutes;
 
-        endAt = new Date(startAt.getTime() + bookingDurationMinutes * 60000);
+        endAt = new Date(
+          startAt.getTime() + bookingDurationMinutes * 60000
+        );
+      }
+
+      if (
+        Number.isNaN(startAt.getTime()) ||
+        Number.isNaN(endAt.getTime())
+      ) {
+        throw new Error("Invalid booking date or time");
+      }
+
+      if (
+        isPetTransport &&
+        journeyType === "RETURN"
+      ) {
+        returnStartAt = new Date(selectedReturnSlot!);
+
+        returnEndAt = new Date(
+          returnStartAt.getTime() +
+            appointmentDurationMinutes * 60000
+        );
+
+        if (
+          Number.isNaN(returnStartAt.getTime()) ||
+          Number.isNaN(returnEndAt.getTime())
+        ) {
+          throw new Error("Invalid return date or time");
+        }
+
+        if (returnStartAt <= endAt) {
+          return alert(
+            "The return journey must start after the outbound journey ends."
+          );
+        }
       }
 
       const bookingResponse = await api.post("/api/bookings", {
@@ -802,34 +1114,94 @@ const [mobileVetService, setMobileVetService] = useState(
         serviceType,
         startAt,
         endAt,
+
+        returnStartAt:
+          isPetTransport &&
+          journeyType === "RETURN" &&
+          returnStartAt
+            ? returnStartAt
+            : undefined,
+
+        returnEndAt:
+          isPetTransport &&
+          journeyType === "RETURN" &&
+          returnEndAt
+            ? returnEndAt
+            : undefined,
+
+        journeyType: isPetTransport
+          ? journeyType
+          : undefined,
+
         dogIds: selectedDogIds,
         dogCount: selectedDogIds.length,
-        kennelType: isBoarding ? kennelType : undefined,
-        notes: buildNotes() || undefined,
+
+        kennelType: isBoarding
+          ? kennelType
+          : undefined,
+
+        notes:
+          buildNotes({
+            returnStartAt,
+            returnEndAt,
+          }) || undefined,
+
         accessInstructions: shouldShowAccessInstructions
           ? accessInstructions.trim() || undefined
           : undefined,
+
         healthSafetyAccepted: acceptedHealthSafety,
-        petSittingLocation: isPetSitting ? petSittingLocation : undefined,
-        mobileVetOffering: isMobileVet ? mobileVetService : undefined,
-        groomingSelections: isGrooming ? groomingSelections : undefined,
-        daycareType: isDaycare ? daycareSessionType : undefined,
+
+        petSittingLocation: isPetSitting
+          ? petSittingLocation
+          : undefined,
+
+        mobileVetOffering: isMobileVet
+          ? mobileVetService
+          : undefined,
+
+        groomingSelections: isGrooming
+          ? groomingSelections
+          : undefined,
+
+        daycareType: isDaycare
+          ? daycareSessionType
+          : undefined,
+
         halfDayPeriod:
-          isDaycare && daycareSessionType === "HALF_DAY"
+          isDaycare &&
+          daycareSessionType === "HALF_DAY"
             ? halfDayPeriod
             : undefined,
       });
 
       trackEvent("booking_request_submitted", {
         bookingId:
-          bookingResponse.data?.booking?.id || bookingResponse.data?.id || null,
+          bookingResponse.data?.booking?.id ||
+          bookingResponse.data?.id ||
+          null,
+
         supplierId,
         supplierName: supplierName || null,
         supplierServiceId: service.id,
         serviceType,
         dogCount: selectedDogIds.length,
+
+        journeyType: isPetTransport
+          ? journeyType
+          : null,
+
         startAt: startAt.toISOString(),
         endAt: endAt.toISOString(),
+
+        returnStartAt: returnStartAt
+          ? returnStartAt.toISOString()
+          : null,
+
+        returnEndAt: returnEndAt
+          ? returnEndAt.toISOString()
+          : null,
+
         estimatedPriceCents: displayPrice,
       });
 
@@ -840,7 +1212,11 @@ const [mobileVetService, setMobileVetService] = useState(
         setAuthRequired(true);
         alert("Please log in as an owner to book.");
       } else {
-        alert(e?.response?.data?.error || e?.message || "Error");
+        alert(
+          e?.response?.data?.error ||
+            e?.message ||
+            "Error"
+        );
       }
     } finally {
       setLoading(false);
@@ -858,25 +1234,39 @@ const [mobileVetService, setMobileVetService] = useState(
             <h2 className="text-xl font-semibold">
               Book {formatServiceName(serviceType)}
             </h2>
-            <p className="text-sm text-gray-500">{displaySubtitle}</p>
+
+            <p className="text-sm text-gray-500">
+              {displaySubtitle}
+            </p>
           </div>
 
           <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-5 py-4 pb-6">
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">Select dog(s)</p>
+              <p className="text-sm text-gray-600">
+                Select dog(s)
+              </p>
 
               {authRequired ? (
                 <div className="rounded border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                  <p className="font-medium">Please log in to book this service.</p>
-                  <Link to="/auth/login" className="mt-2 inline-block underline">
+                  <p className="font-medium">
+                    Please log in to book this service.
+                  </p>
+
+                  <Link
+                    to="/auth/login"
+                    className="mt-2 inline-block underline"
+                  >
                     Log in as an owner
                   </Link>
                 </div>
               ) : dogsLoading ? (
-                <p className="text-sm text-gray-400">Loading dogs...</p>
+                <p className="text-sm text-gray-400">
+                  Loading dogs...
+                </p>
               ) : dogs.length === 0 ? (
                 <p className="rounded border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-                  No dogs found. Please add a dog to your owner profile first.
+                  No dogs found. Please add a dog to your
+                  owner profile first.
                 </p>
               ) : (
                 dogs.map((dog) => (
@@ -889,9 +1279,12 @@ const [mobileVetService, setMobileVetService] = useState(
                       checked={selectedDogIds.includes(dog.id)}
                       onChange={() => toggleDog(dog.id)}
                     />
+
                     <span>
                       {dog.name}
-                      {dog.breed ? ` • ${dog.breed}` : ""}
+                      {dog.breed
+                        ? ` • ${dog.breed}`
+                        : ""}
                     </span>
                   </label>
                 ))
@@ -899,34 +1292,51 @@ const [mobileVetService, setMobileVetService] = useState(
 
               {maxDogsPerBooking > 0 ? (
                 <p className="text-xs text-gray-500">
-                  Maximum dogs allowed for this booking: {maxDogsPerBooking}
+                  Maximum dogs allowed for this booking:{" "}
+                  {maxDogsPerBooking}
                 </p>
               ) : null}
             </div>
 
             {isBoarding ? (
               <div className="rounded-lg border border-gray-200 p-3">
-                <p className="mb-2 text-sm font-medium">Kennel preference</p>
+                <p className="mb-2 text-sm font-medium">
+                  Kennel preference
+                </p>
+
                 <select
                   className="w-full rounded border px-3 py-2"
                   value={kennelType}
-                  onChange={(e) => setKennelType(e.target.value as KennelType)}
+                  onChange={(e) =>
+                    setKennelType(
+                      e.target.value as KennelType
+                    )
+                  }
                   disabled={authRequired}
                 >
-                  <option value="SOCIAL">Social kennel</option>
-                  <option value="PRIVATE">Individual kennel</option>
+                  <option value="SOCIAL">
+                    Social kennel
+                  </option>
+
+                  <option value="PRIVATE">
+                    Individual kennel
+                  </option>
                 </select>
               </div>
             ) : null}
 
             {isDaycare ? (
               <div className="rounded-lg border border-gray-200 p-3">
-                <p className="mb-2 text-sm font-medium">Daycare session</p>
+                <p className="mb-2 text-sm font-medium">
+                  Daycare session
+                </p>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setDaycareSessionType("HALF_DAY")}
+                    onClick={() =>
+                      setDaycareSessionType("HALF_DAY")
+                    }
                     disabled={authRequired}
                     className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                       daycareSessionType === "HALF_DAY"
@@ -939,7 +1349,9 @@ const [mobileVetService, setMobileVetService] = useState(
 
                   <button
                     type="button"
-                    onClick={() => setDaycareSessionType("FULL_DAY")}
+                    onClick={() =>
+                      setDaycareSessionType("FULL_DAY")
+                    }
                     disabled={authRequired}
                     className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                       daycareSessionType === "FULL_DAY"
@@ -955,7 +1367,9 @@ const [mobileVetService, setMobileVetService] = useState(
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setHalfDayPeriod("MORNING")}
+                      onClick={() =>
+                        setHalfDayPeriod("MORNING")
+                      }
                       disabled={authRequired}
                       className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                         halfDayPeriod === "MORNING"
@@ -968,7 +1382,9 @@ const [mobileVetService, setMobileVetService] = useState(
 
                     <button
                       type="button"
-                      onClick={() => setHalfDayPeriod("AFTERNOON")}
+                      onClick={() =>
+                        setHalfDayPeriod("AFTERNOON")
+                      }
                       disabled={authRequired}
                       className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
                         halfDayPeriod === "AFTERNOON"
@@ -983,10 +1399,16 @@ const [mobileVetService, setMobileVetService] = useState(
               </div>
             ) : null}
 
-            {shouldRequireOwnerAddress && ownerAddress ? (
+            {shouldRequireOwnerAddress &&
+            ownerAddress ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-                <p className="font-medium text-blue-900">Service address</p>
-                <p className="mt-1 whitespace-pre-line">{ownerAddress}</p>
+                <p className="font-medium text-blue-900">
+                  Service address
+                </p>
+
+                <p className="mt-1 whitespace-pre-line">
+                  {ownerAddress}
+                </p>
               </div>
             ) : null}
 
@@ -1001,7 +1423,9 @@ const [mobileVetService, setMobileVetService] = useState(
                     type="date"
                     className={dateInputClass}
                     value={arrivalDate}
-                    onChange={(e) => setArrivalDate(e.target.value)}
+                    onChange={(e) =>
+                      setArrivalDate(e.target.value)
+                    }
                     disabled={authRequired}
                   />
 
@@ -1009,7 +1433,10 @@ const [mobileVetService, setMobileVetService] = useState(
                     type="date"
                     className={dateInputClass}
                     value={departureDate}
-                    onChange={(e) => setDepartureDate(e.target.value)}
+                    min={arrivalDate || undefined}
+                    onChange={(e) =>
+                      setDepartureDate(e.target.value)
+                    }
                     disabled={authRequired}
                   />
                 </div>
@@ -1019,18 +1446,25 @@ const [mobileVetService, setMobileVetService] = useState(
                     <p className="mb-1 text-sm font-medium">
                       Pet sitting location
                     </p>
+
                     <select
                       className="w-full rounded border px-3 py-2"
                       value={petSittingLocation}
                       disabled={authRequired}
                       onChange={(e) =>
                         setPetSittingLocation(
-                          e.target.value as PetSittingLocation
+                          e.target
+                            .value as PetSittingLocation
                         )
                       }
                     >
-                      <option value="OWNER_HOME">Owner home</option>
-                      <option value="SITTER_HOME">Sitter home</option>
+                      <option value="OWNER_HOME">
+                        Owner home
+                      </option>
+
+                      <option value="SITTER_HOME">
+                        Sitter home
+                      </option>
                     </select>
                   </div>
                 ) : null}
@@ -1038,11 +1472,18 @@ const [mobileVetService, setMobileVetService] = useState(
             ) : (
               <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
                 <p className="text-sm font-semibold">
-                  {isDaycare ? "Select daycare date" : "Select date and time"}
+                  {isDaycare
+                    ? "Select daycare date"
+                    : isPetTransport
+                    ? "Select outbound date and time"
+                    : "Select date and time"}
                 </p>
+
                 <p className="mb-3 text-xs text-gray-500">
                   {isDaycare
                     ? "Choose the date for this daycare session."
+                    : isPetTransport
+                    ? "Choose the date and time for the outbound journey."
                     : "Choose a date first, then pick an available time slot."}
                 </p>
 
@@ -1054,10 +1495,20 @@ const [mobileVetService, setMobileVetService] = useState(
                   onChange={(e) => {
                     setDate(e.target.value);
                     setSelectedSlot(null);
+
+                    if (
+                      returnDate &&
+                      e.target.value > returnDate
+                    ) {
+                      setReturnDate(e.target.value);
+                      setSelectedReturnSlot(null);
+                    }
                   }}
                 />
 
-                {usesTimeSlots && date && slots.length === 0 ? (
+                {usesTimeSlots &&
+                date &&
+                slots.length === 0 ? (
                   <p className="mt-2 text-xs text-red-600">
                     No available time slots for this date.
                   </p>
@@ -1066,45 +1517,71 @@ const [mobileVetService, setMobileVetService] = useState(
             )}
 
             {usesTimeSlots && slots.length > 0 ? (
-              <div className="grid grid-cols-3 gap-2">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.id || slot.startTime}
-                    type="button"
-                    disabled={authRequired}
-                    onClick={() => setSelectedSlot(slot.startTime)}
-                    className={`rounded border p-2 text-sm disabled:opacity-50 ${
-                      selectedSlot === slot.startTime
-                        ? "bg-blue-600 text-white"
-                        : "bg-white"
-                    }`}
-                  >
-                    {new Date(slot.startTime).toLocaleTimeString("en-ZA", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </button>
-                ))}
+              <div>
+                {isPetTransport ? (
+                  <p className="mb-2 text-sm font-medium">
+                    Outbound time
+                  </p>
+                ) : null}
+
+                <div className="grid grid-cols-3 gap-2">
+                  {slots.map((slot) => (
+                    <button
+                      key={slot.id || slot.startTime}
+                      type="button"
+                      disabled={authRequired}
+                      onClick={() =>
+                        setSelectedSlot(slot.startTime)
+                      }
+                      className={`rounded border p-2 text-sm disabled:opacity-50 ${
+                        selectedSlot === slot.startTime
+                          ? "bg-blue-600 text-white"
+                          : "bg-white"
+                      }`}
+                    >
+                      {new Date(
+                        slot.startTime
+                      ).toLocaleTimeString("en-ZA", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
 
             {isGrooming ? (
               <div className="space-y-3 rounded-lg border border-gray-200 p-3">
-                <p className="text-sm font-medium">Grooming options per dog</p>
+                <p className="text-sm font-medium">
+                  Grooming options per dog
+                </p>
 
                 {selectedDogIds.map((dogId) => {
-                  const dog = dogs.find((item) => item.id === dogId);
-                  const selection = groomingSelections[dogId] || {
-                    category: String(groomingCategories[0] || ""),
-                    size: dog?.size || "",
-                  };
-
-                  const sizesForCategory = groomingTiers.filter(
-                    (tier) => tier.category === selection.category
+                  const dog = dogs.find(
+                    (item) => item.id === dogId
                   );
 
+                  const selection =
+                    groomingSelections[dogId] || {
+                      category: String(
+                        groomingCategories[0] || ""
+                      ),
+                      size: dog?.size || "",
+                    };
+
+                  const sizesForCategory =
+                    groomingTiers.filter(
+                      (tier) =>
+                        tier.category ===
+                        selection.category
+                    );
+
                   return (
-                    <div key={dogId} className="space-y-2 rounded border p-3">
+                    <div
+                      key={dogId}
+                      className="space-y-2 rounded border p-3"
+                    >
                       <p className="text-sm font-medium">
                         {dog?.name || "Dog"}
                       </p>
@@ -1114,23 +1591,30 @@ const [mobileVetService, setMobileVetService] = useState(
                         value={selection.category}
                         disabled={authRequired}
                         onChange={(e) =>
-                          setGroomingSelections((prev) => ({
-                            ...prev,
-                            [dogId]: {
-                              category: e.target.value,
-                              size: "",
-                            },
-                          }))
+                          setGroomingSelections(
+                            (prev) => ({
+                              ...prev,
+                              [dogId]: {
+                                category:
+                                  e.target.value,
+                                size: "",
+                              },
+                            })
+                          )
                         }
                       >
-                        {groomingCategories.map((category) => (
-                          <option
-                            key={String(category)}
-                            value={String(category)}
-                          >
-                            {formatLabel(String(category))}
-                          </option>
-                        ))}
+                        {groomingCategories.map(
+                          (category) => (
+                            <option
+                              key={String(category)}
+                              value={String(category)}
+                            >
+                              {formatLabel(
+                                String(category)
+                              )}
+                            </option>
+                          )
+                        )}
                       </select>
 
                       <select
@@ -1138,22 +1622,37 @@ const [mobileVetService, setMobileVetService] = useState(
                         value={selection.size}
                         disabled={authRequired}
                         onChange={(e) =>
-                          setGroomingSelections((prev) => ({
-                            ...prev,
-                            [dogId]: {
-                              ...selection,
-                              size: e.target.value,
-                            },
-                          }))
+                          setGroomingSelections(
+                            (prev) => ({
+                              ...prev,
+                              [dogId]: {
+                                ...selection,
+                                size: e.target.value,
+                              },
+                            })
+                          )
                         }
                       >
-                        <option value="">Select size</option>
-                        {sizesForCategory.map((tier) => (
-                          <option key={tier.id} value={tier.dogSize}>
-                            {formatLabel(tier.dogSize)} —{" "}
-                            {formatPrice(tier.priceCents)}
-                          </option>
-                        ))}
+                        <option value="">
+                          Select size
+                        </option>
+
+                        {sizesForCategory.map(
+                          (tier) => (
+                            <option
+                              key={tier.id}
+                              value={tier.dogSize}
+                            >
+                              {formatLabel(
+                                tier.dogSize
+                              )}{" "}
+                              —{" "}
+                              {formatPrice(
+                                tier.priceCents
+                              )}
+                            </option>
+                          )
+                        )}
                       </select>
                     </div>
                   );
@@ -1164,63 +1663,230 @@ const [mobileVetService, setMobileVetService] = useState(
                     type="checkbox"
                     checked={isMobileGrooming}
                     disabled={authRequired}
-                    onChange={(e) => setIsMobileGrooming(e.target.checked)}
+                    onChange={(e) =>
+                      setIsMobileGrooming(
+                        e.target.checked
+                      )
+                    }
                   />
-                  <span>Mobile grooming at owner home</span>
+
+                  <span>
+                    Mobile grooming at owner home
+                  </span>
                 </label>
               </div>
             ) : null}
 
             {isPetTransport ? (
-              <div className="space-y-3 rounded-lg border border-gray-200 p-3">
-                <select
-                  className="w-full rounded border px-3 py-2"
-                  value={journeyType}
-                  disabled={authRequired}
-                  onChange={(e) =>
-                    setJourneyType(e.target.value as PetTransportJourneyType)
-                  }
-                >
-                  <option value="ONE_WAY">One way</option>
-                  <option value="RETURN">Return</option>
-                </select>
+              <div className="space-y-4 rounded-lg border border-gray-200 p-3">
+                <div>
+                  <p className="mb-2 text-sm font-medium">
+                    Journey type
+                  </p>
 
-                {ownerAddress ? (
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      className="rounded border px-3 py-2 text-sm"
                       disabled={authRequired}
-                      onClick={() => setPickup(ownerAddress)}
+                      onClick={() =>
+                        setJourneyType("ONE_WAY")
+                      }
+                      className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
+                        journeyType === "ONE_WAY"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "bg-white"
+                      }`}
                     >
-                      Use home as pickup
+                      One way
+                      <span className="mt-1 block text-xs">
+                        {formatPrice(
+                          petTransportOneWayPriceCents
+                        )}
+                      </span>
                     </button>
+
                     <button
                       type="button"
-                      className="rounded border px-3 py-2 text-sm"
                       disabled={authRequired}
-                      onClick={() => setDropoff(ownerAddress)}
+                      onClick={() =>
+                        setJourneyType("RETURN")
+                      }
+                      className={`rounded border px-3 py-2 text-sm disabled:opacity-50 ${
+                        journeyType === "RETURN"
+                          ? "border-blue-600 bg-blue-600 text-white"
+                          : "bg-white"
+                      }`}
                     >
-                      Use home as drop-off
+                      Return
+                      <span className="mt-1 block text-xs">
+                        {formatPrice(
+                          petTransportReturnPriceCents
+                        )}
+                      </span>
                     </button>
                   </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-medium">
+                    Outbound journey
+                  </p>
+
+                  {ownerAddress ? (
+                    <div className="mb-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="rounded border px-3 py-2 text-sm"
+                        disabled={authRequired}
+                        onClick={() =>
+                          setPickup(ownerAddress)
+                        }
+                      >
+                        Use home as pickup
+                      </button>
+
+                      <button
+                        type="button"
+                        className="rounded border px-3 py-2 text-sm"
+                        disabled={authRequired}
+                        onClick={() =>
+                          setDropoff(ownerAddress)
+                        }
+                      >
+                        Use home as drop-off
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="space-y-3">
+                    <input
+                      placeholder="Pickup location"
+                      className="w-full rounded border px-3 py-2"
+                      value={pickup}
+                      disabled={authRequired}
+                      onChange={(e) =>
+                        setPickup(e.target.value)
+                      }
+                    />
+
+                    <input
+                      placeholder="Drop-off location"
+                      className="w-full rounded border px-3 py-2"
+                      value={dropoff}
+                      disabled={authRequired}
+                      onChange={(e) =>
+                        setDropoff(e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+
+                {journeyType === "RETURN" ? (
+                  <div className="space-y-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">
+                        Return journey
+                      </p>
+
+                      <p className="mt-1 text-xs text-blue-800">
+                        The return trip will collect your
+                        dog from the outbound destination
+                        and return them to the original
+                        pickup point.
+                      </p>
+                    </div>
+
+                    <div className="rounded border border-blue-200 bg-white p-3 text-sm">
+                      <p>
+                        <span className="font-medium">
+                          Return pickup:
+                        </span>{" "}
+                        {dropoff.trim() ||
+                          "Enter the outbound drop-off location"}
+                      </p>
+
+                      <p className="mt-1">
+                        <span className="font-medium">
+                          Return drop-off:
+                        </span>{" "}
+                        {pickup.trim() ||
+                          "Enter the outbound pickup location"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-blue-900">
+                        Select return date
+                      </p>
+
+                      <input
+                        type="date"
+                        className={dateInputClass}
+                        value={returnDate}
+                        min={date || undefined}
+                        disabled={authRequired}
+                        onChange={(e) => {
+                          setReturnDate(
+                            e.target.value
+                          );
+                          setSelectedReturnSlot(null);
+                        }}
+                      />
+                    </div>
+
+                    {returnDate &&
+                    returnSlots.length === 0 ? (
+                      <p className="text-xs text-red-600">
+                        No available return time slots
+                        for this date.
+                      </p>
+                    ) : null}
+
+                    {returnSlots.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-sm font-medium text-blue-900">
+                          Select return time
+                        </p>
+
+                        <div className="grid grid-cols-3 gap-2">
+                          {returnSlots.map((slot) => (
+                            <button
+                              key={
+                                slot.id ||
+                                slot.startTime
+                              }
+                              type="button"
+                              disabled={
+                                authRequired
+                              }
+                              onClick={() =>
+                                setSelectedReturnSlot(
+                                  slot.startTime
+                                )
+                              }
+                              className={`rounded border p-2 text-sm disabled:opacity-50 ${
+                                selectedReturnSlot ===
+                                slot.startTime
+                                  ? "bg-blue-600 text-white"
+                                  : "bg-white"
+                              }`}
+                            >
+                              {new Date(
+                                slot.startTime
+                              ).toLocaleTimeString(
+                                "en-ZA",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
                 ) : null}
-
-                <input
-                  placeholder="Pickup location"
-                  className="w-full rounded border px-3 py-2"
-                  value={pickup}
-                  disabled={authRequired}
-                  onChange={(e) => setPickup(e.target.value)}
-                />
-
-                <input
-                  placeholder="Drop-off location"
-                  className="w-full rounded border px-3 py-2"
-                  value={dropoff}
-                  disabled={authRequired}
-                  onChange={(e) => setDropoff(e.target.value)}
-                />
               </div>
             ) : null}
 
@@ -1229,11 +1895,17 @@ const [mobileVetService, setMobileVetService] = useState(
                 className="w-full rounded border px-3 py-2"
                 value={mobileVetService}
                 disabled={authRequired}
-                onChange={(e) => setMobileVetService(e.target.value)}
+                onChange={(e) =>
+                  setMobileVetService(e.target.value)
+                }
               >
                 {mobileOptions.map((option) => (
-                  <option key={option.key} value={option.key}>
-                    {option.label || formatLabel(option.key)}
+                  <option
+                    key={option.key}
+                    value={option.key}
+                  >
+                    {option.label ||
+                      formatLabel(option.key)}
                   </option>
                 ))}
               </select>
@@ -1246,12 +1918,18 @@ const [mobileVetService, setMobileVetService] = useState(
                   placeholder="Optional access notes, e.g. estate name, parking or entry instructions."
                   value={accessInstructions}
                   disabled={authRequired}
-                  onChange={(e) => setAccessInstructions(e.target.value)}
+                  onChange={(e) =>
+                    setAccessInstructions(
+                      e.target.value
+                    )
+                  }
                 />
 
                 <p className="mt-1 text-xs text-gray-500">
-                  Please don&apos;t add gate codes yet. You can share secure access
-                  details with the supplier once the booking is confirmed.
+                  Please don&apos;t add gate codes yet.
+                  You can share secure access details with
+                  the supplier once the booking is
+                  confirmed.
                 </p>
               </div>
             ) : null}
@@ -1261,7 +1939,9 @@ const [mobileVetService, setMobileVetService] = useState(
               placeholder="Anything the supplier should know"
               value={notes}
               disabled={authRequired}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) =>
+                setNotes(e.target.value)
+              }
             />
           </div>
 
@@ -1271,12 +1951,18 @@ const [mobileVetService, setMobileVetService] = useState(
                 type="checkbox"
                 checked={acceptedHealthSafety}
                 disabled={authRequired}
-                onChange={(e) => setAcceptedHealthSafety(e.target.checked)}
+                onChange={(e) =>
+                  setAcceptedHealthSafety(
+                    e.target.checked
+                  )
+                }
                 className="mt-1"
               />
+
               <span>
-                I confirm my pet information is accurate, vaccinations are up to
-                date where required, and I agree to the{" "}
+                I confirm my pet information is accurate,
+                vaccinations are up to date where
+                required, and I agree to the{" "}
                 <a
                   href="/legal/health-safety"
                   target="_blank"
@@ -1291,7 +1977,11 @@ const [mobileVetService, setMobileVetService] = useState(
 
             <button
               onClick={handleBooking}
-              disabled={loading || dogsLoading || authRequired}
+              disabled={
+                loading ||
+                dogsLoading ||
+                authRequired
+              }
               className="w-full rounded bg-blue-600 py-3 font-medium text-white disabled:opacity-50"
             >
               {authRequired
@@ -1301,7 +1991,10 @@ const [mobileVetService, setMobileVetService] = useState(
                 : "Request Booking"}
             </button>
 
-            <button onClick={onClose} className="mt-3 w-full py-2 text-gray-500">
+            <button
+              onClick={onClose}
+              className="mt-3 w-full py-2 text-gray-500"
+            >
               Cancel
             </button>
           </div>
