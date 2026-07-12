@@ -3,100 +3,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
-type BookingStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "IN_PROGRESS"
-  | "COMPLETED_UNBILLED"
-  | "COMPLETED"
-  | "CANCELLED";
-
-type BookingDog = {
-  dog?: {
-    id: string;
-    name: string;
-    breed?: string | null;
-    size?: string | null;
-    sex?: string | null;
-    isNeutered?: boolean | null;
-    behavioralNotes?: string | null;
-    goodWithDogs?: boolean | null;
-    goodWithChildren?: boolean | null;
-    medicalNotes?: string | null;
-    isVaccinated?: boolean | null;
-    vaccinationExpiryDate?: string | null;
-    kennelCoughAt?: string | null;
-    dewormedAt?: string | null;
-    tickFleaTreatedAt?: string | null;
-    vetName?: string | null;
-    vetPhone?: string | null;
-  };
-};
-
-type BookingEvent = {
-  id: string;
-  type: string;
-  message?: string | null;
-  createdAt?: string;
-};
-
-type BookingReview = {
-  id: string;
-  rating: number;
-  comment?: string | null;
-  createdAt?: string;
-};
-
-type ReviewInput = {
-  rating: string;
-  comment: string;
-};
-
-type ServiceLocationSummary = {
-  type: "OWNER_HOME" | "SUPPLIER_LOCATION" | "TRANSPORT";
-  label?: string | null;
-  addressLine?: string | null;
-  pickupAddress?: string | null;
-  dropoffAddress?: string | null;
-};
-
-type TransportAreaSummary = {
-  type: "TRANSPORT_AREAS";
-  label?: string | null;
-  pickupSuburb?: string | null;
-  dropoffSuburb?: string | null;
-};
-
-type SupplierBooking = {
-  id: string;
-  status: BookingStatus;
-  startAt: string;
-  endAt: string;
-  journeyType?: "ONE_WAY" | "RETURN" | null;
-  returnStartAt?: string | null;
-  returnEndAt?: string | null;
-  totalCents?: number | null;
-  serviceType?: string | null;
-  serviceArea?: string | null;
-  pickupSuburb?: string | null;
-  dropoffSuburb?: string | null;
-  transportAreaSummary?: TransportAreaSummary | null;
-  notes?: string | null;
-  accessInstructions?: string | null;
-  accessInstructionsUpdatedAt?: string | null;
-  completedAt?: string | null;
-  serviceLocationSummary?: ServiceLocationSummary | null;
-  supplierReview?: BookingReview | null;
-  hasSupplierReviewed?: boolean;
-  owner?: {
-    id: string;
-    firstName?: string | null;
-    lastName?: string | null;
-    email?: string | null;
-  };
-  dogs?: BookingDog[];
-  events?: BookingEvent[];
-};
+import type {
+  BookingStatus,
+  ReviewInput,
+  SupplierBooking,
+} from "@/types/bookings";
 
 function formatDateTime(value?: string) {
   if (!value) return "—";
