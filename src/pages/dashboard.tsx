@@ -273,6 +273,97 @@ function BookingMetaPill({ label, value }: { label: string; value: string }) {
   );
 }
 
+function TransportJourneyDetails({ booking }: { booking: any }) {
+  const location = booking.serviceLocationSummary;
+  const isReturnJourney = booking.journeyType === "RETURN";
+
+  if (
+    booking.serviceType !== "PET_TRANSPORT" &&
+    booking.supplierService?.service !== "PET_TRANSPORT"
+  ) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+      <p className="font-medium">
+        {location?.type === "TRANSPORT"
+          ? "Journey details"
+          : isReturnJourney
+          ? "Return journey"
+          : "One-way journey"}
+      </p>
+
+      <div className="mt-3">
+        <p className="font-medium">Outbound journey</p>
+
+        {location?.type === "TRANSPORT" ? (
+          <div className="mt-1 space-y-2">
+            {location.pickupAddress ? (
+              <div>
+                <span className="font-medium">Pickup:</span>
+                <div className="whitespace-pre-line">
+                  {location.pickupAddress}
+                </div>
+              </div>
+            ) : null}
+
+            {location.dropoffAddress ? (
+              <div>
+                <span className="font-medium">Drop-off:</span>
+                <div className="whitespace-pre-line">
+                  {location.dropoffAddress}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="mt-1 text-blue-700">
+            Exact journey details will be available once the booking is
+            confirmed.
+          </p>
+        )}
+      </div>
+
+      {isReturnJourney ? (
+        <div className="mt-4 border-t border-blue-200 pt-3">
+          <p className="font-medium">Return journey</p>
+
+          {booking.returnStartAt && booking.returnEndAt ? (
+            <p className="mt-1">
+              {formatDate(booking.returnStartAt)} •{" "}
+              {formatTime(booking.returnStartAt)} –{" "}
+              {formatTime(booking.returnEndAt)}
+            </p>
+          ) : null}
+
+          {location?.type === "TRANSPORT" ? (
+            <div className="mt-2 space-y-2">
+              {location.dropoffAddress ? (
+                <div>
+                  <span className="font-medium">Pickup:</span>
+                  <div className="whitespace-pre-line">
+                    {location.dropoffAddress}
+                  </div>
+                </div>
+              ) : null}
+
+              {location.pickupAddress ? (
+                <div>
+                  <span className="font-medium">Drop-off:</span>
+                  <div className="whitespace-pre-line">
+                    {location.pickupAddress}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function Section({
   id,
   title,
@@ -891,6 +982,11 @@ export default function Dashboard() {
       booking.status === "CANCELLED" ? getSupplierMessage(booking) : null;
 
     const parsedNotes = parseBookingNotes(booking.notes);
+
+    const isTransportBooking =
+      booking.serviceType === "PET_TRANSPORT" ||
+      booking.supplierService?.service === "PET_TRANSPORT";
+
     const canShowAccessInstructions =
       booking.serviceLocationSummary?.type === "OWNER_HOME" ||
       booking.serviceLocationSummary?.type === "TRANSPORT";
@@ -921,6 +1017,26 @@ export default function Dashboard() {
                 {formatDate(booking.startAt)} • {formatTime(booking.startAt)} –{" "}
                 {formatTime(booking.endAt)}
               </p>
+
+                {isTransportBooking ? (
+              <>
+    <p className="mt-1 text-sm text-gray-600">
+      {booking.journeyType === "RETURN"
+        ? "Return journey"
+        : "One-way journey"}
+    </p>
+
+    {booking.journeyType === "RETURN" &&
+    booking.returnStartAt &&
+    booking.returnEndAt ? (
+      <p className="mt-1 text-sm text-gray-500">
+        Return: {formatDate(booking.returnStartAt)} •{" "}
+        {formatTime(booking.returnStartAt)} –{" "}
+        {formatTime(booking.returnEndAt)}
+      </p>
+    ) : null}
+  </>
+) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -952,7 +1068,7 @@ export default function Dashboard() {
                 : "No dogs selected"}
             </p>
 
-            {parsedNotes.details.length > 0 ? (
+            {!isTransportBooking && parsedNotes.details.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {parsedNotes.details.map((detail) => {
                   const [rawLabel, ...rest] = detail.split(":");
@@ -969,7 +1085,8 @@ export default function Dashboard() {
               </div>
             ) : null}
 
-            {parsedNotes.addresses.length > 0 &&
+            {!isTransportBooking &&
+            parsedNotes.addresses.length > 0 &&
             canShowServiceLocationOnOwnerDashboard(booking) ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-sm font-medium text-gray-800">
@@ -988,7 +1105,7 @@ export default function Dashboard() {
               </div>
             ) : null}
 
-            {parsedNotes.general.length > 0 ? (
+            {!isTransportBooking && parsedNotes.general.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-sm font-medium text-gray-800">Notes</p>
                 <div className="mt-2 space-y-1">
@@ -999,6 +1116,10 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
+            ) : null}
+
+            {isTransportBooking ? (
+            <TransportJourneyDetails booking={booking} />
             ) : null}
 
             {canShowAccessInstructions &&
