@@ -19,13 +19,23 @@ function formatTime(date: string) {
 }
 
 function formatPrice(cents?: number | null) {
-  if (!cents) return "—";
+  if (cents === null || cents === undefined) return "—";
   return `R${(cents / 100).toFixed(0)}`;
 }
 
 function firstNameOnly(value?: string | null) {
   if (!value) return "";
   return String(value).trim().split(/\s+/)[0];
+}
+
+function firstNamesOnlyList(value?: string | null) {
+  if (!value) return "";
+
+  return String(value)
+    .split(",")
+    .map((name) => firstNameOnly(name))
+    .filter(Boolean)
+    .join(", ");
 }
 
 function formatLabel(value?: string | null) {
@@ -147,6 +157,7 @@ function uniqueParts(parts: string[]) {
 
   for (const part of parts) {
     const key = part.toLowerCase();
+
     if (!seen.has(key)) {
       seen.add(key);
       result.push(part);
@@ -234,10 +245,70 @@ function cleanAddressForDisplay(address: string) {
     .replace(/^Service address:\s*/i, "")
     .replace(/^Pickup point:\s*/i, "Pickup: ")
     .replace(/^Drop-off point:\s*/i, "Drop-off: ")
+    .replace(/^Pickup address:\s*/i, "Pickup: ")
+    .replace(/^Drop-off address:\s*/i, "Drop-off: ")
     .trim();
 }
 
-function canShowServiceLocationOnOwnerDashboard(booking: any) {
+function formatGroomingSelection(value: string) {
+  return value
+    .split(/\s*;\s*|\s*\|\s*/)
+    .map((selection) => {
+      const trimmed = selection.trim();
+
+      const match = trimmed.match(
+        /^(.+?)\s*-\s*(wash brush|wash cut),?\s*(small|medium|large|x large|xl)$/i
+      );
+
+      if (!match) {
+        return trimmed
+          .replace(/\bWash Brush\b/gi, "Wash & Brush")
+          .replace(/\bWash Cut\b/gi, "Wash & Cut");
+      }
+
+      const [, dogName, service, size] = match;
+
+      const formattedService =
+        service.toLowerCase() === "wash brush"
+          ? "Wash & Brush"
+          : "Wash & Cut";
+
+      const formattedSize =
+        size.toLowerCase() === "xl"
+          ? "XL"
+          : size
+              .toLowerCase()
+              .replace(/\b\w/g, (character) => character.toUpperCase());
+
+      return `${firstNameOnly(dogName)}: ${formattedService} (${formattedSize})`;
+    })
+    .filter(Boolean)
+    .join(" • ");
+}
+
+function formatBookingDetail(detail: string) {
+  const [rawLabel, ...rest] = detail.split(":");
+  const rawValue = rest.join(":").trim();
+  const label = rawLabel.trim();
+  const lowerLabel = label.toLowerCase();
+
+  if (
+    lowerLabel === "grooming selections" ||
+    lowerLabel === "grooming option"
+  ) {
+    return {
+      label: "Grooming",
+      value: formatGroomingSelection(rawValue),
+    };
+  }
+
+  return {
+    label,
+    value: rawValue,
+  };
+}
+
+function canShowAccessInstructions(booking: any) {
   return (
     booking.serviceLocationSummary?.type === "OWNER_HOME" ||
     booking.serviceLocationSummary?.type === "TRANSPORT"
@@ -264,30 +335,47 @@ function getOwnerReviewPrompt(booking: any) {
   return `How was your ${serviceText} experience with ${supplierName}?`;
 }
 
-function BookingMetaPill({ label, value }: { label: string; value: string }) {
+function BookingMetaPill({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  if (!value) return null;
+
   return (
     <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700">
       <span className="mr-1 font-medium">{formatNoteLabel(label)}:</span>
-      <span>{formatNoteValue(value)}</span>
+      <span>
+        {label.toLowerCase() === "grooming"
+          ? value
+          : formatNoteValue(value)}
+      </span>
     </span>
   );
 }
 
 function TransportJourneyDetails({ booking }: { booking: any }) {
   const location = booking.serviceLocationSummary;
+  const transportAreas = booking.transportAreaSummary;
+
   const isReturnJourney = booking.journeyType === "RETURN";
 
-  if (
-    booking.serviceType !== "PET_TRANSPORT" &&
-    booking.supplierService?.service !== "PET_TRANSPORT"
-  ) {
-    return null;
-  }
+  const pickupArea =
+    transportAreas?.pickupSuburb || booking.pickupSuburb || null;
+
+  const dropoffArea =
+    transportAreas?.dropoffSuburb || booking.dropoffSuburb || null;
+
+  const hasExactJourneyDetails =
+    location?.type === "TRANSPORT" &&
+    (location.pickupAddress || location.dropoffAddress);
 
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
       <p className="font-medium">
-        {location?.type === "TRANSPORT"
+        {hasExactJourneyDetails
           ? "Journey details"
           : isReturnJourney
           ? "Return journey"
@@ -295,10 +383,10 @@ function TransportJourneyDetails({ booking }: { booking: any }) {
       </p>
 
       <div className="mt-3">
-        <p className="font-medium">Outbound journey</p>
+        <p className="font-medium text-blue-900">Outbound journey</p>
 
-        {location?.type === "TRANSPORT" ? (
-          <div className="mt-1 space-y-2">
+        {hasExactJourneyDetails ? (
+          <div className="mt-2 space-y-2">
             {location.pickupAddress ? (
               <div>
                 <span className="font-medium">Pickup:</span>
@@ -318,16 +406,37 @@ function TransportJourneyDetails({ booking }: { booking: any }) {
             ) : null}
           </div>
         ) : (
-          <p className="mt-1 text-blue-700">
-            Exact journey details will be available once the booking is
-            confirmed.
-          </p>
+          <div className="mt-2 space-y-1">
+            {pickupArea ? (
+              <p>
+                <span className="font-medium">Pickup area:</span>{" "}
+                {pickupArea}
+              </p>
+            ) : null}
+
+            {dropoffArea ? (
+              <p>
+                <span className="font-medium">Drop-off area:</span>{" "}
+                {dropoffArea}
+              </p>
+            ) : null}
+
+            {!pickupArea && !dropoffArea ? (
+              <p className="text-blue-700">
+                Journey areas have not been provided.
+              </p>
+            ) : null}
+
+            <p className="pt-2 text-xs text-blue-700">
+              Exact addresses will be available once the booking is confirmed.
+            </p>
+          </div>
         )}
       </div>
 
       {isReturnJourney ? (
         <div className="mt-4 border-t border-blue-200 pt-3">
-          <p className="font-medium">Return journey</p>
+          <p className="font-medium text-blue-900">Return journey</p>
 
           {booking.returnStartAt && booking.returnEndAt ? (
             <p className="mt-1">
@@ -337,7 +446,7 @@ function TransportJourneyDetails({ booking }: { booking: any }) {
             </p>
           ) : null}
 
-          {location?.type === "TRANSPORT" ? (
+          {hasExactJourneyDetails ? (
             <div className="mt-2 space-y-2">
               {location.dropoffAddress ? (
                 <div>
@@ -357,11 +466,107 @@ function TransportJourneyDetails({ booking }: { booking: any }) {
                 </div>
               ) : null}
             </div>
-          ) : null}
+          ) : (
+            <div className="mt-2 space-y-1">
+              {dropoffArea ? (
+                <p>
+                  <span className="font-medium">Pickup area:</span>{" "}
+                  {dropoffArea}
+                </p>
+              ) : null}
+
+              {pickupArea ? (
+                <p>
+                  <span className="font-medium">Drop-off area:</span>{" "}
+                  {pickupArea}
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
       ) : null}
     </div>
   );
+}
+
+function OwnerServiceAddress({
+  booking,
+  legacyAddresses,
+}: {
+  booking: any;
+  legacyAddresses: string[];
+}) {
+  const location = booking.serviceLocationSummary;
+
+  if (
+    booking.serviceType === "PET_TRANSPORT" ||
+    booking.supplierService?.service === "PET_TRANSPORT"
+  ) {
+    return null;
+  }
+
+  if (location?.addressLine) {
+    const cleanAddress = String(location.addressLine)
+      .replace(/^Owner address:\s*/i, "")
+      .replace(/^Supplier address:\s*/i, "")
+      .replace(/^Service address:\s*/i, "")
+      .trim();
+
+    if (!cleanAddress) return null;
+
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <p className="text-sm font-medium text-blue-900">
+          Service address
+        </p>
+
+        <p className="mt-1 whitespace-pre-line text-sm text-blue-800">
+          {cleanAddress}
+        </p>
+      </div>
+    );
+  }
+
+  const cleanedLegacyAddresses = legacyAddresses
+    .map(cleanAddressForDisplay)
+    .filter(Boolean);
+
+  if (cleanedLegacyAddresses.length > 0) {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <p className="text-sm font-medium text-blue-900">
+          Service address
+        </p>
+
+        <div className="mt-1 space-y-1">
+          {cleanedLegacyAddresses.map((address) => (
+            <p
+              key={address}
+              className="whitespace-pre-line text-sm text-blue-800"
+            >
+              {address}
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (booking.serviceArea) {
+    return (
+      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+        <p className="text-sm font-medium text-blue-900">
+          Service area
+        </p>
+
+        <p className="mt-1 text-sm text-blue-800">
+          {booking.serviceArea}
+        </p>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function Section({
@@ -376,7 +581,10 @@ function Section({
   id: string;
   title: string;
   bookings: any[];
-  renderBookingCard: (booking: any, isToday?: boolean) => React.ReactNode;
+  renderBookingCard: (
+    booking: any,
+    isToday?: boolean
+  ) => React.ReactNode;
   titleColor?: string;
   isOpen: boolean;
   onToggle: () => void;
@@ -384,18 +592,27 @@ function Section({
   if (bookings.length === 0) return null;
 
   return (
-    <section id={id} className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section
+      id={id}
+      className="rounded-2xl border border-gray-200 bg-white p-4"
+    >
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
-          <h3 className={`text-lg font-semibold ${titleColor || "text-gray-900"}`}>
+          <h3
+            className={`text-lg font-semibold ${
+              titleColor || "text-gray-900"
+            }`}
+          >
             {title}
           </h3>
+
           <p className="mt-1 text-sm text-gray-500">
-            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
+            {bookings.length} booking
+            {bookings.length === 1 ? "" : "s"}
           </p>
         </div>
 
@@ -403,13 +620,18 @@ function Section({
           <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
             {bookings.length}
           </span>
-          <span className="text-xl text-gray-500">{isOpen ? "−" : "+"}</span>
+
+          <span className="text-xl text-gray-500">
+            {isOpen ? "−" : "+"}
+          </span>
         </div>
       </button>
 
       {isOpen ? (
         <div className="mt-4 space-y-4">
-          {bookings.map((booking: any) => renderBookingCard(booking))}
+          {bookings.map((booking: any) =>
+            renderBookingCard(booking)
+          )}
         </div>
       ) : null}
     </section>
@@ -417,14 +639,54 @@ function Section({
 }
 
 const SERVICE_SHORTCUTS = [
-  { key: "WALKING", label: "Walking", icon: "🐾", href: "/search?service=WALKING" },
-  { key: "TRAINING", label: "Training", icon: "🎓", href: "/search?service=TRAINING" },
-  { key: "GROOMING", label: "Grooming", icon: "✂️", href: "/search?service=GROOMING" },
-  { key: "BOARDING", label: "Boarding", icon: "🏠", href: "/search?service=BOARDING" },
-  { key: "DAYCARE", label: "Daycare", icon: "☀️", href: "/search?service=DAYCARE" },
-  { key: "PET_SITTING", label: "Pet Sitting", icon: "🩷", href: "/search?service=PET_SITTING" },
-  { key: "PET_TRANSPORT", label: "Transport", icon: "🚗", href: "/search?service=PET_TRANSPORT" },
-  { key: "MOBILE_VET", label: "Mobile Vet", icon: "🩺", href: "/search?service=MOBILE_VET" },
+  {
+    key: "WALKING",
+    label: "Walking",
+    icon: "🐾",
+    href: "/search?service=WALKING",
+  },
+  {
+    key: "TRAINING",
+    label: "Training",
+    icon: "🎓",
+    href: "/search?service=TRAINING",
+  },
+  {
+    key: "GROOMING",
+    label: "Grooming",
+    icon: "✂️",
+    href: "/search?service=GROOMING",
+  },
+  {
+    key: "BOARDING",
+    label: "Boarding",
+    icon: "🏠",
+    href: "/search?service=BOARDING",
+  },
+  {
+    key: "DAYCARE",
+    label: "Daycare",
+    icon: "☀️",
+    href: "/search?service=DAYCARE",
+  },
+  {
+    key: "PET_SITTING",
+    label: "Pet Sitting",
+    icon: "🩷",
+    href: "/search?service=PET_SITTING",
+  },
+  {
+    key: "PET_TRANSPORT",
+    label: "Transport",
+    icon: "🚗",
+    href: "/search?service=PET_TRANSPORT",
+  },
+  {
+    key: "MOBILE_VET",
+    label: "Mobile Vet",
+    icon: "🩺",
+    href: "/search?service=MOBILE_VET",
+  },
 ];
 
 function DogProfilePrompt() {
@@ -468,9 +730,9 @@ function OwnerProfilePrompt() {
       </h2>
 
       <p className="mt-2 text-sm text-blue-800">
-        Add your suburb and home address so DogLife can show nearby providers
-        and prepare home-based services like walking, grooming, training and
-        mobile vet visits.
+        Add your suburb and home address so DogLife can show nearby
+        providers and prepare home-based services like walking, grooming,
+        training and mobile vet visits.
       </p>
 
       <Link
@@ -485,10 +747,13 @@ function OwnerProfilePrompt() {
 
 function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 md:p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:p-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">Book a service</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Book a service
+          </h2>
+
           <p className="mt-1 text-sm text-gray-500">
             {hasDogs
               ? "Preferred providers first, then providers in your suburb."
@@ -581,6 +846,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           <h2 className="text-xl font-semibold text-gray-900">
             How DogLife works
           </h2>
+
           <p className="mt-1 text-sm text-gray-500">
             A simple journey from Dog Passport to trusted care.
           </p>
@@ -609,15 +875,23 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           const content = (
             <>
               <div className="text-2xl">{step.icon}</div>
+
               <p className="mt-2 text-sm font-semibold text-gray-900">
                 {index + 1}. {step.title}
               </p>
-              <p className="mt-1 text-xs text-gray-500">{step.text}</p>
+
+              <p className="mt-1 text-xs text-gray-500">
+                {step.text}
+              </p>
             </>
           );
 
           return step.href ? (
-            <Link key={step.title} to={step.href} className={cardClass}>
+            <Link
+              key={step.title}
+              to={step.href}
+              className={cardClass}
+            >
               {content}
             </Link>
           ) : (
@@ -638,7 +912,9 @@ export default function Dashboard() {
   const focusBookingId = searchParams.get("bookingId");
   const focusAction = searchParams.get("action");
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+  const [openSections, setOpenSections] = useState<
+    Record<string, boolean>
+  >({
     today: true,
     pending: true,
     confirmed: true,
@@ -648,8 +924,12 @@ export default function Dashboard() {
     cancelled: false,
   });
 
-  const [accessInstructionInputs, setAccessInstructionInputs] = useState<Record<string, string>>({});
-  const [savedAccessInstructionId, setSavedAccessInstructionId] = useState<string | null>(null);
+  const [accessInstructionInputs, setAccessInstructionInputs] =
+    useState<Record<string, string>>({});
+
+  const [savedAccessInstructionId, setSavedAccessInstructionId] =
+    useState<string | null>(null);
+
   const [reviewInputs, setReviewInputs] = useState<
     Record<string, { rating: string; comment: string }>
   >({});
@@ -670,13 +950,16 @@ export default function Dashboard() {
     },
   });
 
-  const { data: ownerProfileData, isLoading: isOwnerProfileLoading } = useQuery({
-  queryKey: ["owner-profile"],
-  queryFn: async () => {
-    const res = await api.get("/api/owner/profile");
-    return res.data?.profile || null;
-  },
-});
+  const {
+    data: ownerProfileData,
+    isLoading: isOwnerProfileLoading,
+  } = useQuery({
+    queryKey: ["owner-profile"],
+    queryFn: async () => {
+      const res = await api.get("/api/owner/profile");
+      return res.data?.profile || null;
+    },
+  });
 
   const dogs = dogsData?.dogs || [];
   const hasDogs = dogs.length > 0;
@@ -710,12 +993,16 @@ export default function Dashboard() {
       bookingId: string;
       accessInstructions: string;
     }) => {
-      await api.patch(`/api/bookings/${bookingId}/access-instructions`, {
-        accessInstructions,
-      });
+      await api.patch(
+        `/api/bookings/${bookingId}/access-instructions`,
+        {
+          accessInstructions,
+        }
+      );
     },
     onSuccess: (_data, variables) => {
       setSavedAccessInstructionId(variables.bookingId);
+
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
 
@@ -771,28 +1058,31 @@ export default function Dashboard() {
   const sortedBookings = useMemo(() => {
     return [...data].sort(
       (a: any, b: any) =>
-        new Date(b.startAt).getTime() - new Date(a.startAt).getTime()
+        new Date(b.startAt).getTime() -
+        new Date(a.startAt).getTime()
     );
   }, [data]);
 
   const todayBookings = useMemo(
     () =>
-      sortedBookings.filter((b: any) => {
-        const date = new Date(b.startAt);
-        return date >= todayStart && date <= todayEnd;
+      sortedBookings.filter((booking: any) => {
+        const bookingDate = new Date(booking.startAt);
+        return bookingDate >= todayStart && bookingDate <= todayEnd;
       }),
     [sortedBookings, todayStart, todayEnd]
   );
 
   const todayBookingIds = useMemo(
-    () => new Set(todayBookings.map((b: any) => b.id)),
+    () => new Set(todayBookings.map((booking: any) => booking.id)),
     [todayBookings]
   );
 
   const pendingBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) => b.status === "PENDING" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "PENDING" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -800,7 +1090,9 @@ export default function Dashboard() {
   const confirmedBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) => b.status === "CONFIRMED" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "CONFIRMED" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -808,7 +1100,9 @@ export default function Dashboard() {
   const inProgressBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) => b.status === "IN_PROGRESS" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "IN_PROGRESS" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -816,8 +1110,9 @@ export default function Dashboard() {
   const completedAwaitingPaymentBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) =>
-          b.status === "COMPLETED_UNBILLED" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "COMPLETED_UNBILLED" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -825,7 +1120,9 @@ export default function Dashboard() {
   const completedPaidBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) => b.status === "COMPLETED" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "COMPLETED" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -833,7 +1130,9 @@ export default function Dashboard() {
   const cancelledBookings = useMemo(
     () =>
       sortedBookings.filter(
-        (b: any) => b.status === "CANCELLED" && !todayBookingIds.has(b.id)
+        (booking: any) =>
+          booking.status === "CANCELLED" &&
+          !todayBookingIds.has(booking.id)
       ),
     [sortedBookings, todayBookingIds]
   );
@@ -905,11 +1204,64 @@ export default function Dashboard() {
     (section) => section.bookings.length > 0
   );
 
+  const summaryItems = [
+    {
+      key: "today",
+      label: "Today",
+      count: todayBookings.length,
+      textClass: "text-blue-600",
+    },
+    {
+      key: "pending",
+      label: "Pending",
+      count: pendingBookings.length,
+      textClass: "text-amber-600",
+    },
+    {
+      key: "confirmed",
+      label: "Confirmed",
+      count: confirmedBookings.length,
+      textClass: "text-green-600",
+    },
+    {
+      key: "in-progress",
+      label: "In Progress",
+      count: inProgressBookings.length,
+      textClass: "text-blue-600",
+    },
+    {
+      key: "completed-unbilled",
+      label: "Awaiting Payment",
+      count: completedAwaitingPaymentBookings.length,
+      textClass: "text-purple-600",
+    },
+  ];
+
   function toggleSection(sectionKey: string) {
-    setOpenSections((prev) => ({
-      ...prev,
-      [sectionKey]: !prev[sectionKey],
+    setOpenSections((current) => ({
+      ...current,
+      [sectionKey]: !current[sectionKey],
     }));
+  }
+
+  function openAndScroll(sectionKey: string) {
+    const section = bookingSections.find(
+      (item) => item.key === sectionKey
+    );
+
+    if (!section || section.bookings.length === 0) return;
+
+    setOpenSections((current) => ({
+      ...current,
+      [sectionKey]: true,
+    }));
+
+    window.setTimeout(() => {
+      document.getElementById(sectionKey)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   }
 
   function handleNotificationClick(notification: any) {
@@ -917,7 +1269,8 @@ export default function Dashboard() {
       markAsReadMutation.mutate(notification.id);
     }
 
-    const bookingId = notification.referenceId || notification.booking?.id;
+    const bookingId =
+      notification.referenceId || notification.booking?.id;
 
     if (!bookingId) return;
 
@@ -928,19 +1281,27 @@ export default function Dashboard() {
     );
 
     if (section) {
-      setOpenSections((prev) => {
-        if (prev[section.key]) return prev;
-        return {
-          ...prev,
-          [section.key]: true,
-        };
-      });
+      setOpenSections((current) => ({
+        ...current,
+        [section.key]: true,
+      }));
     }
 
-    setTimeout(() => {
-      document
-        .getElementById(`booking-${bookingId}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => {
+      const isReviewNotification = String(
+        notification.title || ""
+      )
+        .toLowerCase()
+        .includes("review");
+
+      const targetId = isReviewNotification
+        ? `review-${bookingId}`
+        : `booking-${bookingId}`;
+
+      document.getElementById(targetId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }, 300);
   }
 
@@ -955,8 +1316,8 @@ export default function Dashboard() {
 
     if (!section) return;
 
-    setOpenSections((prev) => ({
-      ...prev,
+    setOpenSections((current) => ({
+      ...current,
       [section.key]: true,
     }));
 
@@ -977,9 +1338,14 @@ export default function Dashboard() {
     window.setTimeout(scrollToBooking, 1200);
   }, [focusBookingId, focusAction, bookingSections]);
 
-  const renderBookingCard = (booking: any, isToday = false) => {
+  const renderBookingCard = (
+    booking: any,
+    isToday = false
+  ) => {
     const supplierMessage =
-      booking.status === "CANCELLED" ? getSupplierMessage(booking) : null;
+      booking.status === "CANCELLED"
+        ? getSupplierMessage(booking)
+        : null;
 
     const parsedNotes = parseBookingNotes(booking.notes);
 
@@ -987,12 +1353,15 @@ export default function Dashboard() {
       booking.serviceType === "PET_TRANSPORT" ||
       booking.supplierService?.service === "PET_TRANSPORT";
 
-    const canShowAccessInstructions =
-      booking.serviceLocationSummary?.type === "OWNER_HOME" ||
-      booking.serviceLocationSummary?.type === "TRANSPORT";
+    const showAccessInstructions =
+      canShowAccessInstructions(booking) &&
+      ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(
+        booking.status
+      );
 
     const highlightReview =
-      focusAction === "review" && focusBookingId === booking.id;
+      focusAction === "review" &&
+      focusBookingId === booking.id;
 
     return (
       <div
@@ -1004,52 +1373,58 @@ export default function Dashboard() {
             : isToday
             ? "border-blue-200 bg-blue-50"
             : "border-gray-200 bg-white"
-          }`}
+        }`}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-3">
+          <div className="min-w-0 flex-1 space-y-3">
             <div>
               <p className="text-lg font-semibold text-gray-900">
-                {booking.supplier?.businessName || "Service Provider"}
+                {booking.supplier?.businessName ||
+                  "Service Provider"}
               </p>
 
               <p className="text-sm text-gray-500">
-                {formatDate(booking.startAt)} • {formatTime(booking.startAt)} –{" "}
+                {formatDate(booking.startAt)} •{" "}
+                {formatTime(booking.startAt)} –{" "}
                 {formatTime(booking.endAt)}
               </p>
 
-                {isTransportBooking ? (
-              <>
-    <p className="mt-1 text-sm text-gray-600">
-      {booking.journeyType === "RETURN"
-        ? "Return journey"
-        : "One-way journey"}
-    </p>
+              {isTransportBooking ? (
+                <>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {booking.journeyType === "RETURN"
+                      ? "Return journey"
+                      : "One-way journey"}
+                  </p>
 
-    {booking.journeyType === "RETURN" &&
-    booking.returnStartAt &&
-    booking.returnEndAt ? (
-      <p className="mt-1 text-sm text-gray-500">
-        Return: {formatDate(booking.returnStartAt)} •{" "}
-        {formatTime(booking.returnStartAt)} –{" "}
-        {formatTime(booking.returnEndAt)}
-      </p>
-    ) : null}
-  </>
-) : null}
+                  {booking.journeyType === "RETURN" &&
+                  booking.returnStartAt &&
+                  booking.returnEndAt ? (
+                    <p className="mt-1 text-sm text-gray-500">
+                      Return:{" "}
+                      {formatDate(booking.returnStartAt)} •{" "}
+                      {formatTime(booking.returnStartAt)} –{" "}
+                      {formatTime(booking.returnEndAt)}
+                    </p>
+                  ) : null}
+                </>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                 {formatServiceLabel(
-                  booking.supplierService?.service || booking.serviceType
+                  booking.supplierService?.service ||
+                    booking.serviceType
                 )}
               </span>
 
               {booking.supplierService?.unit ? (
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                   {formatLabel(
-                    String(booking.supplierService.unit).replace(/^PER_/, "")
+                    String(
+                      booking.supplierService.unit
+                    ).replace(/^PER_/, "")
                   )}
                 </span>
               ) : null}
@@ -1064,53 +1439,55 @@ export default function Dashboard() {
             <p className="text-sm text-gray-700">
               🐶{" "}
               {booking.dogs?.length
-                ? booking.dogs.map((d: any) => firstNameOnly(d.dog.name)).join(", ")
+                ? booking.dogs
+                    .map((item: any) =>
+                      firstNameOnly(item?.dog?.name)
+                    )
+                    .filter(Boolean)
+                    .join(", ")
                 : "No dogs selected"}
             </p>
 
-            {!isTransportBooking && parsedNotes.details.length > 0 ? (
+            {!isTransportBooking &&
+            parsedNotes.details.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {parsedNotes.details.map((detail) => {
-                  const [rawLabel, ...rest] = detail.split(":");
-                  const value = rest.join(":").trim();
+                  const formattedDetail =
+                    formatBookingDetail(detail);
 
                   return (
                     <BookingMetaPill
                       key={detail}
-                      label={rawLabel.trim()}
-                      value={value}
+                      label={formattedDetail.label}
+                      value={formattedDetail.value}
                     />
                   );
                 })}
               </div>
             ) : null}
 
+            {isTransportBooking ? (
+              <TransportJourneyDetails booking={booking} />
+            ) : (
+              <OwnerServiceAddress
+                booking={booking}
+                legacyAddresses={parsedNotes.addresses}
+              />
+            )}
+
             {!isTransportBooking &&
-            parsedNotes.addresses.length > 0 &&
-            canShowServiceLocationOnOwnerDashboard(booking) ? (
+            parsedNotes.general.length > 0 ? (
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-sm font-medium text-gray-800">
-                  Service location
+                  Notes
                 </p>
-                <div className="mt-2 space-y-1">
-                {parsedNotes.addresses.map((address) => (
-                  <p
-                    key={address}
-                    className="whitespace-pre-line text-sm text-gray-700"
-                  >
-                {cleanAddressForDisplay(address)}
-                  </p>
-              ))}
-              </div>
-              </div>
-            ) : null}
 
-            {!isTransportBooking && parsedNotes.general.length > 0 ? (
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-sm font-medium text-gray-800">Notes</p>
                 <div className="mt-2 space-y-1">
                   {parsedNotes.general.map((note) => (
-                    <p key={note} className="text-sm text-gray-700">
+                    <p
+                      key={note}
+                      className="text-sm text-gray-700"
+                    >
                       {note}
                     </p>
                   ))}
@@ -1118,12 +1495,7 @@ export default function Dashboard() {
               </div>
             ) : null}
 
-            {isTransportBooking ? (
-            <TransportJourneyDetails booking={booking} />
-            ) : null}
-
-            {canShowAccessInstructions &&
-            ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
+            {showAccessInstructions ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <p className="text-sm font-medium text-blue-900">
                   Access instructions
@@ -1136,10 +1508,10 @@ export default function Dashboard() {
                     booking.accessInstructions ??
                     ""
                   }
-                  onChange={(e) =>
-                    setAccessInstructionInputs((prev) => ({
-                      ...prev,
-                      [booking.id]: e.target.value,
+                  onChange={(event) =>
+                    setAccessInstructionInputs((current) => ({
+                      ...current,
+                      [booking.id]: event.target.value,
                     }))
                   }
                   placeholder="Gate code, parking, key access, security notes..."
@@ -1157,13 +1529,16 @@ export default function Dashboard() {
                         "",
                     })
                   }
-                  disabled={updateAccessInstructionsMutation.isPending}
+                  disabled={
+                    updateAccessInstructionsMutation.isPending
+                  }
                   className="mt-2 rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
                 >
                   {updateAccessInstructionsMutation.isPending
                     ? "Saving..."
                     : "Save access instructions"}
                 </button>
+
                 {savedAccessInstructionId === booking.id ? (
                   <p className="mt-2 text-sm font-medium text-green-700">
                     ✅ Access instructions sent
@@ -1177,11 +1552,15 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-red-700">
                   Supplier message
                 </p>
-                <p className="mt-1 text-sm text-red-700">{supplierMessage}</p>
+
+                <p className="mt-1 text-sm text-red-700">
+                  {supplierMessage}
+                </p>
               </div>
             ) : null}
 
-            {booking.status === "COMPLETED" && !booking.hasOwnerReviewed ? (
+            {booking.status === "COMPLETED" &&
+            !booking.hasOwnerReviewed ? (
               <div
                 id={`review-${booking.id}`}
                 className={`rounded-lg border p-3 ${
@@ -1195,13 +1574,16 @@ export default function Dashboard() {
                 </p>
 
                 <select
-                  value={reviewInputs[booking.id]?.rating || ""}
-                  onChange={(e) =>
-                    setReviewInputs((prev) => ({
-                      ...prev,
+                  value={
+                    reviewInputs[booking.id]?.rating || ""
+                  }
+                  onChange={(event) =>
+                    setReviewInputs((current) => ({
+                      ...current,
                       [booking.id]: {
-                        rating: e.target.value,
-                        comment: prev[booking.id]?.comment || "",
+                        rating: event.target.value,
+                        comment:
+                          current[booking.id]?.comment || "",
                       },
                     }))
                   }
@@ -1217,13 +1599,16 @@ export default function Dashboard() {
 
                 <textarea
                   rows={3}
-                  value={reviewInputs[booking.id]?.comment || ""}
-                  onChange={(e) =>
-                    setReviewInputs((prev) => ({
-                      ...prev,
+                  value={
+                    reviewInputs[booking.id]?.comment || ""
+                  }
+                  onChange={(event) =>
+                    setReviewInputs((current) => ({
+                      ...current,
                       [booking.id]: {
-                        rating: prev[booking.id]?.rating || "",
-                        comment: e.target.value,
+                        rating:
+                          current[booking.id]?.rating || "",
+                        comment: event.target.value,
                       },
                     }))
                   }
@@ -1240,22 +1625,29 @@ export default function Dashboard() {
                   onClick={() =>
                     submitReviewMutation.mutate({
                       bookingId: booking.id,
-                      rating: reviewInputs[booking.id]?.rating || "",
-                      comment: reviewInputs[booking.id]?.comment || "",
+                      rating:
+                        reviewInputs[booking.id]?.rating || "",
+                      comment:
+                        reviewInputs[booking.id]?.comment || "",
                     })
                   }
                   className="mt-2 rounded-lg bg-green-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
                 >
-                  {submitReviewMutation.isPending ? "Submitting..." : "Submit review"}
+                  {submitReviewMutation.isPending
+                    ? "Submitting..."
+                    : "Submit review"}
                 </button>
               </div>
             ) : null}
 
-            {booking.status === "COMPLETED" && booking.hasOwnerReviewed ? (
+            {booking.status === "COMPLETED" &&
+            booking.hasOwnerReviewed ? (
               <p
                 id={`review-${booking.id}`}
                 className={`text-sm font-medium ${
-                  highlightReview ? "text-blue-700" : "text-green-700"
+                  highlightReview
+                    ? "text-blue-700"
+                    : "text-green-700"
                 }`}
               >
                 ✅ Thank you for your review
@@ -1263,7 +1655,7 @@ export default function Dashboard() {
             ) : null}
           </div>
 
-          <div className="space-y-3 text-left md:text-right">
+          <div className="shrink-0 space-y-3 text-left md:text-right">
             <span
               className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(
                 booking.status
@@ -1279,11 +1671,16 @@ export default function Dashboard() {
             {(booking.status === "PENDING" ||
               booking.status === "CONFIRMED") && (
               <button
-                onClick={() => cancelBookingMutation.mutate(booking.id)}
+                type="button"
+                onClick={() =>
+                  cancelBookingMutation.mutate(booking.id)
+                }
                 disabled={cancelBookingMutation.isPending}
                 className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white transition hover:bg-red-600 disabled:opacity-50"
               >
-                {cancelBookingMutation.isPending ? "Cancelling..." : "Cancel"}
+                {cancelBookingMutation.isPending
+                  ? "Cancelling..."
+                  : "Cancel"}
               </button>
             )}
           </div>
@@ -1293,16 +1690,17 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 p-6">
+    <div className="mx-auto max-w-5xl space-y-8 p-6">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
               Welcome to DogLife 🐾
             </h1>
+
             <p className="mt-2 text-sm text-gray-600">
-              Manage your Dog Passport, bookings, care reminders and trusted dog
-              services — all in one place.
+              Manage your Dog Passport, bookings, care reminders and
+              trusted dog services — all in one place.
             </p>
           </div>
 
@@ -1310,43 +1708,85 @@ export default function Dashboard() {
             to="/owner/my-dogs"
             className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
           >
-            {hasDogs ? "View Dog Passport" : "Create Dog Passport"}
+            {hasDogs
+              ? "View Dog Passport"
+              : "Create Dog Passport"}
           </Link>
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {summaryItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => openAndScroll(item.key)}
+            disabled={item.count === 0}
+            className="rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:border-gray-300 hover:shadow-sm disabled:cursor-default disabled:opacity-70"
+          >
+            <p className="text-xs text-gray-500 sm:text-sm">
+              {item.label}
+            </p>
+
+            <p
+              className={`mt-2 text-2xl font-bold sm:text-3xl ${item.textClass}`}
+            >
+              {item.count}
+            </p>
+          </button>
+        ))}
+      </div>
+
       <OwnerBookingJourney hasDogs={hasDogs} />
 
-      {!isOwnerProfileLoading && !hasOwnerProfile ? <OwnerProfilePrompt /> : null}
+      {!isOwnerProfileLoading && !hasOwnerProfile ? (
+        <OwnerProfilePrompt />
+      ) : null}
 
-      {!isDogsLoading && !hasDogs ? <DogProfilePrompt /> : null}
+      {!isDogsLoading && !hasDogs ? (
+        <DogProfilePrompt />
+      ) : null}
 
-      <ServiceShortcuts hasDogs={hasDogs && hasOwnerProfile} />
+      <ServiceShortcuts
+        hasDogs={hasDogs && hasOwnerProfile}
+      />
 
-      {notifications.length > 0 && (
+      {notifications.length > 0 ? (
         <div className="space-y-2">
-          {notifications.slice(0, 3).map((n: any) => (
-            <div
-              key={n.id}
-              onClick={() => handleNotificationClick(n)}
-              className={`cursor-pointer rounded-lg border p-4 ${
-                n.read
+          {notifications.slice(0, 3).map((notification: any) => (
+            <button
+              key={notification.id}
+              type="button"
+              onClick={() =>
+                handleNotificationClick(notification)
+              }
+              className={`w-full cursor-pointer rounded-lg border p-4 text-left ${
+                notification.read
                   ? "border-gray-200 bg-gray-50"
                   : "border-yellow-200 bg-yellow-50"
               }`}
             >
-              <p className="font-semibold text-gray-800">{n.title}</p>
-              <p className="text-sm text-gray-600">
-                {n.booking
-                  ? `${formatServiceLabel(n.booking.serviceLabel)} with ${
-                      n.booking.dogNames || "your dog"
-                    } on ${formatDate(n.booking.startAt)}`
-                  : n.message}
+              <p className="font-semibold text-gray-800">
+                {notification.title}
               </p>
-            </div>
+
+              <p className="text-sm text-gray-600">
+                {notification.booking
+                  ? `${formatServiceLabel(
+                      notification.booking.serviceLabel
+                    )} with ${
+                      firstNamesOnlyList(
+                        notification.booking.dogNames
+                      ) || "your dog"
+                    } on ${formatDate(
+                      notification.booking.startAt
+                    )}`
+                  : notification.message}
+              </p>
+            </button>
           ))}
         </div>
-      )}
+      ) : null}
 
       <div className="rounded-xl bg-white p-6 shadow-sm">
         <h2 className="mb-6 text-xl font-semibold text-gray-800">
@@ -1370,11 +1810,18 @@ export default function Dashboard() {
                 title={section.title}
                 bookings={section.bookings}
                 renderBookingCard={(booking) =>
-                  renderBookingCard(booking, section.isToday)
+                  renderBookingCard(
+                    booking,
+                    section.isToday
+                  )
                 }
                 titleColor={section.titleColor}
-                isOpen={Boolean(openSections[section.key])}
-                onToggle={() => toggleSection(section.key)}
+                isOpen={Boolean(
+                  openSections[section.key]
+                )}
+                onToggle={() =>
+                  toggleSection(section.key)
+                }
               />
             ))}
           </div>
