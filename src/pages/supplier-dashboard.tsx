@@ -686,6 +686,13 @@ function BookingCard({
       ? extractNoteValue(booking.notes, "Pet sitting location")
       : null;
 
+  const requiresOwnerAddress =
+  booking.serviceLocationSummary?.type === "OWNER_HOME";
+
+  const missingOwnerAddress =
+  requiresOwnerAddress &&
+  !hasText(booking.serviceLocationSummary?.addressLine);
+
   return (
     <div
       id={`booking-${booking.id}`}
@@ -810,15 +817,23 @@ function BookingCard({
       ) : null}
 
       {booking.status === "CONFIRMED" ? (
-        <button
-          type="button"
-          onClick={() => onStart(booking.id)}
-          disabled={actionLoading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {actionLoading ? "Starting..." : "Start service"}
-        </button>
-      ) : null}
+        <div>
+          <button
+            type="button"
+            onClick={() => onStart(booking.id)}
+            disabled={actionLoading || missingOwnerAddress}
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {actionLoading ? "Starting..." : "Start service"}
+          </button>
+
+          {missingOwnerAddress ? (
+            <p className="mt-2 text-sm text-amber-700">
+              Waiting for the owner to provide the service address.
+            </p>
+          ) : null}
+        </div>
+        ) : null}
 
       {booking.status === "IN_PROGRESS" ? (
         <button
