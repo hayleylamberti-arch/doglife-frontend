@@ -354,6 +354,28 @@ function LocationSummary({ booking }: { booking: SupplierBooking }) {
     return null;
   }
 
+  const isActiveHomeServiceMissingAddress =
+  exactLocation?.type === "OWNER_HOME" &&
+  ["CONFIRMED", "IN_PROGRESS"].includes(booking.status) &&
+  !hasText(exactLocation.addressLine);
+
+if (isActiveHomeServiceMissingAddress) {
+  return (
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="font-semibold">Service address required</div>
+      <div className="mt-1">
+        The owner has not provided a service address yet.
+      </div>
+
+      {booking.serviceArea ? (
+        <div className="mt-2 text-amber-800">
+          Service area: {booking.serviceArea}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
       <div className="font-medium">Service address</div>
@@ -739,7 +761,8 @@ function BookingCard({
 
       <LocationSummary booking={booking} />
 
-      {booking.accessInstructions ? (
+      {booking.accessInstructions &&
+      ["CONFIRMED", "IN_PROGRESS"].includes(booking.status) ? (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
           <div className="font-medium">Access instructions</div>
           <div className="mt-1 whitespace-pre-line">
@@ -843,6 +866,7 @@ function BookingSection({
   onToggle,
   focusBookingId,
   focusAction,
+  initialVisibleCount,
 }: {
   id: string;
   title: string;
@@ -864,8 +888,20 @@ function BookingSection({
   onToggle: () => void;
   focusBookingId?: string | null;
   focusAction?: string | null;
+  initialVisibleCount?: number;
 }) {
-  return (
+    const defaultVisibleCount = initialVisibleCount || bookings.length;
+
+    const [visibleCount, setVisibleCount] = useState(defaultVisibleCount);
+
+    const visibleBookings = initialVisibleCount
+    ? bookings.slice(0, visibleCount)
+    : bookings;
+
+    const hasMoreBookings =
+      Boolean(initialVisibleCount) && visibleCount < bookings.length;
+  
+    return (
     <section
       id={id}
       className="rounded-2xl border border-gray-200 bg-white p-5"
@@ -910,7 +946,7 @@ function BookingSection({
             </div>
           ) : (
             <div className="space-y-4">
-              {bookings.map((booking) => (
+              {visibleBookings.map((booking) => (
                 <BookingCard
                   key={booking.id}
                   booking={booking}
@@ -929,7 +965,20 @@ function BookingSection({
                   }
                 />
               ))}
-            </div>
+              {hasMoreBookings ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVisibleCount((current) =>
+                      Math.min(current + 10, bookings.length)
+                    )
+                  }
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Show 10 more bookings
+            </button>
+          ) : null}
+        </div>
           )}
         </div>
       ) : null}
@@ -1399,7 +1448,8 @@ export default function SupplierDashboardPage() {
     title: string,
     emptyText: string,
     sectionBookings: SupplierBooking[],
-    sectionKey: string
+    sectionKey: string,
+    initialVisibleCount?: number
   ) {
     return (
       <BookingSection
@@ -1407,6 +1457,7 @@ export default function SupplierDashboardPage() {
         title={title}
         emptyText={emptyText}
         bookings={sectionBookings}
+        initialVisibleCount={initialVisibleCount}
         isLoading={isLoading}
         error={error}
         activeBookingId={activeBookingId}
@@ -1641,7 +1692,8 @@ export default function SupplierDashboardPage() {
           "Completed",
           "No completed bookings.",
           completedBookings,
-          "completed"
+          "completed",
+          10
         )}
 
         {renderSection(
@@ -1649,7 +1701,8 @@ export default function SupplierDashboardPage() {
           "Cancelled",
           "No cancelled bookings.",
           cancelledBookings,
-          "cancelled"
+          "cancelled",
+          10
         )}
       </div>
     </div>
