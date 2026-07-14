@@ -97,6 +97,34 @@ function formatBookingStatusLabel(status: string) {
   return statusMap[status] || formatLabel(status);
 }
 
+function getOvernightStayDetails(booking: any) {
+  const serviceType =
+    booking.serviceType || booking.supplierService?.service;
+
+  if (
+    !["BOARDING", "PET_SITTING"].includes(serviceType) ||
+    !booking.startAt ||
+    !booking.endAt
+  ) {
+    return null;
+  }
+
+  const start = new Date(booking.startAt);
+  const end = new Date(booking.endAt);
+
+  const millisecondsPerNight = 1000 * 60 * 60 * 24;
+  const nights = Math.max(
+    1,
+    Math.round((end.getTime() - start.getTime()) / millisecondsPerNight)
+  );
+
+  return {
+    nights,
+    departureDate: formatDate(booking.endAt),
+    departureTime: formatTime(booking.endAt),
+  };
+}
+
 function formatNoteLabel(label: string) {
   return formatLabel(label.trim());
 }
@@ -171,6 +199,7 @@ function parseBookingNotes(notes?: string | null) {
   const parts = uniqueParts(splitNotesIntoParts(notes));
 
   const details: string[] = [];
+  const detailKeys = new Set<string>();
   const addresses: string[] = [];
   const general: string[] = [];
 
@@ -194,10 +223,24 @@ function parseBookingNotes(notes?: string | null) {
       lower.startsWith("half day period:") ||
       lower.startsWith("mobile vet service:") ||
       lower.startsWith("pet sitting location:") ||
+      lower.startsWith("kennel preference:") ||
       lower.startsWith("kennel type:") ||
       lower.startsWith("journey type:")
     ) {
-      details.push(part);
+      const rawLabel = part.split(":")[0].trim().toLowerCase();
+
+      const normalizedKey =
+        rawLabel === "kennel preference" || rawLabel === "kennel type"
+          ? "kennel"
+          : rawLabel === "mobile vet service"
+          ? "mobile-vet-service"
+          : rawLabel;
+
+      if (!detailKeys.has(normalizedKey)) {
+        detailKeys.add(normalizedKey);
+        details.push(part);
+      }
+
       return;
     }
 
@@ -222,12 +265,20 @@ function parseBookingNotes(notes?: string | null) {
       lower.startsWith("key:") ||
       lower.startsWith("service location:") ||
       lower.startsWith("training location:") ||
+      lower.startsWith("return pickup point:") ||
+      lower.startsWith("return drop-off point:") ||
+      lower.startsWith("return date and time:") ||
       lower.startsWith("mobile grooming") ||
       lower === "mobile grooming" ||
       lower === "owner home" ||
       lower === "owner_home" ||
       lower === "supplier location" ||
-      lower === "supplier_location"
+      lower === "supplier_location" ||
+      lower === "kyalami" ||
+      lower === "sandton" ||
+      lower === "gauteng" ||
+      /^\d{4}$/.test(lower) ||
+      /^[a-z\s]+,\s*[a-z\s]+,\s*\d{4}$/i.test(part)
     ) {
       return;
     }
@@ -577,6 +628,7 @@ function Section({
   titleColor,
   isOpen,
   onToggle,
+  initialVisibleCount,
 }: {
   id: string;
   title: string;
@@ -588,8 +640,27 @@ function Section({
   titleColor?: string;
   isOpen: boolean;
   onToggle: () => void;
+  initialVisibleCount?: number;
 }) {
+  const defaultVisibleCount =
+    initialVisibleCount ?? bookings.length;
+
+  const [visibleCount, setVisibleCount] =
+    useState(defaultVisibleCount);
+
+  useEffect(() => {
+    setVisibleCount(defaultVisibleCount);
+  }, [defaultVisibleCount]);
+
   if (bookings.length === 0) return null;
+
+  const visibleBookings = initialVisibleCount
+    ? bookings.slice(0, visibleCount)
+    : bookings;
+
+  const hasMoreBookings =
+    Boolean(initialVisibleCount) &&
+    visibleCount < bookings.length;
 
   return (
     <section
@@ -629,9 +700,23 @@ function Section({
 
       {isOpen ? (
         <div className="mt-4 space-y-4">
-          {bookings.map((booking: any) =>
+          {visibleBookings.map((booking: any) =>
             renderBookingCard(booking)
           )}
+
+          {hasMoreBookings ? (
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleCount((current) =>
+                  Math.min(current + 10, bookings.length)
+                )
+              }
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Show 10 more bookings
+            </button>
+          ) : null}
         </div>
       ) : null}
     </section>
@@ -1349,15 +1434,15 @@ export default function Dashboard() {
 
     const parsedNotes = parseBookingNotes(booking.notes);
 
+    const overnightStay = getOvernightStayDetails(booking);
+
     const isTransportBooking =
       booking.serviceType === "PET_TRANSPORT" ||
       booking.supplierService?.service === "PET_TRANSPORT";
 
     const showAccessInstructions =
       canShowAccessInstructions(booking) &&
-      ["PENDING", "CONFIRMED", "IN_PROGRESS"].includes(
-        booking.status
-      );
+      ["CONFIRMED", "IN_PROGRESS"].includes(booking.status);
 
     const highlightReview =
       focusAction === "review" &&
@@ -1409,6 +1494,14 @@ export default function Dashboard() {
                   ) : null}
                 </>
               ) : null}
+
+             {overnightStay ? (
+                  <p className="mt-1 text-sm font-medium text-gray-600">
+                    {overnightStay.nights}{" "}
+                    {overnightStay.nights === 1 ? "night" : "nights"} • Departure{" "}
+                    {overnightStay.departureDate} at {overnightStay.departureTime}
+                  </p>
+              ) : null} 
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1809,6 +1902,7 @@ export default function Dashboard() {
                 id={section.key}
                 title={section.title}
                 bookings={section.bookings}
+                initialVisibleCount={10}
                 renderBookingCard={(booking) =>
                   renderBookingCard(
                     booking,

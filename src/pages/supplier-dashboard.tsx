@@ -30,6 +30,42 @@ function formatDate(value?: string | null) {
   });
 }
 
+function formatTime(value?: string | null) {
+  if (!value) return "";
+
+  return new Date(value).toLocaleTimeString("en-ZA", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getOvernightStayDetails(booking: SupplierBooking) {
+  const serviceType = booking.serviceType || "";
+
+  if (
+    !["BOARDING", "PET_SITTING"].includes(serviceType) ||
+    !booking.startAt ||
+    !booking.endAt
+  ) {
+    return null;
+  }
+
+  const start = new Date(booking.startAt);
+  const end = new Date(booking.endAt);
+
+  const millisecondsPerNight = 1000 * 60 * 60 * 24;
+  const nights = Math.max(
+    1,
+    Math.round((end.getTime() - start.getTime()) / millisecondsPerNight)
+  );
+
+  return {
+    nights,
+    departureDate: formatDate(booking.endAt),
+    departureTime: formatTime(booking.endAt),
+  };
+}
+
 function yesNo(value?: boolean | null) {
   if (value === true) return "Yes";
   if (value === false) return "No";
@@ -55,11 +91,16 @@ function firstNameOnly(value?: string | null) {
 }
 
 function formatOwnerName(booking: SupplierBooking) {
-  const first = booking.owner?.firstName || "";
-  const last = booking.owner?.lastName || "";
-  const full = `${first} ${last}`.trim();
+  const first = booking.owner?.firstName?.trim() || "";
+  const last = booking.owner?.lastName?.trim() || "";
 
-  return full || booking.owner?.email || "Owner";
+  if (booking.status === "PENDING") {
+    return first || "Owner";
+  }
+
+  const fullName = `${first} ${last}`.trim();
+
+  return fullName || booking.owner?.email || "Owner";
 }
 
 function formatDogNames(booking: SupplierBooking) {
@@ -195,6 +236,8 @@ function cleanNotesForDisplay(notes?: string | null) {
         lower.startsWith("half day period:") ||
         lower.startsWith("pet sitting location:") ||
         lower.startsWith("kennel type:") ||
+        lower.startsWith("kennel preference:") ||
+        lower.startsWith("mobile vet service:") ||
         lower.startsWith("journey type:") ||
         lower === "return" ||
         lower === "return return" ||
@@ -241,10 +284,12 @@ function isTodayBooking(
 function LocationSummary({ booking }: { booking: SupplierBooking }) {
   const exactLocation = booking.serviceLocationSummary;
   const transportAreas = booking.transportAreaSummary;
+  const canShowExactLocation = booking.status !== "PENDING";
 
   if (
     booking.serviceType === "PET_TRANSPORT" &&
-    exactLocation?.type === "TRANSPORT"
+    exactLocation?.type === "TRANSPORT" &&
+    canShowExactLocation
   ) {
     return (
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -376,26 +421,38 @@ if (isActiveHomeServiceMissingAddress) {
   );
 }
 
-  return (
+   return (
     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-      <div className="font-medium">Service address</div>
+      <div className="font-medium">
+        {canShowExactLocation ? "Service address" : "Service area"}
+      </div>
 
-      {exactLocation.addressLine ? (
+      {canShowExactLocation && exactLocation.addressLine ? (
         <div className="mt-1 whitespace-pre-line">
-          {String(exactLocation.addressLine).replace(
-            /^Owner address:\s*/i,
-            ""
-          )}
+          {String(exactLocation.addressLine)
+            .replace(/^Owner address:\s*/i, "")
+            .replace(/^Supplier address:\s*/i, "")
+            .replace(/^Service address:\s*/i, "")}
         </div>
       ) : booking.serviceArea ? (
-        <div className="mt-1">{booking.serviceArea}</div>
+        <>
+          <div className="mt-1">{booking.serviceArea}</div>
+
+          {!canShowExactLocation ? (
+            <div className="mt-2 text-xs text-blue-700">
+              The exact address will be available once the booking is confirmed.
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className="mt-1 text-blue-700">
-          Address details not provided.
+          {canShowExactLocation
+            ? "Address details not provided."
+            : "The exact address will be available once the booking is confirmed."}
         </div>
       )}
     </div>
-  );
+  ); 
 }
 
 function DogDetails({ booking }: { booking: SupplierBooking }) {
@@ -680,18 +737,42 @@ function BookingCard({
   highlightReview?: boolean;
 }) {
   const displayNotes = cleanNotesForDisplay(booking.notes);
+  const overnightStay = getOvernightStayDetails(booking);
 
   const petSittingLocation =
     booking.serviceType === "PET_SITTING"
       ? extractNoteValue(booking.notes, "Pet sitting location")
       : null;
 
-  const requiresOwnerAddress =
-  booking.serviceLocationSummary?.type === "OWNER_HOME";
+  const kennelPreference =
+  booking.serviceType === "BOARDING"
+    ? extractNoteValue(
+        booking.notes,
+        "Kennel preference"
+      ) ||
+      extractNoteValue(
+        booking.notes,
+        "Kennel type"
+      )
+    : null;
 
-  const missingOwnerAddress =
+const mobileVetService =
+  booking.serviceType === "MOBILE_VET"
+    ? extractNoteValue(
+        booking.notes,
+        "Mobile vet service"
+      )
+    : null;
+
+const requiresOwnerAddress =
+  booking.serviceLocationSummary?.type ===
+  "OWNER_HOME";
+
+const missingOwnerAddress =
   requiresOwnerAddress &&
-  !hasText(booking.serviceLocationSummary?.addressLine);
+  !hasText(
+    booking.serviceLocationSummary?.addressLine
+  );
 
   return (
     <div
@@ -712,6 +793,14 @@ function BookingCard({
             {formatDateTime(booking.startAt)} –{" "}
             {formatDateTime(booking.endAt)}
           </div>
+
+          {overnightStay ? (
+            <div className="mt-1 text-sm font-medium text-gray-600">
+              {overnightStay.nights}{" "}
+              {overnightStay.nights === 1 ? "night" : "nights"} • Departure{" "}
+              {overnightStay.departureDate} at {overnightStay.departureTime}
+            </div>
+          ) : null}
 
           {booking.serviceType === "PET_TRANSPORT" ? (
             <div className="mt-1 text-sm text-gray-600">
@@ -761,6 +850,20 @@ function BookingCard({
         <div className="text-sm text-gray-700">
           <span className="font-medium">🏠 Pet sitting location:</span>{" "}
           {formatLabel(petSittingLocation)}
+        </div>
+      ) : null}
+
+      {kennelPreference ? (
+        <div className="text-sm text-gray-700">
+          <span className="font-medium">🏠 Kennel preference:</span>{" "}
+          {formatLabel(kennelPreference)}
+        </div>
+      ) : null}
+
+      {mobileVetService ? (
+        <div className="text-sm text-gray-700">
+          <span className="font-medium">🩺 Requested service:</span>{" "}
+          {formatLabel(mobileVetService)}
         </div>
       ) : null}
 
@@ -816,7 +919,7 @@ function BookingCard({
         </div>
       ) : null}
 
-      {booking.status === "CONFIRMED" ? (
+        {booking.status === "CONFIRMED" ? (
         <div>
           <button
             type="button"
@@ -824,16 +927,19 @@ function BookingCard({
             disabled={actionLoading || missingOwnerAddress}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {actionLoading ? "Starting..." : "Start service"}
+            {actionLoading
+              ? "Starting..."
+              : "Start service"}
           </button>
 
           {missingOwnerAddress ? (
             <p className="mt-2 text-sm text-amber-700">
-              Waiting for the owner to provide the service address.
+              Waiting for the owner to provide the service
+              address.
             </p>
           ) : null}
         </div>
-        ) : null}
+      ) : null}
 
       {booking.status === "IN_PROGRESS" ? (
         <button
@@ -905,18 +1011,25 @@ function BookingSection({
   focusAction?: string | null;
   initialVisibleCount?: number;
 }) {
-    const defaultVisibleCount = initialVisibleCount || bookings.length;
+  const defaultVisibleCount =
+    initialVisibleCount ?? bookings.length;
 
-    const [visibleCount, setVisibleCount] = useState(defaultVisibleCount);
+  const [visibleCount, setVisibleCount] =
+    useState(defaultVisibleCount);
 
-    const visibleBookings = initialVisibleCount
+  useEffect(() => {
+    setVisibleCount(defaultVisibleCount);
+  }, [defaultVisibleCount]);
+
+  const visibleBookings = initialVisibleCount
     ? bookings.slice(0, visibleCount)
     : bookings;
 
-    const hasMoreBookings =
-      Boolean(initialVisibleCount) && visibleCount < bookings.length;
-  
-    return (
+  const hasMoreBookings =
+    Boolean(initialVisibleCount) &&
+    visibleCount < bookings.length;
+
+  return (
     <section
       id={id}
       className="rounded-2xl border border-gray-200 bg-white p-5"
@@ -927,10 +1040,13 @@ function BookingSection({
         className="flex w-full items-center justify-between gap-4 text-left"
       >
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            {title}
+          </h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            {bookings.length} booking{bookings.length === 1 ? "" : "s"}
+            {bookings.length} booking
+            {bookings.length === 1 ? "" : "s"}
           </p>
         </div>
 
@@ -972,28 +1088,35 @@ function BookingSection({
                   onMarkPaid={onMarkPaid}
                   actionLoading={activeBookingId === booking.id}
                   reviewInput={reviewInputs[booking.id]}
-                  reviewLoading={activeReviewBookingId === booking.id}
+                  reviewLoading={
+                    activeReviewBookingId === booking.id
+                  }
                   onReviewChange={onReviewChange}
                   onSubmitReview={onSubmitReview}
                   highlightReview={
-                    focusAction === "review" && focusBookingId === booking.id
+                    focusAction === "review" &&
+                    focusBookingId === booking.id
                   }
                 />
               ))}
+
               {hasMoreBookings ? (
                 <button
                   type="button"
                   onClick={() =>
                     setVisibleCount((current) =>
-                      Math.min(current + 10, bookings.length)
+                      Math.min(
+                        current + 10,
+                        bookings.length
+                      )
                     )
                   }
                   className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Show 10 more bookings
-            </button>
-          ) : null}
-        </div>
+                >
+                  Show 10 more bookings
+                </button>
+              ) : null}
+            </div>
           )}
         </div>
       ) : null}
@@ -1675,7 +1798,8 @@ export default function SupplierDashboardPage() {
           "Pending",
           "No pending bookings.",
           pendingBookings,
-          "pending"
+          "pending",
+          10
         )}
 
         {renderSection(
@@ -1683,7 +1807,8 @@ export default function SupplierDashboardPage() {
           "Confirmed",
           "No confirmed bookings.",
           confirmedBookings,
-          "confirmed"
+          "confirmed",
+          10
         )}
 
         {renderSection(
