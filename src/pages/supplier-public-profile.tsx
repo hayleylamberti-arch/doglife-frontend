@@ -136,7 +136,7 @@ function getServiceExpectations(service: any) {
 }
 
 export default function SupplierPublicProfile() {
-  const { id } = useParams<{ id: string }>();
+  const { identifier } = useParams<{ identifier: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const locationState = (location.state || {}) as LocationState;
@@ -149,18 +149,31 @@ export default function SupplierPublicProfile() {
   const [savingPreferred, setSavingPreferred] = useState(false);
   const trackedProfileView = useRef(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["publicSupplier", id],
-    queryFn: async () => {
-      const res = await api.get(`/api/public/suppliers/${id}`);
-      return res.data.supplier;
-    },
-    enabled: !!id,
-  });
+  const { data, isLoading, error } = useQuery({
+  queryKey: ["publicSupplier", identifier],
+  queryFn: async () => {
+  const apiBase = import.meta.env.VITE_API_BASE;
+
+  const response = await fetch(
+    `${apiBase}/api/public/suppliers/${encodeURIComponent(identifier!)}`
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `Supplier request failed (${response.status}): ${errorText}`
+    );
+  }
+
+  const result = await response.json();
+  return result.supplier;
+},
+  enabled: Boolean(identifier),
+});
 
   useEffect(() => {
     setIsPreferred(Boolean(locationState.isPreferred));
-  }, [locationState.isPreferred, id]);
+  }, [locationState.isPreferred, identifier]);
 
   useEffect(() => {
     if (!data || trackedProfileView.current) return;
@@ -179,6 +192,16 @@ export default function SupplierPublicProfile() {
     return <div className="p-6">Loading supplier...</div>;
   }
 
+  if (error) {
+  return (
+    <div className="p-6 text-red-500">
+      {error instanceof Error
+        ? error.message
+        : "Unable to load supplier"}
+    </div>
+  );
+}
+
   if (!data) {
     return <div className="p-6 text-red-500">Supplier not found</div>;
   }
@@ -194,26 +217,88 @@ export default function SupplierPublicProfile() {
     navigate("/search");
   }
 
-  async function togglePreferredSupplier() {
-    if (!id) return;
+  async function handleShareProfile() {
+  const shareUrl = window.location.href;
+
+  const shareData = {
+    title: `${supplier.businessName} on DogLife`,
+    text: `View ${supplier.businessName}'s services and public profile on DogLife.`,
+    url: shareUrl,
+  };
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+
+      trackEvent("supplier_profile_shared", {
+        supplierId: supplier.id,
+        supplierName: supplier.businessName,
+        method: "native_share",
+        url: shareUrl,
+      });
+
+      return;
+    }
+
+    await navigator.clipboard.writeText(shareUrl);
+
+    trackEvent("supplier_profile_shared", {
+      supplierId: supplier.id,
+      supplierName: supplier.businessName,
+      method: "clipboard",
+      url: shareUrl,
+    });
+
+    alert("Profile link copied");
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      return;
+    }
+
+    console.error("SHARE PROFILE ERROR:", error);
 
     try {
-      setSavingPreferred(true);
+      const temporaryInput = document.createElement("textarea");
+      temporaryInput.value = shareUrl;
+      temporaryInput.style.position = "fixed";
+      temporaryInput.style.opacity = "0";
 
-      if (isPreferred) {
-        await api.delete(`/api/owner/preferred-suppliers/${id}`);
-        setIsPreferred(false);
-      } else {
-        await api.post(`/api/owner/preferred-suppliers/${id}`);
-        setIsPreferred(true);
-      }
-    } catch (err) {
-      console.error("PREFERRED SUPPLIER ERROR:", err);
-      alert("Failed to update preferred supplier");
-    } finally {
-      setSavingPreferred(false);
+      document.body.appendChild(temporaryInput);
+      temporaryInput.focus();
+      temporaryInput.select();
+
+      document.execCommand("copy");
+      document.body.removeChild(temporaryInput);
+
+      alert("Profile link copied");
+    } catch (copyError) {
+      console.error("COPY PROFILE LINK ERROR:", copyError);
+      alert(`Copy this profile link:\n${shareUrl}`);
     }
   }
+}
+
+  async function togglePreferredSupplier() {
+  const supplierId = data?.id;
+  if (!supplierId) return;
+
+  try {
+    setSavingPreferred(true);
+
+    if (isPreferred) {
+      await api.delete(`/api/owner/preferred-suppliers/${supplierId}`);
+      setIsPreferred(false);
+    } else {
+      await api.post(`/api/owner/preferred-suppliers/${supplierId}`);
+      setIsPreferred(true);
+    }
+  } catch (err) {
+    console.error("PREFERRED SUPPLIER ERROR:", err);
+    alert("Failed to update preferred supplier");
+  } finally {
+    setSavingPreferred(false);
+  }
+}
 
   const isApprovedSupplier = supplier.approvalStatus === "APPROVED";
   const isIdentityVerified = Boolean(supplier.identityVerified);
@@ -248,7 +333,14 @@ export default function SupplierPublicProfile() {
             <span>{savingPreferred ? "Saving..." : "Preferred"}</span>
           </button>
 
-          <button type="button">Share</button>
+          <button
+            type="button"
+            onClick={handleShareProfile}
+            className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 transition hover:bg-gray-50"
+          >
+            <span aria-hidden="true">↗</span>
+            <span>Share</span>
+          </button>
         </div>
       </div>
 

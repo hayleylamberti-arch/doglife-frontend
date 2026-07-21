@@ -59,7 +59,7 @@ export default function AppRoutes() {
       <Route element={<AppLayout />}>
         <Route path="search" element={<Search />} />
         <Route path="trust-and-safety" element={<TrustAndSafetyPage />} />
-        <Route path="supplier/:id" element={<SupplierPublicProfile />} />
+        <Route path="supplier/:identifier" element={<SupplierPublicProfile />} />
 
         <Route path="legal/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="legal/terms" element={<TermsAndConditions />} />

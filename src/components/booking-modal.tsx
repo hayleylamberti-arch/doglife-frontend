@@ -473,16 +473,8 @@ export default function BookingModal({
   ]);
 
   const petTransportReturnPriceCents = useMemo(() => {
-    return (
-      toNumber(service?.pricingJson?.returnPriceCents) ||
-      toNumber(service?.pricingJson?.roundTripPriceCents) ||
-      petTransportOneWayPriceCents * 2
-    );
-  }, [
-    service?.pricingJson?.returnPriceCents,
-    service?.pricingJson?.roundTripPriceCents,
-    petTransportOneWayPriceCents,
-  ]);
+  return petTransportOneWayPriceCents * 2;
+  }, [petTransportOneWayPriceCents]);
 
   const estimatedPetTransportTotalCents = useMemo(() => {
     if (!isPetTransport) return null;

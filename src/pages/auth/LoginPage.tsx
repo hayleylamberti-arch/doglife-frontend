@@ -31,20 +31,23 @@ export default function LoginPage() {
   };
 
   const getLoginErrorMessage = (loginError: any) => {
-    const apiError =
-      loginError?.response?.data?.error ||
-      loginError?.response?.data?.message;
+  const apiError =
+    loginError?.response?.data?.error ||
+    loginError?.response?.data?.message ||
+    loginError?.message;
 
-    if (apiError === "Invalid email or password") {
-      return "Incorrect email or password.";
-    }
+  console.error("DogLife login failed:", loginError);
 
-    if (apiError) {
-      return apiError;
-    }
+  if (apiError === "Invalid email or password") {
+    return "Incorrect email or password.";
+  }
 
-    return "Unable to sign in. Please try again.";
-  };
+  if (apiError) {
+    return apiError;
+  }
+
+  return "Unable to sign in. Please try again.";
+};
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
