@@ -346,13 +346,21 @@ export default function DogForm({ dog, onClose }: any) {
     Breed
   </label>
 
-  <Input
-    placeholder="Start typing breed, e.g. English Springer Spaniel"
+  <select
     {...form.register("breed")}
-  />
+    className="w-full rounded border px-3 py-2"
+  >
+    <option value="">Select breed</option>
+
+    {BREEDS.map((breed) => (
+      <option key={breed} value={breed}>
+        {breed}
+      </option>
+    ))}
+  </select>
 
   <p className="mt-1 text-xs text-gray-500">
-    Start typing your dog’s breed, or enter Mixed Breed / Other.
+    Select your dog’s breed, Mixed Breed, Unknown, or Other.
   </p>
 </div>
 
