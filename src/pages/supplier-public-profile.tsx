@@ -218,11 +218,30 @@ export default function SupplierPublicProfile() {
   }
 
   async function handleShareProfile() {
-  const shareUrl = window.location.href;
+  const identifier =
+    supplier.publicSlug || supplier.id;
+
+  if (!identifier) {
+    alert("This supplier profile is not available to share yet.");
+    return;
+  }
+
+  const appBaseUrl = (
+    import.meta.env.VITE_APP_BASE_URL ||
+    "https://www.doglife.app"
+  ).replace(/\/+$/, "");
+
+  const shareUrl =
+    `${appBaseUrl}/supplier/${encodeURIComponent(identifier)}`;
+
+  const supplierName =
+    supplier.businessName || "This supplier";
 
   const shareData = {
-    title: `${supplier.businessName} on DogLife`,
-    text: `View ${supplier.businessName}'s services and public profile on DogLife.`,
+    title: `${supplierName} on DogLife`,
+    text: supplier.suburb
+      ? `View ${supplierName}’s services and public profile in ${supplier.suburb} on DogLife.`
+      : `View ${supplierName}’s services and public profile on DogLife.`,
     url: shareUrl,
   };
 
@@ -232,7 +251,8 @@ export default function SupplierPublicProfile() {
 
       trackEvent("supplier_profile_shared", {
         supplierId: supplier.id,
-        supplierName: supplier.businessName,
+        supplierName,
+        supplierSlug: supplier.publicSlug || null,
         method: "native_share",
         url: shareUrl,
       });
@@ -244,7 +264,8 @@ export default function SupplierPublicProfile() {
 
     trackEvent("supplier_profile_shared", {
       supplierId: supplier.id,
-      supplierName: supplier.businessName,
+      supplierName,
+      supplierSlug: supplier.publicSlug || null,
       method: "clipboard",
       url: shareUrl,
     });
@@ -258,7 +279,9 @@ export default function SupplierPublicProfile() {
     console.error("SHARE PROFILE ERROR:", error);
 
     try {
-      const temporaryInput = document.createElement("textarea");
+      const temporaryInput =
+        document.createElement("textarea");
+
       temporaryInput.value = shareUrl;
       temporaryInput.style.position = "fixed";
       temporaryInput.style.opacity = "0";
@@ -270,9 +293,21 @@ export default function SupplierPublicProfile() {
       document.execCommand("copy");
       document.body.removeChild(temporaryInput);
 
+      trackEvent("supplier_profile_shared", {
+        supplierId: supplier.id,
+        supplierName,
+        supplierSlug: supplier.publicSlug || null,
+        method: "clipboard_fallback",
+        url: shareUrl,
+      });
+
       alert("Profile link copied");
     } catch (copyError) {
-      console.error("COPY PROFILE LINK ERROR:", copyError);
+      console.error(
+        "COPY PROFILE LINK ERROR:",
+        copyError
+      );
+
       alert(`Copy this profile link:\n${shareUrl}`);
     }
   }

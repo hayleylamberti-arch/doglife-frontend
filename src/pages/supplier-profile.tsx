@@ -31,6 +31,7 @@ type SuburbOption = {
 
 type SupplierProfileResponse = {
   id: string;
+  publicSlug?: string | null;
   businessName?: string | null;
   businessAddress?: string | null;
   suburb?: string | null;
@@ -520,7 +521,15 @@ export default function BusinessProfilePage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => (window.location.href = `/supplier/${profile?.id}`)}>
+        <Button
+          onClick={() => {
+            const identifier = profile?.publicSlug || profile?.id;
+
+            if (!identifier) return;
+
+            window.location.href = `/supplier/${identifier}`;
+          }}
+        >
           Preview Public Profile
         </Button>
       </div>
