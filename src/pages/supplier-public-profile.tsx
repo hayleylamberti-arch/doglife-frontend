@@ -390,7 +390,9 @@ export default function SupplierPublicProfile() {
           )}
 
           <div>
-            <h1 className="text-3xl font-bold">{supplier.businessName}</h1>
+            <h1 className="text-2xl leading-tight font-bold md:text-3xl">
+              {supplier.businessName}
+            </h1>
             <p className="mt-1 text-gray-500">{supplier.suburb || ""}</p>
 
             <div className="mt-3 flex flex-wrap gap-2">
