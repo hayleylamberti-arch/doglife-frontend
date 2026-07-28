@@ -9,14 +9,18 @@ import type {
   SupplierBooking,
 } from "@/types/bookings";
 
-function formatDateTime(value?: string) {
+const BOOKING_TIME_ZONE = "Africa/Johannesburg";
+
+function formatDateTime(value?: string | null) {
   if (!value) return "—";
 
   return new Date(value).toLocaleString("en-ZA", {
+    timeZone: BOOKING_TIME_ZONE,
     day: "2-digit",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -24,6 +28,7 @@ function formatDate(value?: string | null) {
   if (!value) return "";
 
   return new Date(value).toLocaleDateString("en-ZA", {
+    timeZone: BOOKING_TIME_ZONE,
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -34,8 +39,10 @@ function formatTime(value?: string | null) {
   if (!value) return "";
 
   return new Date(value).toLocaleTimeString("en-ZA", {
+    timeZone: BOOKING_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
@@ -1209,6 +1216,19 @@ export default function SupplierDashboardPage() {
 
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
 
+  const [bookingActionError, setBookingActionError] = useState<string | null>(
+  null
+  );
+
+  function getBookingActionError(error: any) {
+  return (
+    error?.response?.data?.error ||
+    error?.response?.data?.message ||
+    error?.message ||
+    "The booking could not be updated."
+  );
+}
+
   const [activeReviewBookingId, setActiveReviewBookingId] = useState<
     string | null
   >(null);
@@ -1318,53 +1338,103 @@ export default function SupplierDashboardPage() {
   });
 
   const acceptMutation = useMutation({
-    mutationFn: async (bookingId: string) =>
-      api.patch(`/api/supplier/bookings/${bookingId}/accept`),
-    onMutate: (bookingId) => setActiveBookingId(bookingId),
-    onSuccess: refreshBookings,
-    onSettled: () => setActiveBookingId(null),
-  });
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/accept`),
 
-  const startMutation = useMutation({
-    mutationFn: async (bookingId: string) =>
-      api.patch(`/api/supplier/bookings/${bookingId}/start`),
-    onMutate: (bookingId) => setActiveBookingId(bookingId),
-    onSuccess: refreshBookings,
-    onSettled: () => setActiveBookingId(null),
-  });
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+  },
 
-  const completeMutation = useMutation({
-    mutationFn: async (bookingId: string) =>
-      api.patch(`/api/supplier/bookings/${bookingId}/complete`),
-    onMutate: (bookingId) => setActiveBookingId(bookingId),
-    onSuccess: refreshBookings,
-    onSettled: () => setActiveBookingId(null),
-  });
+  onSuccess: refreshBookings,
 
-  const markPaidMutation = useMutation({
-    mutationFn: async (bookingId: string) =>
-      api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
-    onMutate: (bookingId) => setActiveBookingId(bookingId),
-    onSuccess: refreshBookings,
-    onSettled: () => setActiveBookingId(null),
-  });
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
 
-  const declineMutation = useMutation({
-    mutationFn: async ({
-      bookingId,
+  onSettled: () => setActiveBookingId(null),
+});
+
+const startMutation = useMutation({
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/start`),
+
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => setActiveBookingId(null),
+});
+
+const completeMutation = useMutation({
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/complete`),
+
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => setActiveBookingId(null),
+});
+
+const markPaidMutation = useMutation({
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
+
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => setActiveBookingId(null),
+});
+
+const declineMutation = useMutation({
+  mutationFn: async ({
+    bookingId,
+    message,
+  }: {
+    bookingId: string;
+    message?: string;
+  }) => {
+    await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
       message,
-    }: {
-      bookingId: string;
-      message?: string;
-    }) => {
-      await api.patch(`/api/supplier/bookings/${bookingId}/decline`, {
-        message,
-      });
-    },
-    onMutate: ({ bookingId }) => setActiveBookingId(bookingId),
-    onSuccess: refreshBookings,
-    onSettled: () => setActiveBookingId(null),
-  });
+    });
+  },
+
+  onMutate: ({ bookingId }) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => setActiveBookingId(null),
+});
 
   const todayStart = useMemo(() => {
     const date = new Date();
@@ -1402,50 +1472,31 @@ export default function SupplierDashboardPage() {
       )
     );
 
-    const todayIds = new Set(today.map((booking) => booking.id));
-
     const pending = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "PENDING" && !todayIds.has(booking.id)
-      )
-    );
+  bookings.filter((booking) => booking.status === "PENDING")
+);
 
-    const confirmed = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "CONFIRMED" && !todayIds.has(booking.id)
-      )
-    );
+const confirmed = sortBookingsByStart(
+  bookings.filter((booking) => booking.status === "CONFIRMED")
+);
 
-    const inProgress = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "IN_PROGRESS" && !todayIds.has(booking.id)
-      )
-    );
+const inProgress = sortBookingsByStart(
+  bookings.filter((booking) => booking.status === "IN_PROGRESS")
+);
 
-    const completedUnbilled = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "COMPLETED_UNBILLED" &&
-          !todayIds.has(booking.id)
-      )
-    );
+const completedUnbilled = sortBookingsByStart(
+  bookings.filter(
+    (booking) => booking.status === "COMPLETED_UNBILLED"
+  )
+);
 
-    const completed = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "COMPLETED" && !todayIds.has(booking.id)
-      )
-    );
+const completed = sortBookingsByStart(
+  bookings.filter((booking) => booking.status === "COMPLETED")
+);
 
-    const cancelled = sortBookingsByStart(
-      bookings.filter(
-        (booking) =>
-          booking.status === "CANCELLED" && !todayIds.has(booking.id)
-      )
-    );
+const cancelled = sortBookingsByStart(
+  bookings.filter((booking) => booking.status === "CANCELLED")
+);
 
     return {
       todayBookings: today,
@@ -1783,6 +1834,26 @@ export default function SupplierDashboardPage() {
           ))}
         </div>
       ) : null}
+
+      {bookingActionError ? (
+  <div
+    role="alert"
+    className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+  >
+    <div className="flex items-start justify-between gap-4">
+      <p>{bookingActionError}</p>
+
+      <button
+        type="button"
+        onClick={() => setBookingActionError(null)}
+        className="font-medium text-red-700"
+        aria-label="Dismiss booking error"
+      >
+        ×
+      </button>
+    </div>
+  </div>
+) : null}
 
       <div className="space-y-6">
         {renderSection(

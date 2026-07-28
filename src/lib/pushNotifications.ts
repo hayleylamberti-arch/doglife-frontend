@@ -1,39 +1,88 @@
 import { api } from "@/lib/api";
 
-const PUSH_DEBUG_VERSION = "push-debug-2026-06-04-v15";
-
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const base64 = (base64String + padding)
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
 
-  for (let i = 0; i < rawData.length; i += 1) {
-    outputArray[i] = rawData.charCodeAt(i);
+  for (let index = 0; index < rawData.length; index += 1) {
+    outputArray[index] = rawData.charCodeAt(index);
   }
 
   return outputArray;
 }
 
+function isAppleMobileDevice() {
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isStandaloneWebApp() {
+  const navigatorWithStandalone = navigator as Navigator & {
+    standalone?: boolean;
+  };
+
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    navigatorWithStandalone.standalone === true
+  );
+}
+
+function assertPushSupport() {
+  if (isAppleMobileDevice() && !isStandaloneWebApp()) {
+    throw new Error(
+      "Push notifications are available when DogLife is installed on your Home Screen. Tap Share → Add to Home Screen, then open DogLife from its icon to enable notifications."
+    );
+  }
+
+  if (
+    !("serviceWorker" in navigator) ||
+    !("PushManager" in window) ||
+    !("Notification" in window)
+  ) {
+    throw new Error(
+      "Push notifications are not available in this browser. You will still receive in-app and email notifications."
+    );
+  }
+}
+
 export async function registerPushNotifications() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    throw new Error(`Push notifications are not supported ${PUSH_DEBUG_VERSION}`);
+  assertPushSupport();
+
+  const permission =
+    Notification.permission === "granted"
+      ? "granted"
+      : await Notification.requestPermission();
+
+  if (permission === "denied") {
+    throw new Error(
+      "Notifications are blocked for DogLife. Enable them in your device or browser settings and try again."
+    );
+  }
+
+  if (permission !== "granted") {
+    throw new Error(
+      "Notification permission was not granted. You will still receive in-app and email notifications."
+    );
   }
 
   const response = await api.get("/api/push/public-key");
   const vapidPublicKey = String(response.data?.publicKey || "").trim();
 
   if (!vapidPublicKey) {
-    throw new Error(`No VAPID public key returned ${PUSH_DEBUG_VERSION}`);
+    throw new Error(
+      "Push notifications are temporarily unavailable. Please try again later."
+    );
   }
 
   const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
-
-  const permission = await Notification.requestPermission();
-
-  if (permission !== "granted") {
-    throw new Error(`Notification permission not granted ${PUSH_DEBUG_VERSION}`);
-  }
 
   await navigator.serviceWorker.register("/sw.js", {
     scope: "/",
@@ -41,33 +90,31 @@ export async function registerPushNotifications() {
   });
 
   const registration = await navigator.serviceWorker.ready;
-  await registration.update();
 
-  const existingSubscription = await registration.pushManager.getSubscription();
+  const existingSubscription =
+    await registration.pushManager.getSubscription();
 
-  if (existingSubscription) {
-    await existingSubscription.unsubscribe();
-  }
-
-  try {
-    const subscription = await registration.pushManager.subscribe({
+  const subscription =
+    existingSubscription ||
+    (await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey.buffer.slice(
-  applicationServerKey.byteOffset,
-  applicationServerKey.byteOffset + applicationServerKey.byteLength
-),
-    });
+        applicationServerKey.byteOffset,
+        applicationServerKey.byteOffset + applicationServerKey.byteLength
+      ),
+    }));
 
+  try {
     await api.post("/api/push/subscribe", {
       endpoint: subscription.endpoint,
       keys: subscription.toJSON().keys,
       userAgent: navigator.userAgent,
     });
-
-    return subscription;
-  } catch (error: any) {
+  } catch {
     throw new Error(
-      `${error?.message || "Push subscription failed"} keyBytes=${applicationServerKey.byteLength} endpoint=${registration.scope} ${PUSH_DEBUG_VERSION}`
+      "DogLife could not finish enabling push notifications. Please try again."
     );
   }
+
+  return subscription;
 }

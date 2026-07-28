@@ -24,12 +24,6 @@ function uiIndexToBackendDayOfWeek(index: number): number {
   return index === 6 ? 0 : index + 1;
 }
 
-function backendDayOfWeekToUiIndex(dayOfWeek: number): number {
-  // Convert backend JS weekday numbering back to UI order:
-  // Monday first, Sunday last
-  return dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-}
-
 export default function SupplierAvailability() {
   const [availability, setAvailability] = useState<DayAvailability[]>(
     DAYS.map((day) => ({
@@ -55,9 +49,13 @@ export default function SupplierAvailability() {
       const mapped = DAYS.map((day, index) => {
         const backendDayOfWeek = uiIndexToBackendDayOfWeek(index);
 
-        const match = saved.find((s: any) => {
-          return s.dayOfWeek === backendDayOfWeek;
-        });
+        const match = saved.find(
+          (item: {
+            dayOfWeek: number;
+            startTime: string;
+            endTime: string;
+          }) => item.dayOfWeek === backendDayOfWeek
+        );
 
         if (match) {
           return {
@@ -78,22 +76,40 @@ export default function SupplierAvailability() {
 
       setAvailability(mapped);
     } catch (err) {
-      console.error("Failed to load availability", err);
+      console.error("Failed to load business default availability", err);
     } finally {
       setLoading(false);
     }
   }
 
   function toggleDay(index: number) {
-    const updated = [...availability];
-    updated[index].enabled = !updated[index].enabled;
-    setAvailability(updated);
+    setAvailability((current) =>
+      current.map((day, dayIndex) =>
+        dayIndex === index
+          ? {
+              ...day,
+              enabled: !day.enabled,
+            }
+          : day
+      )
+    );
   }
 
-  function updateTime(index: number, field: "start" | "end", value: string) {
-    const updated = [...availability];
-    updated[index][field] = value;
-    setAvailability(updated);
+  function updateTime(
+    index: number,
+    field: "start" | "end",
+    value: string
+  ) {
+    setAvailability((current) =>
+      current.map((day, dayIndex) =>
+        dayIndex === index
+          ? {
+              ...day,
+              [field]: value,
+            }
+          : day
+      )
+    );
   }
 
   async function saveAvailability() {
@@ -101,16 +117,20 @@ export default function SupplierAvailability() {
       setSaving(true);
 
       const formatted = availability
+        .map((day, index) => ({
+          ...day,
+          dayOfWeek: uiIndexToBackendDayOfWeek(index),
+        }))
         .filter((day) => day.enabled)
-        .map((day, index) => {
+        .map((day) => {
           if (day.start >= day.end) {
-            throw new Error(`${day.day}: End time must be after start time`);
+            throw new Error(
+              `${day.day}: The closing time must be later than the opening time.`
+            );
           }
 
-          const uiIndex = availability.findIndex((item) => item.day === day.day);
-
           return {
-            dayOfWeek: uiIndexToBackendDayOfWeek(uiIndex),
+            dayOfWeek: day.dayOfWeek,
             startTime: day.start,
             endTime: day.end,
           };
@@ -120,65 +140,109 @@ export default function SupplierAvailability() {
         availability: formatted,
       });
 
-      alert("✅ Availability saved");
+      alert("✅ Business default availability saved");
 
-      fetchAvailability();
+      await fetchAvailability();
     } catch (err: any) {
-      alert(err.message || "❌ Failed to save availability");
+      alert(err.message || "❌ Failed to save business default availability");
     } finally {
       setSaving(false);
     }
   }
 
   if (loading) {
-    return <div className="p-6">Loading availability...</div>;
+    return <div className="p-6">Loading business default availability...</div>;
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Manage Availability</h1>
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold">
+          Business default availability
+        </h1>
+
+        <p className="text-gray-600">
+          Set the hours your business usually accepts bookings. These hours
+          automatically apply to every service unless you give a service its
+          own schedule.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-lg border bg-gray-50 p-4">
+        <p className="font-medium">How this works</p>
+
+        <p className="text-sm text-gray-600">
+          Select the days your business is normally open and set your usual
+          booking hours.
+        </p>
+
+        <p className="text-sm text-gray-600">
+          You can override these hours for an individual service on the
+          Services page.
+        </p>
+
+        <p className="text-sm text-gray-600">
+          Use each service&apos;s Unavailable dates section for holidays, leave
+          and other once-off closures.
+        </p>
+      </div>
 
       <div className="space-y-4">
-        {availability.map((day, i) => (
+        {availability.map((day, index) => (
           <div
             key={day.day}
-            className="flex items-center gap-4 border rounded-lg p-4"
+            className="flex flex-wrap items-center gap-4 rounded-lg border p-4"
           >
             <input
               type="checkbox"
               checked={day.enabled}
-              onChange={() => toggleDay(i)}
+              onChange={() => toggleDay(index)}
+              aria-label={`Accept bookings on ${day.day}`}
+              className="h-4 w-4"
             />
 
             <div className="w-32 font-medium">{day.day}</div>
 
-            <input
-              type="time"
-              disabled={!day.enabled}
-              value={day.start}
-              onChange={(e) => updateTime(i, "start", e.target.value)}
-              className="border rounded px-2 py-1"
-            />
+            <div
+              className={`flex items-center gap-3 ${
+                day.enabled ? "" : "opacity-50"
+              }`}
+            >
+              <input
+                type="time"
+                disabled={!day.enabled}
+                value={day.start}
+                onChange={(event) =>
+                  updateTime(index, "start", event.target.value)
+                }
+                aria-label={`${day.day} opening time`}
+                className="rounded border px-2 py-1"
+              />
 
-            <span>to</span>
+              <span className="text-gray-600">to</span>
 
-            <input
-              type="time"
-              disabled={!day.enabled}
-              value={day.end}
-              onChange={(e) => updateTime(i, "end", e.target.value)}
-              className="border rounded px-2 py-1"
-            />
+              <input
+                type="time"
+                disabled={!day.enabled}
+                value={day.end}
+                onChange={(event) =>
+                  updateTime(index, "end", event.target.value)
+                }
+                aria-label={`${day.day} closing time`}
+                className="rounded border px-2 py-1"
+              />
+            </div>
           </div>
         ))}
       </div>
 
       <button
+        type="button"
         onClick={saveAvailability}
         disabled={saving}
-        className="bg-black text-white px-6 py-3 rounded-md"
+        className="rounded-md bg-black px-6 py-3 text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {saving ? "Saving..." : "Save Availability"}
+        {saving ? "Saving..." : "Save default availability"}
       </button>
     </div>
   );

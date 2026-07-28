@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { api } from "@/lib/api";
+import ServiceOperatingHours from "@/components/service-operating-hours";
 
 const SERVICE_TYPES = [
   "WALKING",
@@ -486,7 +487,13 @@ export default function SupplierServicesPage() {
       reason: string;
     }) => {
       if (!startDate || !endDate) {
-        throw new Error("Start date and end date are required");
+        throw new Error("Choose both an unavailable-from and unavailable-until date");
+      }
+
+      if (startDate > endDate) {
+        throw new Error(
+          "The unavailable-until date must be the same as or later than the start date."
+        );
       }
 
       return api.post(`/api/supplierServices/${serviceId}/availability-blocks`, {
@@ -1071,104 +1078,166 @@ export default function SupplierServicesPage() {
   };
 
   const renderAvailabilityBlocks = (s: any) => {
-    const input = blockInputs[s.id] || {
-      startDate: "",
-      endDate: "",
-      reason: "",
-    };
+  const input = blockInputs[s.id] || {
+    startDate: "",
+    endDate: "",
+    reason: "",
+  };
 
-    return (
-      <div className="mt-4 rounded-lg border border-gray-200 p-3 space-y-3">
-        <p className="font-medium text-gray-700">Blocked Dates</p>
+  const isAddingThisBlock =
+    createBlockMutation.isPending &&
+    createBlockMutation.variables?.serviceId === s.id;
 
-        {s.availabilityBlocks?.length ? (
-          <div className="space-y-2">
-            {s.availabilityBlocks.map((block: any) => (
-              <div
-                key={block.id}
-                className="flex items-center justify-between gap-3 rounded border p-2"
-              >
-                <div>
-                  <p>
-                    {formatDate(block.startAt)} - {formatDate(block.endAt)}
+  return (
+    <div className="mt-4 space-y-4 rounded-lg border border-gray-200 p-4">
+      <div className="space-y-1">
+        <p className="font-medium text-gray-800">Unavailable dates</p>
+
+        <p className="text-sm text-gray-600">
+          Add holidays, leave or other dates when you cannot offer this
+          service. Dog owners will not be able to request this service during
+          the selected period.
+        </p>
+      </div>
+
+      {s.availabilityBlocks?.length ? (
+        <div className="space-y-2">
+          {s.availabilityBlocks.map((block: any) => (
+            <div
+              key={block.id}
+              className="flex flex-col gap-3 rounded-lg border bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p className="font-medium text-gray-800">
+                  Unavailable: {formatDate(block.startAt)} –{" "}
+                  {formatDate(block.endAt)}
+                </p>
+
+                {block.reason ? (
+                  <p className="mt-1 text-sm text-gray-500">
+                    {block.reason}
                   </p>
-                  {block.reason ? (
-                    <p className="text-xs text-gray-500">{block.reason}</p>
-                  ) : null}
-                </div>
-
-                <button
-                  onClick={() => deleteBlockMutation.mutate(block.id)}
-                  disabled={deleteBlockMutation.isPending}
-                  className="rounded border px-3 py-1 text-sm disabled:opacity-50"
-                >
-                  Remove
-                </button>
+                ) : null}
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500">
-            No blocked dates added for this service.
-          </p>
-        )}
 
-        <div className="grid gap-2 md:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => deleteBlockMutation.mutate(block.id)}
+                disabled={deleteBlockMutation.isPending}
+                className="self-start rounded border px-3 py-2 text-sm text-gray-700 disabled:opacity-50 sm:self-auto"
+              >
+                {deleteBlockMutation.isPending ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">
+          This service has no unavailable dates.
+        </p>
+      )}
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <label className="space-y-1">
+          <span className="text-sm font-medium text-gray-700">
+            Unavailable from
+          </span>
+
           <input
             type="date"
             value={input.startDate}
             onChange={(e) =>
               setBlockInputs((prev) => ({
                 ...prev,
-                [s.id]: { ...input, startDate: e.target.value },
+                [s.id]: {
+                  ...input,
+                  startDate: e.target.value,
+                },
               }))
             }
-            className="border rounded px-3 py-2"
+            className="block w-full rounded border px-3 py-2"
           />
+        </label>
+
+        <label className="space-y-1">
+          <span className="text-sm font-medium text-gray-700">
+            Unavailable until
+          </span>
 
           <input
             type="date"
+            min={input.startDate || undefined}
             value={input.endDate}
             onChange={(e) =>
               setBlockInputs((prev) => ({
                 ...prev,
-                [s.id]: { ...input, endDate: e.target.value },
+                [s.id]: {
+                  ...input,
+                  endDate: e.target.value,
+                },
               }))
             }
-            className="border rounded px-3 py-2"
+            className="block w-full rounded border px-3 py-2"
           />
+        </label>
+
+        <label className="space-y-1">
+          <span className="text-sm font-medium text-gray-700">
+            Reason (optional)
+          </span>
 
           <input
             type="text"
-            placeholder="Reason e.g. December holiday"
+            placeholder="e.g. December holiday"
             value={input.reason}
             onChange={(e) =>
               setBlockInputs((prev) => ({
                 ...prev,
-                [s.id]: { ...input, reason: e.target.value },
+                [s.id]: {
+                  ...input,
+                  reason: e.target.value,
+                },
               }))
             }
-            className="border rounded px-3 py-2"
+            className="block w-full rounded border px-3 py-2"
           />
-        </div>
-
-        <button
-          onClick={() =>
-            createBlockMutation.mutate({
-              serviceId: s.id,
-              startDate: input.startDate,
-              endDate: input.endDate,
-              reason: input.reason,
-            })
-          }
-          disabled={createBlockMutation.isPending}
-          className="rounded bg-black px-3 py-2 text-sm text-white disabled:opacity-50"
-        >
-          {createBlockMutation.isPending ? "Adding..." : "Add blocked dates"}
-        </button>
+        </label>
       </div>
-    );
-  };
+
+      <p className="text-xs text-gray-500">
+        Both the start and end dates will be unavailable. This only affects
+        this service.
+      </p>
+
+      <button
+        type="button"
+        onClick={() =>
+          createBlockMutation.mutate({
+            serviceId: s.id,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            reason: input.reason,
+          })
+        }
+        disabled={
+          isAddingThisBlock ||
+          !input.startDate ||
+          !input.endDate
+        }
+        className="rounded bg-black px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isAddingThisBlock ? "Blocking dates..." : "Block these dates"}
+      </button>
+
+      {createBlockMutation.isError &&
+      createBlockMutation.variables?.serviceId === s.id ? (
+        <p className="text-sm text-red-600">
+          {getApiErrorMessage(createBlockMutation.error)}
+        </p>
+      ) : null}
+    </div>
+  );
+};
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-8">
@@ -1616,6 +1685,12 @@ export default function SupplierServicesPage() {
                   </div>
 
                   {renderEditForm(s)}
+
+                  <ServiceOperatingHours
+                    serviceId={s.id}
+                    operatingHours={s.operatingHours || []}
+                  />
+
                   {renderAvailabilityBlocks(s)}
                 </div>
               ))}
