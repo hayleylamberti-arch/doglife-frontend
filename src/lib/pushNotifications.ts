@@ -1,5 +1,17 @@
 import { api } from "@/lib/api";
 
+export type PushNotificationState =
+  | "available"
+  | "enabled"
+  | "blocked"
+  | "unsupported"
+  | "requires-install";
+
+export interface PushNotificationStatus {
+  state: PushNotificationState;
+  message: string | null;
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 
@@ -35,6 +47,14 @@ function isStandaloneWebApp() {
   );
 }
 
+function hasPushSupport() {
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
+}
+
 function assertPushSupport() {
   if (isAppleMobileDevice() && !isStandaloneWebApp()) {
     throw new Error(
@@ -42,15 +62,64 @@ function assertPushSupport() {
     );
   }
 
-  if (
-    !("serviceWorker" in navigator) ||
-    !("PushManager" in window) ||
-    !("Notification" in window)
-  ) {
+  if (!hasPushSupport()) {
     throw new Error(
       "Push notifications are not available in this browser. You will still receive in-app and email notifications."
     );
   }
+}
+
+export async function getPushNotificationStatus(): Promise<PushNotificationStatus> {
+  if (isAppleMobileDevice() && !isStandaloneWebApp()) {
+    return {
+      state: "requires-install",
+      message:
+        "Install DogLife on your Home Screen to use push notifications. Tap Share → Add to Home Screen, then open DogLife from its icon.",
+    };
+  }
+
+  if (!hasPushSupport()) {
+    return {
+      state: "unsupported",
+      message:
+        "Push notifications are not available in this browser. You will still receive in-app and email notifications.",
+    };
+  }
+
+  if (Notification.permission === "denied") {
+    return {
+      state: "blocked",
+      message:
+        "Notifications are blocked for DogLife. Enable them in your device or browser settings and try again.",
+    };
+  }
+
+  if (Notification.permission === "granted") {
+    try {
+      const registration =
+        await navigator.serviceWorker.getRegistration("/");
+
+      const subscription =
+        await registration?.pushManager.getSubscription();
+
+      if (subscription) {
+        return {
+          state: "enabled",
+          message: null,
+        };
+      }
+    } catch (error) {
+      console.error(
+        "Could not check the existing push subscription:",
+        error
+      );
+    }
+  }
+
+  return {
+    state: "available",
+    message: null,
+  };
 }
 
 export async function registerPushNotifications() {
@@ -82,7 +151,8 @@ export async function registerPushNotifications() {
     );
   }
 
-  const applicationServerKey = urlBase64ToUint8Array(vapidPublicKey);
+  const applicationServerKey =
+    urlBase64ToUint8Array(vapidPublicKey);
 
   await navigator.serviceWorker.register("/sw.js", {
     scope: "/",
@@ -100,14 +170,28 @@ export async function registerPushNotifications() {
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey.buffer.slice(
         applicationServerKey.byteOffset,
-        applicationServerKey.byteOffset + applicationServerKey.byteLength
+        applicationServerKey.byteOffset +
+          applicationServerKey.byteLength
       ),
     }));
+
+  const subscriptionJson = subscription.toJSON();
+  const subscriptionKeys = subscriptionJson.keys;
+
+  if (
+    !subscription.endpoint ||
+    !subscriptionKeys?.p256dh ||
+    !subscriptionKeys?.auth
+  ) {
+    throw new Error(
+      "DogLife could not create a valid notification subscription. Please try again."
+    );
+  }
 
   try {
     await api.post("/api/push/subscribe", {
       endpoint: subscription.endpoint,
-      keys: subscription.toJSON().keys,
+      keys: subscriptionKeys,
       userAgent: navigator.userAgent,
     });
   } catch {
