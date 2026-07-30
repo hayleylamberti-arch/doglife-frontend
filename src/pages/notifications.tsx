@@ -316,15 +316,49 @@ export default function NotificationsPage() {
   }
 
   const markAsReadMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.patch(`/api/notifications/${id}/read`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["notifications"],
-      });
-    },
-  });
+  mutationFn: async (id: string) => {
+    await api.patch(`/api/notifications/${id}/read`);
+    return id;
+  },
+
+  onSuccess: (id: string) => {
+    queryClient.setQueryData(
+      ["notifications"],
+      (current: any) => {
+        if (!current) return current;
+
+        const notifications = Array.isArray(
+          current.notifications
+        )
+          ? current.notifications.map(
+              (notification: any) =>
+                notification.id === id
+                  ? {
+                      ...notification,
+                      read: true,
+                    }
+                  : notification
+            )
+          : [];
+
+        return {
+          ...current,
+          notifications,
+          unreadCount: notifications.filter(
+            (notification: any) =>
+              !notification.read
+          ).length,
+        };
+      }
+    );
+  },
+
+  onSettled: () => {
+    queryClient.invalidateQueries({
+      queryKey: ["notifications"],
+    });
+  },
+});
 
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
