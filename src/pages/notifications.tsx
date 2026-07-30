@@ -69,7 +69,7 @@ function formatLabel(value?: string | null) {
 function getNotificationBookingText(notification: any) {
   const booking = notification.booking;
 
-  if (!booking) return notification.message || "";
+  if (!booking) return "";
 
   const serviceLabel = formatLabel(booking.serviceLabel);
   const dogNames =
@@ -435,19 +435,21 @@ export default function NotificationsPage() {
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={handleEnablePush}
-            disabled={pushButtonDisabled}
-            className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-500 disabled:opacity-80"
+         {pushState !== "requires-install" ? (
+            <button
+              type="button"
+              onClick={handleEnablePush}
+              disabled={pushButtonDisabled}
+              className="rounded-lg border border-blue-600 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-500 disabled:opacity-80"
           >
-            {isCheckingPush
-              ? "Checking push status..."
-              : getPushButtonLabel(
-                  pushState,
-                  isEnablingPush
-                )}
+              {isCheckingPush
+                ? "Checking push status..."
+                : getPushButtonLabel(
+                    pushState,
+                    isEnablingPush
+                  )}
           </button>
+        ) : null} 
 
           {unreadCount > 0 ? (
             <button
@@ -512,9 +514,11 @@ export default function NotificationsPage() {
               {n.title}
             </p>
 
-            <p className="mt-1 text-sm text-gray-600">
-              {getNotificationBookingText(n)}
-            </p>
+            {getNotificationBookingText(n) ? (
+              <p className="mt-1 text-sm text-gray-600">
+                {getNotificationBookingText(n)}
+              </p>
+            ) : null}
 
             {shouldShowMessage(n) ? (
               <p className="mt-1 text-sm text-gray-500">
