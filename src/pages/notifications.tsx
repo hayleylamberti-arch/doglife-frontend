@@ -346,24 +346,33 @@ export default function NotificationsPage() {
       );
     }
 
-    const bookingId =
-      notification.referenceId ||
-      notification.booking?.id ||
-      null;
-
-    if (!bookingId) return;
-
-    const destination = shouldOpenReview(
-      currentRole,
-      notification
-    )
-      ? getReviewPath(currentRole, bookingId)
-      : getBookingPath(currentRole, bookingId);
-
-    if (destination) {
-      navigate(destination);
+    if (notification.actionUrl) {
+      navigate(notification.actionUrl);
+      return;
     }
+
+  /*
+   * Backwards-compatible fallback for notifications
+   * created before actionUrl was introduced.
+   */
+  const bookingId =
+    notification.referenceId ||
+    notification.booking?.id ||
+    null;
+
+  if (!bookingId) return;
+
+  const destination = shouldOpenReview(
+    currentRole,
+    notification
+  )
+    ? getReviewPath(currentRole, bookingId)
+    : getBookingPath(currentRole, bookingId);
+
+  if (destination) {
+    navigate(destination);
   }
+}
 
   const pushButtonDisabled =
     isCheckingPush ||
