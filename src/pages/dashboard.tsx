@@ -815,9 +815,9 @@ function OwnerProfilePrompt() {
       </h2>
 
       <p className="mt-2 text-sm text-blue-800">
-        Add your suburb and home address so DogLife can show nearby
-        providers and prepare home-based services like walking, grooming,
-        training and mobile vet visits.
+        Add your suburb and home address so DogLife can show trusted
+        providers that operate in your area and prepare for home-based
+        services like walking, grooming, training and mobile vet visits.
       </p>
 
       <Link
@@ -841,7 +841,7 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
 
           <p className="mt-1 text-sm text-gray-500">
             {hasDogs
-              ? "Preferred providers first, then providers in your suburb."
+              ? "We'll show your preferred providers first, then trusted providers nearby."
               : "Create your Dog Passport first, then you can book trusted services."}
           </p>
         </div>
@@ -897,7 +897,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
     {
       icon: "🔎",
       title: "Find a provider",
-      text: "Search by service, suburb and price.",
+      text: "Find trusted providers near you.",
       active: hasDogs,
       href: "/search",
     },
@@ -1832,12 +1832,12 @@ export default function Dashboard() {
 
       <OwnerBookingJourney hasDogs={hasDogs} />
 
-      {!isOwnerProfileLoading && !hasOwnerProfile ? (
-        <OwnerProfilePrompt />
-      ) : null}
-
       {!isDogsLoading && !hasDogs ? (
         <DogProfilePrompt />
+      ) : null}
+
+      {!isOwnerProfileLoading && !hasOwnerProfile ? (
+        <OwnerProfilePrompt />
       ) : null}
 
       <ServiceShortcuts
