@@ -1777,28 +1777,149 @@ const cancelled = sortBookingsByStart(
         }
       />
 
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-        <p className="text-sm font-medium text-gray-800">
-          Profile completion: {completionData?.completionPercent ?? 0}%
+      {completionData?.approvalStatus === "APPROVED" ? (
+  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+    <h2 className="text-lg font-semibold text-emerald-900">
+      Your business is approved and live 🎉
+    </h2>
+
+    <p className="mt-2 text-sm text-emerald-800">
+      Dog owners can now discover your business and request bookings.
+    </p>
+
+    <p className="mt-2 text-sm text-emerald-800">
+      Profile strength:{" "}
+      <span className="font-semibold">
+        {completionData?.completionPercent ?? 0}%
+      </span>
+    </p>
+
+    {(completionData?.completionPercent ?? 0) < 100 ? (
+      <p className="mt-1 text-sm text-emerald-800">
+        Add more business details, services, service suburbs and
+        availability to help owners understand and choose your business.
+      </p>
+    ) : (
+      <p className="mt-1 text-sm text-emerald-800">
+        Your supplier setup is complete.
+      </p>
+    )}
+
+    <Link
+      to="/supplier/business-profile"
+      className="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+    >
+      Improve business profile
+    </Link>
+  </div>
+) : completionData?.approvalStatus === "SUBMITTED" ? (
+  <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+    <h2 className="text-lg font-semibold text-blue-900">
+      Your profile is under review
+    </h2>
+
+    <p className="mt-2 text-sm text-blue-800">
+      DogLife will notify you as soon as your supplier profile has been
+      reviewed.
+    </p>
+
+    <p className="mt-2 text-sm text-blue-800">
+      Profile completion:{" "}
+      <span className="font-semibold">
+        {completionData?.completionPercent ?? 0}%
+      </span>
+    </p>
+  </div>
+) : completionData?.approvalStatus === "REJECTED" ? (
+  <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+    <h2 className="text-lg font-semibold text-red-900">
+      Your profile needs an update
+    </h2>
+
+    <p className="mt-2 text-sm text-red-800">
+      {completionData?.rejectionReason ||
+        "DogLife needs more information before approving your supplier profile."}
+    </p>
+
+    <p className="mt-2 text-sm text-red-800">
+      Profile completion:{" "}
+      <span className="font-semibold">
+        {completionData?.completionPercent ?? 0}%
+      </span>
+    </p>
+
+    <div className="mt-4 flex flex-wrap gap-3">
+      <Link
+        to="/supplier/business-profile"
+        className="inline-flex items-center justify-center rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+      >
+        Update business profile
+      </Link>
+
+      <button
+        type="button"
+        onClick={() => submitForReviewMutation.mutate()}
+        disabled={
+          submitForReviewMutation.isPending ||
+          completionData?.completionPercent !== 100
+        }
+        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {submitForReviewMutation.isPending
+          ? "Submitting..."
+          : "Resubmit for review"}
+      </button>
+    </div>
+  </div>
+) : (
+  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+    <h2 className="text-lg font-semibold text-emerald-900">
+      Complete your supplier setup
+    </h2>
+
+    <p className="mt-2 text-sm text-emerald-800">
+      Profile completion:{" "}
+      <span className="font-semibold">
+        {completionData?.completionPercent ?? 0}%
+      </span>
+    </p>
+
+    {Array.isArray(completionData?.missing) &&
+    completionData.missing.length > 0 ? (
+      <div className="mt-3">
+        <p className="text-sm font-medium text-emerald-900">
+          Still needed:
         </p>
 
-        <button
-          type="button"
-          onClick={() => submitForReviewMutation.mutate()}
-          disabled={
-            submitForReviewMutation.isPending ||
-            completionData?.approvalStatus === "APPROVED" ||
-            completionData?.completionPercent !== 100
-          }
-          className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {completionData?.approvalStatus === "APPROVED"
-            ? "Approved supplier ✓"
-            : submitForReviewMutation.isPending
-              ? "Submitting..."
-              : "Submit for review"}
-        </button>
+        <ul className="mt-2 ml-5 list-disc space-y-1 text-sm text-emerald-800">
+          {completionData.missing.map((item: string) => (
+            <li key={item}>{formatLabel(item)}</li>
+          ))}
+        </ul>
       </div>
+    ) : null}
+
+    <button
+      type="button"
+      onClick={() => submitForReviewMutation.mutate()}
+      disabled={
+        submitForReviewMutation.isPending ||
+        completionData?.completionPercent !== 100
+      }
+      className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {submitForReviewMutation.isPending
+        ? "Submitting..."
+        : "Submit for review"}
+    </button>
+
+    {completionData?.completionPercent !== 100 ? (
+      <p className="mt-2 text-xs text-emerald-700">
+        Complete all required items before submitting your profile.
+      </p>
+    ) : null}
+  </div>
+)}
 
       {notifications.length > 0 ? (
         <div className="space-y-2">
