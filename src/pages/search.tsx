@@ -21,6 +21,7 @@ type SuburbResult = {
 
 type SearchSupplier = {
   id: string;
+  publicSlug?: string | null;
   businessName: string;
   aboutServices?: string | null;
   suburb?: string | null;
@@ -628,7 +629,7 @@ export default function SearchPage() {
                   <Button
                     size="sm"
                     onClick={() =>
-                      navigate(`/supplier/${supplier.id}`, {
+                      navigate(`/supplier/${supplier.publicSlug || supplier.id}`, {
                         state: {
                           isPreferred: supplier.isPreferred,
                           selectedService: service,
