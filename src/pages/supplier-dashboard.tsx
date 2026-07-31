@@ -1848,6 +1848,33 @@ const cancelled = sortBookingsByStart(
       </span>
     </p>
 
+{completionData?.checklist?.length ? (
+  <div className="mt-4 space-y-2">
+    {completionData.checklist.map((item: any) => (
+      <div
+        key={item.key}
+        className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-2"
+      >
+        <div className="flex items-center gap-2">
+          <span>{item.complete ? "✅" : "⬜"}</span>
+          <span className="text-sm text-gray-700">
+            {item.label}
+          </span>
+        </div>
+
+        {!item.complete ? (
+          <Link
+            to={item.href}
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            Complete →
+          </Link>
+        ) : null}
+      </div>
+    ))}
+  </div>
+) : null}
+
     <div className="mt-4 flex flex-wrap gap-3">
       <Link
         to="/supplier/business-profile"
