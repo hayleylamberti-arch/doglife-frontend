@@ -15,6 +15,11 @@ type PetSittingLocation = "OWNER_HOME" | "SITTER_HOME";
 type PetTransportJourneyType = "ONE_WAY" | "RETURN";
 type DaycareSessionType = "HALF_DAY" | "FULL_DAY";
 type HalfDayPeriod = "MORNING" | "AFTERNOON";
+type BookingModel =
+  | "APPOINTMENT"
+  | "DATE_RANGE_CAPACITY"
+  | "BLOCK_CAPACITY"
+  | "SESSION_EVENT";
 
 interface Dog {
   id: string;
@@ -36,6 +41,24 @@ type BookingSlotOption = {
 
 function formatServiceName(value?: string) {
   return String(value || "SERVICE").replace(/_/g, " ");
+}
+
+function getEffectiveBookingModel(service: any): BookingModel {
+  if (service?.bookingModel) {
+    return service.bookingModel as BookingModel;
+  }
+
+  switch (service?.service) {
+    case "BOARDING":
+    case "PET_SITTING":
+      return "DATE_RANGE_CAPACITY";
+
+    case "DAYCARE":
+      return "BLOCK_CAPACITY";
+
+    default:
+      return "APPOINTMENT";
+  }
 }
 
 function formatPrice(cents?: number | null) {
@@ -178,9 +201,20 @@ export default function BookingModal({
   const isTraining = serviceType === "TRAINING";
   const isDaycare = serviceType === "DAYCARE";
 
-  const isStayService = isBoarding || isPetSitting;
-  const usesTimeSlots = !isStayService && !isDaycare;
-  const appointmentDurationMinutes = Number(service?.durationMinutes || 60);
+  const bookingModel = getEffectiveBookingModel(service);
+
+  const isStayService =
+    bookingModel === "DATE_RANGE_CAPACITY";
+
+  const isBlockCapacityService =
+    bookingModel === "BLOCK_CAPACITY";
+
+  const usesTimeSlots =
+    bookingModel === "APPOINTMENT";
+
+  const appointmentDurationMinutes = Number(
+    service?.durationMinutes || 60
+  );
 
   const [ownerAddress, setOwnerAddress] = useState("");
 
@@ -955,11 +989,19 @@ export default function BookingModal({
       return alert("Select arrival and departure dates");
     }
 
-    if (isDaycare && !date) {
-      return alert("Select a daycare date");
+    if (isBlockCapacityService && !date) {
+      return alert(
+        isDaycare
+          ? "Select a daycare date"
+          : "Select a booking date"
+      );
     }
 
-    if (!isStayService && !isDaycare && !date) {
+    if (
+      !isStayService &&
+      !isBlockCapacityService &&
+      !date
+    ) {
       return alert("Select a date");
     }
 
@@ -1042,7 +1084,7 @@ export default function BookingModal({
       if (isStayService) {
         startAt = new Date(`${arrivalDate}T09:00`);
         endAt = new Date(`${departureDate}T09:00`);
-      } else if (isDaycare) {
+      } else if (isBlockCapacityService) {
         const daycareTimes = buildDaycareTimes(
           date,
           daycareSessionType,
@@ -1464,16 +1506,20 @@ export default function BookingModal({
             ) : (
               <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
                 <p className="text-sm font-semibold">
-                  {isDaycare
-                    ? "Select daycare date"
+                  {isBlockCapacityService
+                    ? isDaycare
+                      ? "Select daycare date"
+                      : "Select booking date"
                     : isPetTransport
                     ? "Select outbound date and time"
                     : "Select date and time"}
                 </p>
 
                 <p className="mb-3 text-xs text-gray-500">
-                  {isDaycare
-                    ? "Choose the date for this daycare session."
+                                    {isBlockCapacityService
+                    ? isDaycare
+                      ? "Choose the date for this daycare session."
+                      : "Choose the date for this booking."
                     : isPetTransport
                     ? "Choose the date and time for the outbound journey."
                     : "Choose a date first, then pick an available time slot."}
