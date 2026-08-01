@@ -16,6 +16,7 @@ const SERVICE_TYPES = [
 ];
 
 const DOG_SIZES = ["small", "medium", "large", "xl"];
+type TrainingBookingMode = "APPOINTMENT" | "SESSION_EVENT";
 
 const MOBILE_VET_SERVICES = [
   { key: "CHECK_UP", label: "Check-up / consultation" },
@@ -260,6 +261,10 @@ export default function SupplierServicesPage() {
   const services = data ?? [];
 
   const [serviceType, setServiceType] = useState("");
+
+  const [trainingBookingMode, setTrainingBookingMode] =
+    useState<TrainingBookingMode>("APPOINTMENT");
+
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
   const [bufferMinutes, setBufferMinutes] = useState("");
@@ -294,6 +299,7 @@ export default function SupplierServicesPage() {
 
   const resetForm = () => {
     setServiceType("");
+    setTrainingBookingMode("APPOINTMENT");
     setPrice("");
     setDuration("");
     setBufferMinutes("");
@@ -653,6 +659,27 @@ export default function SupplierServicesPage() {
         });
       }
 
+      if (
+        serviceType === "TRAINING" &&
+        trainingBookingMode === "SESSION_EVENT"
+      ) {
+        return api.post("/api/supplierServices", {
+          services: [
+            {
+              service: "TRAINING",
+              bookingModel: "SESSION_EVENT",
+              unit: defaults.unit,
+              baseRateCents: 0,
+              durationMinutes: null,
+              bufferMinutes: null,
+              pricingJson: expectationsPricingJson,
+              maxDogsPerBooking: null,
+              concurrentCapacityDogs: null,
+            },
+          ],
+        });
+      }
+
       if (!price || Number(price) <= 0) {
         throw new Error("Enter a valid price");
       }
@@ -677,6 +704,10 @@ export default function SupplierServicesPage() {
         services: [
           {
             service: serviceType,
+            bookingModel:
+              serviceType === "TRAINING"
+                ? trainingBookingMode
+                : undefined,
             unit: defaults.unit,
             baseRateCents: Math.round(Number(price) * 100),
             durationMinutes: requiresDuration ? Number(duration) : null,
@@ -731,6 +762,11 @@ export default function SupplierServicesPage() {
   const showBufferInput = Boolean(serviceType);
   const isBoarding = serviceType === "BOARDING";
   const isDaycare = serviceType === "DAYCARE";
+  const isTraining = serviceType === "TRAINING";
+
+  const isSessionEventTraining =
+    isTraining && trainingBookingMode === "SESSION_EVENT";
+
   const isPetSitting = serviceType === "PET_SITTING";
   const isMobileVet = serviceType === "MOBILE_VET";
   const showDogCapacityInput = shouldShowDogCapacity(serviceType);
@@ -1250,6 +1286,7 @@ export default function SupplierServicesPage() {
           value={serviceType}
           onChange={(e) => {
             setServiceType(e.target.value);
+            setTrainingBookingMode("APPOINTMENT");
             setPrice("");
             setDuration("");
             setBufferMinutes("");
@@ -1279,10 +1316,70 @@ export default function SupplierServicesPage() {
           ))}
         </select>
 
+        {isTraining ? (
+          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+            <div>
+              <p className="font-medium">Training booking type</p>
+
+              <p className="text-sm text-gray-500">
+                Choose how dog owners will book this training service.
+              </p>
+            </div>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+              <input
+                type="radio"
+                name="trainingBookingMode"
+                value="APPOINTMENT"
+                checked={trainingBookingMode === "APPOINTMENT"}
+                onChange={() =>
+                  setTrainingBookingMode("APPOINTMENT")
+                }
+                className="mt-1"
+              />
+
+              <span>
+                <span className="block font-medium">
+                  Private one-on-one training
+                </span>
+
+                <span className="block text-sm text-gray-500">
+                  The owner chooses an available appointment time for their dog.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+              <input
+                type="radio"
+                name="trainingBookingMode"
+                value="SESSION_EVENT"
+                checked={trainingBookingMode === "SESSION_EVENT"}
+                onChange={() =>
+                  setTrainingBookingMode("SESSION_EVENT")
+                }
+                className="mt-1"
+              />
+
+              <span>
+                <span className="block font-medium">
+                  Group class or course
+                </span>
+                <span className="block text-sm text-gray-500">
+                  You create named sessions such as Saturday Puppy Class, each
+                  with its own date, time, price and capacity.
+                </span>
+              </span>
+            </label>
+          </div>
+
+        ) : null}
+
         {serviceType &&
         serviceType !== "GROOMING" &&
         serviceType !== "DAYCARE" &&
-        serviceType !== "MOBILE_VET" ? (
+        serviceType !== "MOBILE_VET" &&
+        !isSessionEventTraining ? (
           <input
             type="number"
             min="0"
@@ -1436,7 +1533,9 @@ export default function SupplierServicesPage() {
           </div>
         ) : null}
 
-        {showDurationInput && !isMobileVet ? (
+        {showDurationInput &&
+        !isMobileVet &&
+        !isSessionEventTraining ? (
           <input
             type="number"
             min="1"
@@ -1447,7 +1546,9 @@ export default function SupplierServicesPage() {
           />
         ) : null}
 
-        {showBufferInput && serviceType !== "GROOMING" ? (
+        {showBufferInput &&
+        serviceType !== "GROOMING" &&
+        !isSessionEventTraining ? (
           <input
             type="number"
             min="0"
