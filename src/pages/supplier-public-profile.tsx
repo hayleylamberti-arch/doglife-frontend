@@ -142,6 +142,10 @@ export default function SupplierPublicProfile() {
   const locationState = (location.state || {}) as LocationState;
 
   const [selectedService, setSelectedService] = useState<any | null>(null);
+
+  const [selectedServiceSession, setSelectedServiceSession] =
+  useState<any | null>(null);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [isPreferred, setIsPreferred] = useState<boolean>(
     Boolean(locationState.isPreferred)
@@ -689,7 +693,11 @@ export default function SupplierPublicProfile() {
           supplierId={supplier.id}
           supplierName={supplier.businessName}
           service={selectedService}
-          onClose={() => setModalOpen(false)}
+          selectedServiceSession={selectedServiceSession}
+          onClose={() => {
+            setModalOpen(false);
+            setSelectedServiceSession(null);
+          }}
         />
       )}
     </div>

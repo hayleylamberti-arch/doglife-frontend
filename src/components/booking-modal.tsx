@@ -7,6 +7,7 @@ interface Props {
   supplierId: string;
   supplierName?: string | null;
   service: any;
+  selectedServiceSession?: any | null;
   onClose: () => void;
 }
 
@@ -188,6 +189,7 @@ export default function BookingModal({
   supplierId,
   supplierName,
   service,
+  selectedServiceSession,
   onClose,
 }: Props) {
   const serviceType = service?.service || "WALKING";
@@ -202,6 +204,9 @@ export default function BookingModal({
   const isDaycare = serviceType === "DAYCARE";
 
   const bookingModel = getEffectiveBookingModel(service);
+
+  const isSessionEventService =
+  bookingModel === "SESSION_EVENT";
 
   const isStayService =
     bookingModel === "DATE_RANGE_CAPACITY";
@@ -544,6 +549,10 @@ export default function BookingModal({
   ]);
 
   const displayPrice = useMemo(() => {
+    if (isSessionEventService) {
+      return Number(selectedServiceSession?.priceCents || 0);
+    }
+
     if (isBoarding) {
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
     }
@@ -610,6 +619,8 @@ export default function BookingModal({
     isMobileVet,
     mobileVetService,
     mobileOptions,
+    isSessionEventService,
+    selectedServiceSession?.priceCents,
     service?.baseRateCents,
   ]);
 
