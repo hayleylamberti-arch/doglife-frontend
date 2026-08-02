@@ -1983,7 +1983,17 @@ export default function SupplierServicesPage() {
                 <div key={s.id} className="rounded border p-3 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      {type === "GROOMING" ? (
+                      {type === "TRAINING" &&
+                      s.bookingModel === "SESSION_EVENT" ? (
+                        <>
+                          <p className="font-medium text-gray-700">
+                            Group class or course
+                          </p>
+                          <p>
+                            Pricing and schedule are set per session.
+                          </p>
+                        </>
+                      ) : type === "GROOMING" ? (
                         <>
                           {(s.pricingTiers || []).filter(
                             (t: any) => t.category === "WASH_BRUSH"
