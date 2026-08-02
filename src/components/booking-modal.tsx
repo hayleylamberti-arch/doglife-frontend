@@ -225,6 +225,26 @@ export default function BookingModal({
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
+  type ServiceSessionOption = {
+    id: string;
+    name: string;
+    description?: string | null;
+    startAt: string;
+    endAt: string;
+    priceCents: number;
+    capacityDogs: number;
+    status?: string;
+  };
+
+  const [serviceSessions, setServiceSessions] = useState<
+    ServiceSessionOption[]
+  >([]);
+
+  const [selectedServiceSessionId, setSelectedServiceSessionId] =
+    useState<string | null>(null);
+
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+
   const [returnDate, setReturnDate] = useState("");
   const [returnSlots, setReturnSlots] = useState<BookingSlotOption[]>([]);
   const [selectedReturnSlot, setSelectedReturnSlot] = useState<string | null>(
