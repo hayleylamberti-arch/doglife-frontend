@@ -662,23 +662,83 @@ export default function SupplierPublicProfile() {
   </div>
 </div>
 
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      trackEvent("booking_started", {
-                        supplierId: supplier.id,
-                        supplierName: supplier.businessName,
-                        serviceId: service.id,
-                        serviceType: service.service,
-                        suburb: supplier.suburb,
-                      });
+                  {service.bookingModel === "SESSION_EVENT" &&
+Array.isArray(service.sessions) &&
+service.sessions.length > 0 ? (
+  <div className="space-y-3">
+    {service.sessions.map((session: any) => (
+      <div
+        key={session.id}
+        className="rounded-xl border border-blue-200 bg-blue-50 p-4"
+      >
+        <p className="font-semibold text-blue-950">
+          {session.name}
+        </p>
 
-                      setSelectedService(service);
-                      setModalOpen(true);
-                    }}
-                  >
-                    Book Service
-                  </Button>
+        {session.description ? (
+          <p className="mt-1 text-sm text-blue-900">
+            {session.description}
+          </p>
+        ) : null}
+
+        <p className="mt-2 text-sm text-blue-900">
+          {new Date(session.startAt).toLocaleDateString("en-ZA", {
+            dateStyle: "medium",
+          })}{" "}
+          –{" "}
+          {new Date(session.endAt).toLocaleDateString("en-ZA", {
+            dateStyle: "medium",
+          })}
+        </p>
+
+        <p className="mt-1 text-sm text-blue-900">
+          {formatPrice(session.priceCents)} per dog • Capacity:{" "}
+          {session.capacityDogs}
+        </p>
+
+        <Button
+          size="sm"
+          className="mt-3"
+          onClick={() => {
+            trackEvent("booking_started", {
+              supplierId: supplier.id,
+              supplierName: supplier.businessName,
+              serviceId: service.id,
+              serviceType: service.service,
+              serviceSessionId: session.id,
+              suburb: supplier.suburb,
+            });
+
+            setSelectedService(service);
+            setSelectedServiceSession(session);
+            setModalOpen(true);
+          }}
+        >
+          Book this class
+        </Button>
+      </div>
+    ))}
+  </div>
+) : (
+  <Button
+    size="sm"
+    onClick={() => {
+      trackEvent("booking_started", {
+        supplierId: supplier.id,
+        supplierName: supplier.businessName,
+        serviceId: service.id,
+        serviceType: service.service,
+        suburb: supplier.suburb,
+      });
+
+      setSelectedService(service);
+      setSelectedServiceSession(null);
+      setModalOpen(true);
+    }}
+  >
+    Book Service
+  </Button>
+)}
                 </CardContent>
               </Card>
             );
