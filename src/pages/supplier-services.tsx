@@ -1113,6 +1113,326 @@ export default function SupplierServicesPage() {
     );
   };
 
+    const [sessionInputs, setSessionInputs] = useState<
+    Record<
+      string,
+      {
+        name: string;
+        description: string;
+        startAt: string;
+        endAt: string;
+        capacityDogs: string;
+        price: string;
+      }
+    >
+  >({});
+
+  const createSessionMutation = useMutation({
+    mutationFn: async ({
+      serviceId,
+      name,
+      description,
+      startAt,
+      endAt,
+      capacityDogs,
+      price,
+    }: {
+      serviceId: string;
+      name: string;
+      description: string;
+      startAt: string;
+      endAt: string;
+      capacityDogs: string;
+      price: string;
+    }) => {
+      if (!name.trim()) {
+        throw new Error("Enter a session name");
+      }
+
+      if (!startAt || !endAt) {
+        throw new Error("Choose the session start and end times");
+      }
+
+      const parsedStartAt = new Date(startAt);
+      const parsedEndAt = new Date(endAt);
+
+      if (
+        Number.isNaN(parsedStartAt.getTime()) ||
+        Number.isNaN(parsedEndAt.getTime())
+      ) {
+        throw new Error("Enter valid session dates and times");
+      }
+
+      if (parsedEndAt <= parsedStartAt) {
+        throw new Error("The session must end after it starts");
+      }
+
+      const parsedCapacityDogs = Number(capacityDogs);
+
+      if (
+        !Number.isInteger(parsedCapacityDogs) ||
+        parsedCapacityDogs <= 0
+      ) {
+        throw new Error("Session capacity must be at least 1");
+      }
+
+      const parsedPrice = Number(price);
+
+      if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
+        throw new Error("Enter a valid session price");
+      }
+
+      return api.post(`/api/supplierServices/${serviceId}/sessions`, {
+        name: name.trim(),
+        description: description.trim() || null,
+        startAt: parsedStartAt.toISOString(),
+        endAt: parsedEndAt.toISOString(),
+        capacityDogs: parsedCapacityDogs,
+        priceCents: Math.round(parsedPrice * 100),
+      });
+    },
+
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["supplier-services"],
+      });
+
+      setSessionInputs((previous) => ({
+        ...previous,
+        [variables.serviceId]: {
+          name: "",
+          description: "",
+          startAt: "",
+          endAt: "",
+          capacityDogs: "",
+          price: "",
+        },
+      }));
+    },
+  });
+
+  const formatSessionDateTime = (value?: string | null) => {
+    if (!value) return "";
+
+    return new Date(value).toLocaleString("en-ZA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const renderSessionManager = (s: any) => {
+    if (s.bookingModel !== "SESSION_EVENT") {
+      return null;
+    }
+
+    const input = sessionInputs[s.id] || {
+      name: "",
+      description: "",
+      startAt: "",
+      endAt: "",
+      capacityDogs: "",
+      price: "",
+    };
+
+    const sessions = s.sessions || [];
+
+    const isCreatingThisSession =
+      createSessionMutation.isPending &&
+      createSessionMutation.variables?.serviceId === s.id;
+
+    const updateSessionInput = (
+      field:
+        | "name"
+        | "description"
+        | "startAt"
+        | "endAt"
+        | "capacityDogs"
+        | "price",
+      value: string
+    ) => {
+      setSessionInputs((previous) => ({
+        ...previous,
+        [s.id]: {
+          ...input,
+          [field]: value,
+        },
+      }));
+    };
+
+    return (
+      <div className="mt-4 space-y-4 rounded-lg border border-gray-200 p-4">
+        <div>
+          <p className="font-medium text-gray-800">Group class sessions</p>
+
+          <p className="text-sm text-gray-600">
+            Create each class or course session with its own date, time, price
+            and dog capacity.
+          </p>
+        </div>
+
+        {sessions.length > 0 ? (
+          <div className="space-y-3">
+            {sessions.map((session: any) => (
+              <div
+                key={session.id}
+                className="rounded-lg border bg-gray-50 p-3"
+              >
+                <p className="font-medium text-gray-800">{session.name}</p>
+
+                {session.description ? (
+                  <p className="mt-1 text-sm text-gray-600">
+                    {session.description}
+                  </p>
+                ) : null}
+
+                <div className="mt-2 space-y-1 text-sm text-gray-600">
+                  <p>
+                    {formatSessionDateTime(session.startAt)} –{" "}
+                    {formatSessionDateTime(session.endAt)}
+                  </p>
+
+                  <p>
+                    Price: {formatRandFromCents(session.priceCents)}
+                  </p>
+
+                  <p>Capacity: {session.capacityDogs} dogs</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            No group class sessions have been added yet.
+          </p>
+        )}
+
+        <div className="space-y-3 rounded-lg border bg-white p-4">
+          <p className="font-medium text-gray-800">Add a session</p>
+
+          <input
+            type="text"
+            placeholder="Session name, e.g. Saturday Puppy Class"
+            value={input.name}
+            onChange={(event) =>
+              updateSessionInput("name", event.target.value)
+            }
+            className="block w-full rounded border px-3 py-2"
+          />
+
+          <textarea
+            rows={3}
+            placeholder="Description (optional)"
+            value={input.description}
+            onChange={(event) =>
+              updateSessionInput("description", event.target.value)
+            }
+            className="block w-full rounded border px-3 py-2"
+          />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">
+                Starts
+              </span>
+
+              <input
+                type="datetime-local"
+                value={input.startAt}
+                onChange={(event) =>
+                  updateSessionInput("startAt", event.target.value)
+                }
+                className="block w-full rounded border px-3 py-2"
+              />
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">
+                Ends
+              </span>
+
+              <input
+                type="datetime-local"
+                min={input.startAt || undefined}
+                value={input.endAt}
+                onChange={(event) =>
+                  updateSessionInput("endAt", event.target.value)
+                }
+                className="block w-full rounded border px-3 py-2"
+              />
+            </label>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">
+                Price per dog (R)
+              </span>
+
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g. 350"
+                value={input.price}
+                onChange={(event) =>
+                  updateSessionInput("price", event.target.value)
+                }
+                className="block w-full rounded border px-3 py-2"
+              />
+            </label>
+
+            <label className="space-y-1">
+              <span className="text-sm font-medium text-gray-700">
+                Dog capacity
+              </span>
+
+              <input
+                type="number"
+                min="1"
+                step="1"
+                placeholder="e.g. 8"
+                value={input.capacityDogs}
+                onChange={(event) =>
+                  updateSessionInput("capacityDogs", event.target.value)
+                }
+                className="block w-full rounded border px-3 py-2"
+              />
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              createSessionMutation.mutate({
+                serviceId: s.id,
+                name: input.name,
+                description: input.description,
+                startAt: input.startAt,
+                endAt: input.endAt,
+                capacityDogs: input.capacityDogs,
+                price: input.price,
+              })
+            }
+            disabled={isCreatingThisSession}
+            className="rounded bg-black px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isCreatingThisSession ? "Adding session..." : "Add session"}
+          </button>
+
+          {createSessionMutation.isError &&
+          createSessionMutation.variables?.serviceId === s.id ? (
+            <p className="text-sm text-red-600">
+              {getApiErrorMessage(createSessionMutation.error)}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   const renderAvailabilityBlocks = (s: any) => {
   const input = blockInputs[s.id] || {
     startDate: "",
@@ -1786,6 +2106,8 @@ export default function SupplierServicesPage() {
                   </div>
 
                   {renderEditForm(s)}
+
+                  {renderSessionManager(s)}
 
                   <ServiceOperatingHours
                     serviceId={s.id}
