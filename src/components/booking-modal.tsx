@@ -230,26 +230,6 @@ export default function BookingModal({
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
-  type ServiceSessionOption = {
-    id: string;
-    name: string;
-    description?: string | null;
-    startAt: string;
-    endAt: string;
-    priceCents: number;
-    capacityDogs: number;
-    status?: string;
-  };
-
-  const [serviceSessions, setServiceSessions] = useState<
-    ServiceSessionOption[]
-  >([]);
-
-  const [selectedServiceSessionId, setSelectedServiceSessionId] =
-    useState<string | null>(null);
-
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-
   const [returnDate, setReturnDate] = useState("");
   const [returnSlots, setReturnSlots] = useState<BookingSlotOption[]>([]);
   const [selectedReturnSlot, setSelectedReturnSlot] = useState<string | null>(
@@ -323,11 +303,11 @@ export default function BookingModal({
   );
 
   const shouldRequireOwnerAddress =
-    isWalking ||
-    isTraining ||
-    isMobileVet ||
-    isMobileGrooming ||
-    (isPetSitting && petSittingLocation === "OWNER_HOME");
+  isWalking ||
+  (isTraining && !isSessionEventService) ||
+  isMobileVet ||
+  isMobileGrooming ||
+  (isPetSitting && petSittingLocation === "OWNER_HOME");
 
   const shouldShowAccessInstructions =
     shouldRequireOwnerAddress || isPetTransport;
@@ -625,6 +605,11 @@ export default function BookingModal({
   ]);
 
   const displaySubtitle = useMemo(() => {
+    if (isSessionEventService) {
+  return `${formatPrice(
+    selectedServiceSession?.priceCents
+  )} per dog`;
+}
     if (isBoarding) {
       if (arrivalDate && departureDate) {
         const dogCount = Math.max(1, selectedDogIds.length || 1);
@@ -700,6 +685,8 @@ export default function BookingModal({
     halfDayPeriod,
     journeyType,
     service?.unit,
+    isSessionEventService,
+    selectedServiceSession?.priceCents,
   ]);
 
   useEffect(() => {
@@ -1029,11 +1016,19 @@ export default function BookingModal({
     }
 
     if (
+      !isSessionEventService &&
       !isStayService &&
       !isBlockCapacityService &&
       !date
     ) {
       return alert("Select a date");
+    }
+
+    if (
+      isSessionEventService &&
+      !selectedServiceSession?.id
+    ) {
+      return alert("Please select a class or course session");
     }
 
     if (usesTimeSlots && slots.length === 0) {
@@ -1112,7 +1107,19 @@ export default function BookingModal({
       let returnStartAt: Date | null = null;
       let returnEndAt: Date | null = null;
 
-      if (isStayService) {
+      if (isSessionEventService) {
+        if (
+          !selectedServiceSession?.startAt ||
+          !selectedServiceSession?.endAt
+        ) {
+          throw new Error(
+            "This class or course session does not have valid dates"
+          );
+        }
+
+        startAt = new Date(selectedServiceSession.startAt);
+        endAt = new Date(selectedServiceSession.endAt);
+      } else if (isStayService) {
         startAt = new Date(`${arrivalDate}T09:00`);
         endAt = new Date(`${departureDate}T09:00`);
       } else if (isBlockCapacityService) {
@@ -1176,6 +1183,11 @@ export default function BookingModal({
       const bookingResponse = await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
+
+        serviceSessionId: isSessionEventService
+          ? selectedServiceSession?.id
+          : undefined,
+
         serviceType,
         startAt,
         endAt,
@@ -1477,113 +1489,163 @@ export default function BookingModal({
               </div>
             ) : null}
 
-            {isStayService ? (
-              <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
-                <p className="text-sm font-semibold">
-                  Select arrival and departure dates
-                </p>
+           {isSessionEventService ? (
+  <div className="rounded-lg border-2 border-blue-300 bg-blue-50 p-4">
+    <p className="font-semibold text-blue-950">
+      {selectedServiceSession?.name ||
+        "Selected class or course"}
+    </p>
 
-                <div className="space-y-3">
-                  <input
-                    type="date"
-                    className={dateInputClass}
-                    value={arrivalDate}
-                    onChange={(e) =>
-                      setArrivalDate(e.target.value)
-                    }
-                    disabled={authRequired}
-                  />
+    {selectedServiceSession?.description ? (
+      <p className="mt-2 text-sm text-blue-900">
+        {selectedServiceSession.description}
+      </p>
+    ) : null}
 
-                  <input
-                    type="date"
-                    className={dateInputClass}
-                    value={departureDate}
-                    min={arrivalDate || undefined}
-                    onChange={(e) =>
-                      setDepartureDate(e.target.value)
-                    }
-                    disabled={authRequired}
-                  />
-                </div>
+    <div className="mt-3 space-y-1 text-sm text-blue-900">
+      <p>
+        <span className="font-medium">Starts:</span>{" "}
+        {formatBookingDateTime(
+          selectedServiceSession?.startAt
+        )}
+      </p>
 
-                {isPetSitting ? (
-                  <div className="mt-3">
-                    <p className="mb-1 text-sm font-medium">
-                      Pet sitting location
-                    </p>
+      <p>
+        <span className="font-medium">Ends:</span>{" "}
+        {formatBookingDateTime(
+          selectedServiceSession?.endAt
+        )}
+      </p>
 
-                    <select
-                      className="w-full rounded border px-3 py-2"
-                      value={petSittingLocation}
-                      disabled={authRequired}
-                      onChange={(e) =>
-                        setPetSittingLocation(
-                          e.target
-                            .value as PetSittingLocation
-                        )
-                      }
-                    >
-                      <option value="OWNER_HOME">
-                        Owner home
-                      </option>
+      <p>
+        <span className="font-medium">Price:</span>{" "}
+        {formatPrice(
+          selectedServiceSession?.priceCents
+        )}{" "}
+        per dog
+      </p>
 
-                      <option value="SITTER_HOME">
-                        Sitter home
-                      </option>
-                    </select>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
-                <p className="text-sm font-semibold">
-                  {isBlockCapacityService
-                    ? isDaycare
-                      ? "Select daycare date"
-                      : "Select booking date"
-                    : isPetTransport
-                    ? "Select outbound date and time"
-                    : "Select date and time"}
-                </p>
+      {selectedServiceSession?.capacityDogs ? (
+        <p>
+          <span className="font-medium">
+            Class capacity:
+          </span>{" "}
+          {selectedServiceSession.capacityDogs} dogs
+        </p>
+      ) : null}
+    </div>
 
-                <p className="mb-3 text-xs text-gray-500">
-                                    {isBlockCapacityService
-                    ? isDaycare
-                      ? "Choose the date for this daycare session."
-                      : "Choose the date for this booking."
-                    : isPetTransport
-                    ? "Choose the date and time for the outbound journey."
-                    : "Choose a date first, then pick an available time slot."}
-                </p>
+    <p className="mt-3 text-xs text-blue-800">
+      This class has fixed dates and times. You do not
+      need to select another date or time.
+    </p>
+  </div>
+) : isStayService ? (
+  <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
+    <p className="text-sm font-semibold">
+      Select arrival and departure dates
+    </p>
 
-                <input
-                  type="date"
-                  className={dateInputClass}
-                  value={date}
-                  disabled={authRequired}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    setSelectedSlot(null);
+    <div className="space-y-3">
+      <input
+        type="date"
+        className={dateInputClass}
+        value={arrivalDate}
+        onChange={(e) =>
+          setArrivalDate(e.target.value)
+        }
+        disabled={authRequired}
+      />
 
-                    if (
-                      returnDate &&
-                      e.target.value > returnDate
-                    ) {
-                      setReturnDate(e.target.value);
-                      setSelectedReturnSlot(null);
-                    }
-                  }}
-                />
+      <input
+        type="date"
+        className={dateInputClass}
+        value={departureDate}
+        min={arrivalDate || undefined}
+        onChange={(e) =>
+          setDepartureDate(e.target.value)
+        }
+        disabled={authRequired}
+      />
+    </div>
 
-                {usesTimeSlots &&
-                date &&
-                slots.length === 0 ? (
-                  <p className="mt-2 text-xs text-red-600">
-                    No available time slots for this date.
-                  </p>
-                ) : null}
-              </div>
-            )}
+    {isPetSitting ? (
+      <div className="mt-3">
+        <p className="mb-1 text-sm font-medium">
+          Pet sitting location
+        </p>
+
+        <select
+          className="w-full rounded border px-3 py-2"
+          value={petSittingLocation}
+          disabled={authRequired}
+          onChange={(e) =>
+            setPetSittingLocation(
+              e.target.value as PetSittingLocation
+            )
+          }
+        >
+          <option value="OWNER_HOME">
+            Owner home
+          </option>
+
+          <option value="SITTER_HOME">
+            Sitter home
+          </option>
+        </select>
+      </div>
+    ) : null}
+  </div>
+) : (
+  <div className="overflow-hidden rounded-lg border-2 border-blue-300 p-3">
+    <p className="text-sm font-semibold">
+      {isBlockCapacityService
+        ? isDaycare
+          ? "Select daycare date"
+          : "Select booking date"
+        : isPetTransport
+        ? "Select outbound date and time"
+        : "Select date and time"}
+    </p>
+
+    <p className="mb-3 text-xs text-gray-500">
+      {isBlockCapacityService
+        ? isDaycare
+          ? "Choose the date for this daycare session."
+          : "Choose the date for this booking."
+        : isPetTransport
+        ? "Choose the date and time for the outbound journey."
+        : "Choose a date first, then pick an available time slot."}
+    </p>
+
+    <input
+      type="date"
+      className={dateInputClass}
+      value={date}
+      disabled={authRequired}
+      onChange={(e) => {
+        setDate(e.target.value);
+        setSelectedSlot(null);
+
+        if (
+          returnDate &&
+          e.target.value > returnDate
+        ) {
+          setReturnDate(e.target.value);
+          setSelectedReturnSlot(null);
+        }
+      }}
+    />
+
+    {usesTimeSlots &&
+    date &&
+    slots.length === 0 ? (
+      <p className="mt-2 text-xs text-red-600">
+        No available time slots for this date.
+      </p>
+    ) : null}
+  </div>
+)} 
 
             {usesTimeSlots && slots.length > 0 ? (
               <div>
