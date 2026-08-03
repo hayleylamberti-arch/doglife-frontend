@@ -22,6 +22,14 @@ type BookingModel =
   | "BLOCK_CAPACITY"
   | "SESSION_EVENT";
 
+type BookingBlock = {
+  key: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  priceCents: number;
+};
+
 interface Dog {
   id: string;
   name: string;
@@ -135,11 +143,45 @@ function flattenBookableSlots(payload: any): BookingSlotOption[] {
     .filter(Boolean) as BookingSlotOption[];
 }
 
-function buildDaycareTimes(
-  date: string,
+function resolveLegacyDaycareBlock(
+  service: any,
   daycareSessionType: DaycareSessionType,
   halfDayPeriod: HalfDayPeriod
-) {
+): BookingBlock | null {
+  if (service?.service !== "DAYCARE") return null;
+
+  if (daycareSessionType === "FULL_DAY") {
+    return {
+      key: "FULL_DAY",
+      label: "Full day",
+      startTime: "09:00",
+      endTime: "17:00",
+      priceCents:
+        toNumber(service?.pricingJson?.fullDayPriceCents) ||
+        toNumber(service?.baseRateCents),
+    };
+  }
+
+  if (halfDayPeriod === "AFTERNOON") {
+    return {
+      key: "AFTERNOON_HALF_DAY",
+      label: "Afternoon half day",
+      startTime: "13:00",
+      endTime: "17:00",
+      priceCents: toNumber(service?.pricingJson?.halfDayPriceCents),
+    };
+  }
+
+  return {
+    key: "MORNING_HALF_DAY",
+    label: "Morning half day",
+    startTime: "09:00",
+    endTime: "13:00",
+    priceCents: toNumber(service?.pricingJson?.halfDayPriceCents),
+  };
+}
+
+function buildBookingBlockTimes(date: string, block: BookingBlock) {
   if (!date) {
     return {
       startAt: null as Date | null,
@@ -147,23 +189,9 @@ function buildDaycareTimes(
     };
   }
 
-  if (daycareSessionType === "FULL_DAY") {
-    return {
-      startAt: new Date(`${date}T09:00:00`),
-      endAt: new Date(`${date}T17:00:00`),
-    };
-  }
-
-  if (halfDayPeriod === "AFTERNOON") {
-    return {
-      startAt: new Date(`${date}T13:00:00`),
-      endAt: new Date(`${date}T17:00:00`),
-    };
-  }
-
   return {
-    startAt: new Date(`${date}T09:00:00`),
-    endAt: new Date(`${date}T13:00:00`),
+    startAt: new Date(`${date}T${block.startTime}:00`),
+    endAt: new Date(`${date}T${block.endTime}:00`),
   };
 }
 
@@ -991,6 +1019,20 @@ export default function BookingModal({
       return alert("Select at least one dog");
     }
 
+    const selectedBookingBlock = isBlockCapacityService
+      ? resolveLegacyDaycareBlock(
+          service,
+          daycareSessionType,
+          halfDayPeriod
+        )
+      : null;
+
+    if (isBlockCapacityService && !selectedBookingBlock) {
+      return alert(
+        "No booking blocks are currently available for this service."
+      );
+    }
+
     if (
       maxDogsPerBooking > 0 &&
       selectedDogIds.length > maxDogsPerBooking
@@ -1123,18 +1165,17 @@ export default function BookingModal({
         startAt = new Date(`${arrivalDate}T09:00`);
         endAt = new Date(`${departureDate}T09:00`);
       } else if (isBlockCapacityService) {
-        const daycareTimes = buildDaycareTimes(
+        const blockTimes = buildBookingBlockTimes(
           date,
-          daycareSessionType,
-          halfDayPeriod
+          selectedBookingBlock!
         );
 
-        if (!daycareTimes.startAt || !daycareTimes.endAt) {
-          throw new Error("Invalid daycare time");
+        if (!blockTimes.startAt || !blockTimes.endAt) {
+          throw new Error("Invalid booking block time");
         }
 
-        startAt = daycareTimes.startAt;
-        endAt = daycareTimes.endAt;
+        startAt = blockTimes.startAt;
+        endAt = blockTimes.endAt;
       } else {
         startAt = new Date(selectedSlot!);
 
