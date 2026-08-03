@@ -692,8 +692,10 @@ service.sessions.length > 0 ? (
         </p>
 
         <p className="mt-1 text-sm text-blue-900">
-          {formatPrice(session.priceCents)} per dog • Capacity:{" "}
-          {session.capacityDogs}
+          {formatPrice(session.priceCents)} per dog •{" "}
+          {session.remainingCapacityDogs != null
+            ? `${session.remainingCapacityDogs} of ${session.capacityDogs} spaces remaining`
+            : `Capacity: ${session.capacityDogs}`}
         </p>
 
         <Button

@@ -1526,12 +1526,18 @@ export default function BookingModal({
       </p>
 
       {selectedServiceSession?.capacityDogs ? (
-        <p>
-          <span className="font-medium">
-            Class capacity:
-          </span>{" "}
-          {selectedServiceSession.capacityDogs} dogs
+        selectedServiceSession.remainingCapacityDogs != null ? (
+          <p>
+            <span className="font-medium">Availability:</span>{" "}
+            {selectedServiceSession.remainingCapacityDogs} of{" "}
+            {selectedServiceSession.capacityDogs} spaces remaining
+          </p>
+        ) : (
+          <p>
+            <span className="font-medium">Class capacity:</span>{" "}
+              {selectedServiceSession.capacityDogs} dogs
         </p>
+        )
       ) : null}
     </div>
 
