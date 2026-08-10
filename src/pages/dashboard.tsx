@@ -1448,6 +1448,14 @@ export default function Dashboard() {
       focusAction === "review" &&
       focusBookingId === booking.id;
 
+console.log("OWNER BOOKING DEBUG", {
+  id: booking.id,
+  serviceType: booking.serviceType,
+  serviceSessionId: booking.serviceSessionId,
+  serviceSession: booking.serviceSession,
+  occurrences: booking.serviceSession?.occurrences,
+});
+
     return (
       <div
         id={`booking-${booking.id}`}
@@ -1473,6 +1481,49 @@ export default function Dashboard() {
                 {formatTime(booking.startAt)} –{" "}
                 {formatTime(booking.endAt)}
               </p>
+
+              <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-yellow-50 p-3 text-xs text-gray-800">
+  {JSON.stringify(
+    {
+      serviceSessionId: booking.serviceSessionId,
+      serviceSession: booking.serviceSession,
+      occurrences: booking.serviceSession?.occurrences,
+    },
+    null,
+    2
+  )}
+</pre>
+
+              {booking.serviceSession?.occurrences?.length > 0 && (
+  <div className="mt-3 space-y-2">
+    <p className="text-sm font-medium text-gray-700">
+      Course sessions
+    </p>
+
+    {booking.serviceSession.occurrences.map((occurrence: any) => (
+      <div
+        key={occurrence.id}
+        className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm"
+      >
+        <span>
+          {formatDate(occurrence.startAt)} •{" "}
+          {formatTime(occurrence.startAt)} –{" "}
+          {formatTime(occurrence.endAt)}
+        </span>
+
+        <span className="text-xs font-medium text-gray-500">
+          {occurrence.status === "COMPLETED"
+            ? "Completed"
+            : occurrence.status === "IN_PROGRESS"
+              ? "In progress"
+              : occurrence.status === "CONFIRMED"
+                ? "Confirmed"
+                : occurrence.status}
+        </span>
+      </div>
+    ))}
+  </div>
+)}
 
               {isTransportBooking ? (
                 <>

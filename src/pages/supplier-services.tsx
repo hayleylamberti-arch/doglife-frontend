@@ -1156,6 +1156,38 @@ export default function SupplierServicesPage() {
       const parsedStartAt = new Date(startAt);
       const parsedEndAt = new Date(endAt);
 
+      const occurrences: Array<{
+        label: string;
+        startAt: string;
+        endAt: string;
+      }> = [];
+
+      const occurrenceCursor = new Date(parsedStartAt);
+
+      while (occurrenceCursor <= parsedEndAt) {
+        if (occurrenceCursor.getDay() === 6) {
+          const occurrenceStart = new Date(occurrenceCursor);
+
+          const occurrenceEnd = new Date(occurrenceStart);
+          occurrenceEnd.setHours(
+            occurrenceStart.getHours() + 1,
+            occurrenceStart.getMinutes(),
+            0,
+            0,
+          );
+
+          if (occurrenceEnd <= parsedEndAt) {
+            occurrences.push({
+              label: name.trim(),
+              startAt: occurrenceStart.toISOString(),
+              endAt: occurrenceEnd.toISOString(),
+            });
+          }
+        }
+
+        occurrenceCursor.setDate(occurrenceCursor.getDate() + 1);
+      }
+
       if (
         Number.isNaN(parsedStartAt.getTime()) ||
         Number.isNaN(parsedEndAt.getTime())
@@ -1189,6 +1221,7 @@ export default function SupplierServicesPage() {
         endAt: parsedEndAt.toISOString(),
         capacityDogs: parsedCapacityDogs,
         priceCents: Math.round(parsedPrice * 100),
+        occurrences,
       });
     },
 
@@ -1289,10 +1322,21 @@ export default function SupplierServicesPage() {
                 ) : null}
 
                 <div className="mt-2 space-y-1 text-sm text-gray-600">
-                  <p>
-                    {formatSessionDateTime(session.startAt)} –{" "}
-                    {formatSessionDateTime(session.endAt)}
-                  </p>
+                  {session.occurrences?.length > 0 ? (
+                    <div className="space-y-1">
+                      {session.occurrences.map((occurrence: any) => (
+                        <p key={occurrence.id}>
+                          {formatSessionDateTime(occurrence.startAt)} –{" "}
+                          {formatSessionDateTime(occurrence.endAt)}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p>
+                      {formatSessionDateTime(session.startAt)} –{" "}
+                      {formatSessionDateTime(session.endAt)}
+                    </p>
+                  )}
 
                   <p>
                     Price: {formatRandFromCents(session.priceCents)}
@@ -1333,37 +1377,91 @@ export default function SupplierServicesPage() {
           />
 
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-gray-700">
-                Starts
-              </span>
+  <label className="space-y-1">
+    <span className="text-sm font-medium text-gray-700">
+      Start date
+    </span>
 
-              <input
-                type="datetime-local"
-                value={input.startAt}
-                onChange={(event) =>
-                  updateSessionInput("startAt", event.target.value)
-                }
-                className="block w-full rounded border px-3 py-2"
-              />
-            </label>
+    <input
+      type="date"
+      value={input.startAt ? input.startAt.slice(0, 10) : ""}
+      onChange={(event) => {
+        const existingTime = input.startAt.slice(11, 16) || "09:00";
+        updateSessionInput(
+          "startAt",
+          event.target.value
+            ? `${event.target.value}T${existingTime}`
+            : ""
+        );
+      }}
+      className="block w-full rounded border px-3 py-2"
+    />
+  </label>
 
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-gray-700">
-                Ends
-              </span>
+  <label className="space-y-1">
+    <span className="text-sm font-medium text-gray-700">
+      Start time
+    </span>
 
-              <input
-                type="datetime-local"
-                min={input.startAt || undefined}
-                value={input.endAt}
-                onChange={(event) =>
-                  updateSessionInput("endAt", event.target.value)
-                }
-                className="block w-full rounded border px-3 py-2"
-              />
-            </label>
-          </div>
+    <input
+      type="time"
+      value={input.startAt ? input.startAt.slice(11, 16) : ""}
+      onChange={(event) => {
+        const existingDate = input.startAt.slice(0, 10);
+        updateSessionInput(
+          "startAt",
+          existingDate
+            ? `${existingDate}T${event.target.value}`
+            : ""
+        );
+      }}
+      className="block w-full rounded border px-3 py-2"
+    />
+  </label>
+
+  <label className="space-y-1">
+    <span className="text-sm font-medium text-gray-700">
+      End date
+    </span>
+
+    <input
+      type="date"
+      min={input.startAt ? input.startAt.slice(0, 10) : undefined}
+      value={input.endAt ? input.endAt.slice(0, 10) : ""}
+      onChange={(event) => {
+        const existingTime = input.endAt.slice(11, 16) || "10:00";
+        updateSessionInput(
+          "endAt",
+          event.target.value
+            ? `${event.target.value}T${existingTime}`
+            : ""
+        );
+      }}
+      className="block w-full rounded border px-3 py-2"
+    />
+  </label>
+
+  <label className="space-y-1">
+    <span className="text-sm font-medium text-gray-700">
+      End time
+    </span>
+
+    <input
+      type="time"
+      value={input.endAt ? input.endAt.slice(11, 16) : ""}
+      onChange={(event) => {
+        const existingDate = input.endAt.slice(0, 10);
+        updateSessionInput(
+          "endAt",
+          existingDate
+            ? `${existingDate}T${event.target.value}`
+            : ""
+        );
+      }}
+      className="block w-full rounded border px-3 py-2"
+    />
+  </label>
+</div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1">
