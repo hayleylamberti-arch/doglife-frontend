@@ -156,7 +156,7 @@ export default function SupplierPublicProfile() {
   const { data, isLoading, error } = useQuery({
   queryKey: ["publicSupplier", identifier],
   queryFn: async () => {
-  const apiBase = import.meta.env.VITE_API_BASE;
+  const apiBase = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
 
   const response = await fetch(
     `${apiBase}/api/public/suppliers/${encodeURIComponent(identifier!)}`
