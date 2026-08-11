@@ -1476,23 +1476,26 @@ console.log("OWNER BOOKING DEBUG", {
                   "Service Provider"}
               </p>
 
-              <p className="text-sm text-gray-500">
-                {formatDate(booking.startAt)} •{" "}
-                {formatTime(booking.startAt)} –{" "}
-                {formatTime(booking.endAt)}
-              </p>
+              {booking.serviceSession ? (
+  <div className="space-y-1">
+    <p className="text-sm font-medium text-gray-700">
+      {booking.serviceSession.name}
+    </p>
 
-              <pre className="mt-3 whitespace-pre-wrap rounded-lg bg-yellow-50 p-3 text-xs text-gray-800">
-  {JSON.stringify(
-    {
-      serviceSessionId: booking.serviceSessionId,
-      serviceSession: booking.serviceSession,
-      occurrences: booking.serviceSession?.occurrences,
-    },
-    null,
-    2
-  )}
-</pre>
+    <p className="text-sm text-gray-500">
+      {booking.serviceSession.occurrences?.length ?? 0} course{" "}
+      {(booking.serviceSession.occurrences?.length ?? 0) === 1
+        ? "session"
+        : "sessions"}
+    </p>
+  </div>
+) : (
+  <p className="text-sm text-gray-500">
+    {formatDate(booking.startAt)} •{" "}
+    {formatTime(booking.startAt)} –{" "}
+    {formatTime(booking.endAt)}
+  </p>
+)}
 
               {booking.serviceSession?.occurrences?.length > 0 && (
   <div className="mt-3 space-y-2">
