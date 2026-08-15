@@ -156,22 +156,23 @@ export default function SupplierPublicProfile() {
   const { data, isLoading, error } = useQuery({
   queryKey: ["publicSupplier", identifier],
   queryFn: async () => {
-  const apiBase = (import.meta.env.VITE_API_BASE || "").replace(/\/$/, "");
+    try {
+      const response = await api.get(
+        `/api/public/suppliers/${encodeURIComponent(identifier!)}`
+      );
 
-  const response = await fetch(
-    `${apiBase}/api/public/suppliers/${encodeURIComponent(identifier!)}`
-  );
+      return response.data.supplier;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const payload = error?.response?.data;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Supplier request failed (${response.status}): ${errorText}`
-    );
-  }
-
-  const result = await response.json();
-  return result.supplier;
-},
+      throw new Error(
+        status
+          ? `Supplier request failed (${status}): ${JSON.stringify(payload)}`
+          : "Unable to load supplier"
+      );
+    }
+  },
   enabled: Boolean(identifier),
 });
 
