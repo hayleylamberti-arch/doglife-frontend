@@ -1153,40 +1153,8 @@ export default function SupplierServicesPage() {
         throw new Error("Choose the session start and end times");
       }
 
-      const parsedStartAt = new Date(startAt);
+            const parsedStartAt = new Date(startAt);
       const parsedEndAt = new Date(endAt);
-
-      const occurrences: Array<{
-        label: string;
-        startAt: string;
-        endAt: string;
-      }> = [];
-
-      const occurrenceCursor = new Date(parsedStartAt);
-
-      while (occurrenceCursor <= parsedEndAt) {
-        if (occurrenceCursor.getDay() === 6) {
-          const occurrenceStart = new Date(occurrenceCursor);
-
-          const occurrenceEnd = new Date(occurrenceStart);
-          occurrenceEnd.setHours(
-            occurrenceStart.getHours() + 1,
-            occurrenceStart.getMinutes(),
-            0,
-            0,
-          );
-
-          if (occurrenceEnd <= parsedEndAt) {
-            occurrences.push({
-              label: name.trim(),
-              startAt: occurrenceStart.toISOString(),
-              endAt: occurrenceEnd.toISOString(),
-            });
-          }
-        }
-
-        occurrenceCursor.setDate(occurrenceCursor.getDate() + 1);
-      }
 
       if (
         Number.isNaN(parsedStartAt.getTime()) ||
@@ -1197,6 +1165,51 @@ export default function SupplierServicesPage() {
 
       if (parsedEndAt <= parsedStartAt) {
         throw new Error("The session must end after it starts");
+      }
+
+      const startMinutes =
+        parsedStartAt.getHours() * 60 + parsedStartAt.getMinutes();
+
+      const endMinutes =
+        parsedEndAt.getHours() * 60 + parsedEndAt.getMinutes();
+
+      const occurrenceDurationMinutes = endMinutes - startMinutes;
+
+      if (occurrenceDurationMinutes <= 0) {
+        throw new Error(
+          "The session end time must be later than the session start time"
+        );
+      }
+
+      const occurrenceDurationMs =
+        occurrenceDurationMinutes * 60 * 1000;
+
+      const occurrences: Array<{
+        label: string;
+        startAt: string;
+        endAt: string;
+      }> = [];
+
+      const occurrenceCursor = new Date(parsedStartAt);
+
+      while (occurrenceCursor <= parsedEndAt) {
+        const occurrenceStart = new Date(occurrenceCursor);
+
+        const occurrenceEnd = new Date(
+          occurrenceStart.getTime() + occurrenceDurationMs
+        );
+
+        if (occurrenceEnd > parsedEndAt) {
+          break;
+        }
+
+        occurrences.push({
+          label: name.trim(),
+          startAt: occurrenceStart.toISOString(),
+          endAt: occurrenceEnd.toISOString(),
+        });
+
+        occurrenceCursor.setDate(occurrenceCursor.getDate() + 7);
       }
 
       const parsedCapacityDogs = Number(capacityDogs);
