@@ -1014,6 +1014,9 @@ export default function Dashboard() {
 
   const [savedAccessInstructionId, setSavedAccessInstructionId] =
     useState<string | null>(null);
+  
+  const [cancellingBookingId, setCancellingBookingId] =
+    useState<string | null>(null);
 
   const [reviewInputs, setReviewInputs] = useState<
     Record<string, { rating: string; comment: string }>
@@ -1062,13 +1065,17 @@ export default function Dashboard() {
   });
 
   const cancelBookingMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/bookings/${bookingId}/cancel`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-    },
-  });
+  mutationFn: async (bookingId: string) => {
+    setCancellingBookingId(bookingId);
+    await api.patch(`/api/bookings/${bookingId}/cancel`);
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+  },
+  onSettled: () => {
+    setCancellingBookingId(null);
+  },
+});
 
   const updateAccessInstructionsMutation = useMutation({
     mutationFn: async ({
@@ -1822,10 +1829,10 @@ console.log("OWNER BOOKING DEBUG", {
                 onClick={() =>
                   cancelBookingMutation.mutate(booking.id)
                 }
-                disabled={cancelBookingMutation.isPending}
+                disabled={cancellingBookingId === booking.id}
                 className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white transition hover:bg-red-600 disabled:opacity-50"
               >
-                {cancelBookingMutation.isPending
+                {cancellingBookingId === booking.id
                   ? "Cancelling..."
                   : "Cancel"}
               </button>
