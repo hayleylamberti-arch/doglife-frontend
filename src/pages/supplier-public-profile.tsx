@@ -373,14 +373,20 @@ export default function SupplierPublicProfile() {
             <span>{savingPreferred ? "Saving..." : "Preferred"}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleShareProfile}
-            className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 transition hover:bg-gray-50"
-          >
-            <span aria-hidden="true">↗</span>
-            <span>Share</span>
-          </button>
+          {supplier.isPublicVisible ? (
+  <button
+    type="button"
+    onClick={handleShareProfile}
+    className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 transition hover:bg-gray-50"
+  >
+    <span aria-hidden="true">↗</span>
+    <span>Share</span>
+  </button>
+) : (
+  <span className="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+    Preview only
+  </span>
+)}
         </div>
       </div>
 
