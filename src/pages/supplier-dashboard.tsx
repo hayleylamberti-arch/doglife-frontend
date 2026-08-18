@@ -795,7 +795,7 @@ const missingOwnerAddress =
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
-            {formatServiceName(booking.serviceType)}
+            {booking.serviceSession?.name || formatServiceName(booking.serviceType)}
           </div>
 
           {booking.serviceSession?.occurrences?.length ? (
@@ -806,15 +806,28 @@ const missingOwnerAddress =
 
   return (
       <div
-        key={occurrence.id}
-        className="flex items-center justify-between gap-3"
-      >
-        <div>
-          {formatDateTime(occurrence.startAt)} {" - "}
-          {formatDateTime(occurrence.endAt)}
-        </div>
+  key={occurrence.id}
+  className="flex items-center justify-between gap-3"
+>
+  <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+    <div>
+      {formatDateTime(occurrence.startAt)} {" – "}
+      {formatDateTime(occurrence.endAt)}
+    </div>
 
-        {occurrence.status === "CONFIRMED" ? (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(
+        occurrence.status
+      )}`}
+    >
+      {formatBookingStatusLabel(occurrence.status)}
+    </span>
+  </div>
+
+        {booking.status !== "CANCELLED" &&
+occurrence.status === "CONFIRMED" &&
+Date.now() >=
+  new Date(occurrence.startAt).getTime() - 15 * 60 * 1000 ? (
   <button
     type="button"
     onClick={() => onStart(booking.id, occurrence.id)}
@@ -823,7 +836,8 @@ const missingOwnerAddress =
   >
     {isThisOccurrenceLoading ? "Starting..." : "Start session"}
   </button>
-) : occurrence.status === "IN_PROGRESS" ? (
+) : booking.status !== "CANCELLED" &&
+  occurrence.status === "IN_PROGRESS" ? (
   <button
     type="button"
     onClick={() => onComplete(booking.id, occurrence.id)}
