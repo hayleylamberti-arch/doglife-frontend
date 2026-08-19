@@ -382,9 +382,12 @@ export default function SupplierServicesPage() {
             ? null
             : Number(editForm.maxDogsPerBooking),
         concurrentCapacityDogs:
-          editForm.concurrentCapacityDogs === ""
-            ? null
-            : Number(editForm.concurrentCapacityDogs),
+  service.service === "PET_SITTING" &&
+  service.bookingModel === "BLOCK_CAPACITY"
+    ? null
+    : editForm.concurrentCapacityDogs === ""
+      ? null
+      : Number(editForm.concurrentCapacityDogs),
         additionalDogEnabled: editForm.additionalDogEnabled,
         additionalDogPriceCents: editForm.additionalDogEnabled
           ? Math.round(Number(editForm.additionalDogPrice || "0") * 100)
@@ -437,7 +440,10 @@ export default function SupplierServicesPage() {
         payload.baseRateCents = Math.round(Number(editForm.price) * 100);
         payload.pricingJson = {
           ...payload.pricingJson,
-          petSittingLocation: editForm.petSittingLocation || "BOTH",
+          petSittingLocation:
+  service.bookingModel === "BLOCK_CAPACITY"
+    ? "OWNER_HOME"
+    : editForm.petSittingLocation || "BOTH",
         };
       } else if (service.service === "MOBILE_VET") {
         const lowestPrice = getLowestMobileVetPriceCents(editForm.mobileVetPrices);
@@ -729,15 +735,18 @@ export default function SupplierServicesPage() {
             pricingJson: isPetSitting
               ? {
                   ...expectationsPricingJson,
-                  petSittingLocation,
+                  petSittingLocation: petSittingBookingMode === "BLOCK_CAPACITY" ? "OWNER_HOME" : petSittingLocation,
                 }
               : expectationsPricingJson,
             maxDogsPerBooking: showDogCapacity
               ? Number(maxDogsPerBooking || "0") || null
               : null,
-            concurrentCapacityDogs: showDogCapacity
-              ? Number(concurrentCapacityDogs || "0") || null
-              : null,
+            concurrentCapacityDogs:
+  isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY"
+    ? null
+    : showDogCapacity
+      ? Number(concurrentCapacityDogs || "0") || null
+      : null,
           },
         ],
       });
@@ -990,7 +999,7 @@ export default function SupplierServicesPage() {
           />
         )}
 
-        {s.service === "PET_SITTING" ? (
+        {s.service === "PET_SITTING" && s.bookingModel !== "BLOCK_CAPACITY" ? (
           <select
             value={editForm.petSittingLocation}
             onChange={(e) =>
@@ -1003,6 +1012,7 @@ export default function SupplierServicesPage() {
             <option value="SITTER_HOME">Sitter’s home only</option>
           </select>
         ) : null}
+        {s.service === "PET_SITTING" && s.bookingModel === "BLOCK_CAPACITY" ? <p className="text-sm text-gray-600">Pet sitting location: Owner’s home only</p> : null}
 
         {showDuration ? (
           <input
@@ -1040,19 +1050,24 @@ export default function SupplierServicesPage() {
               }
               className="border rounded px-3 py-2 block w-full"
             />
-            <input
-              type="number"
-              min="1"
-              placeholder="Total concurrent dog capacity"
-              value={editForm.concurrentCapacityDogs}
-              onChange={(e) =>
-                setEditForm({
-                  ...editForm,
-                  concurrentCapacityDogs: e.target.value,
-                })
-              }
-              className="border rounded px-3 py-2 block w-full"
-            />
+            {!(
+  s.service === "PET_SITTING" &&
+  s.bookingModel === "BLOCK_CAPACITY"
+) ? (
+  <input
+    type="number"
+    min="1"
+    placeholder="Total concurrent dog capacity"
+    value={editForm.concurrentCapacityDogs}
+    onChange={(e) =>
+      setEditForm({
+        ...editForm,
+        concurrentCapacityDogs: e.target.value,
+      })
+    }
+    className="border rounded px-3 py-2 block w-full"
+  />
+) : null}
           </>
         ) : null}
 
@@ -1858,18 +1873,25 @@ export default function SupplierServicesPage() {
       </select>
     </div>
 
-    <div>
-      <p className="font-medium">Pet sitting location</p>
-      <select
-        value={petSittingLocation}
-        onChange={(e) => setPetSittingLocation(e.target.value)}
-        className="mt-2 border rounded px-3 py-2 block w-full"
-      >
-        <option value="BOTH">Owner home or sitter home</option>
-        <option value="OWNER_HOME">Owner’s home only</option>
-        <option value="SITTER_HOME">Sitter’s home only</option>
-      </select>
-    </div>
+    {petSittingBookingMode === "BLOCK_CAPACITY" ? (
+  <div>
+    <p className="font-medium">Pet sitting location</p>
+    <p className="mt-2 text-sm text-gray-600">Owner’s home only</p>
+  </div>
+) : (
+  <div>
+    <p className="font-medium">Pet sitting location</p>
+    <select
+      value={petSittingLocation}
+      onChange={(e) => setPetSittingLocation(e.target.value)}
+      className="mt-2 border rounded px-3 py-2 block w-full"
+    >
+      <option value="BOTH">Owner home or sitter home</option>
+      <option value="OWNER_HOME">Owner’s home only</option>
+      <option value="SITTER_HOME">Sitter’s home only</option>
+    </select>
+  </div>
+)}
   </div>
 ) : null}
 
@@ -1980,26 +2002,31 @@ export default function SupplierServicesPage() {
         ) : null}
 
         {showDogCapacityInput ? (
-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
-            <input
-              type="number"
-              min="1"
-              placeholder="Maximum dogs per booking"
-              value={maxDogsPerBooking}
-              onChange={(e) => setMaxDogsPerBooking(e.target.value)}
-              className="border rounded px-3 py-2 block w-full"
-            />
+  <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+    <input
+      type="number"
+      min="1"
+      placeholder="Maximum dogs per booking"
+      value={maxDogsPerBooking}
+      onChange={(e) => setMaxDogsPerBooking(e.target.value)}
+      className="border rounded px-3 py-2 block w-full"
+    />
 
-            <input
-              type="number"
-              min="1"
-              placeholder="Total concurrent dog capacity"
-              value={concurrentCapacityDogs}
-              onChange={(e) => setConcurrentCapacityDogs(e.target.value)}
-              className="border rounded px-3 py-2 block w-full"
-            />
-          </div>
-        ) : null}
+    {!(
+      isPetSitting &&
+      petSittingBookingMode === "BLOCK_CAPACITY"
+    ) ? (
+      <input
+        type="number"
+        min="1"
+        placeholder="Total concurrent dog capacity"
+        value={concurrentCapacityDogs}
+        onChange={(e) => setConcurrentCapacityDogs(e.target.value)}
+        className="border rounded px-3 py-2 block w-full"
+      />
+    ) : null}
+  </div>
+) : null}
 
         {showDurationInput &&
         !isMobileVet &&
