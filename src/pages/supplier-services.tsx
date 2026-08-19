@@ -284,6 +284,11 @@ export default function SupplierServicesPage() {
   const [petSittingLocation, setPetSittingLocation] = useState("BOTH");
   const [mobileVetPrices, setMobileVetPrices] = useState(emptyMobileVetPrices());
 
+  const [petVisitBlockLabel, setPetVisitBlockLabel] = useState("");
+  const [petVisitBlockStartTime, setPetVisitBlockStartTime] = useState("");
+  const [petVisitBlockEndTime, setPetVisitBlockEndTime] = useState("");
+  const [petVisitBlockPrice, setPetVisitBlockPrice] = useState("");
+
   const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
   const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
 
@@ -434,7 +439,7 @@ export default function SupplierServicesPage() {
           ),
         };
       } else if (service.service === "PET_SITTING") {
-        if (!editForm.price || Number(editForm.price) <= 0) {
+        if (service.bookingModel !== "BLOCK_CAPACITY" && (!editForm.price || Number(editForm.price) <= 0)) {
           throw new Error("Enter a valid pet sitting price");
         }
 
@@ -771,6 +776,43 @@ export default function SupplierServicesPage() {
     },
   });
 
+  const createPetVisitBlockMutation = useMutation({
+  mutationFn: async (serviceId: string) => {
+    if (!petVisitBlockLabel.trim()) {
+      throw new Error("Enter a pet visit block name");
+    }
+
+    if (!petVisitBlockStartTime || !petVisitBlockEndTime) {
+      throw new Error("Enter a start and end time");
+    }
+
+    if (
+      petVisitBlockPrice === "" ||
+      !Number.isFinite(Number(petVisitBlockPrice)) ||
+      Number(petVisitBlockPrice) < 0
+    ) {
+      throw new Error("Enter a valid pet visit price");
+    }
+
+    return api.post(`/api/supplierServices/${serviceId}/booking-blocks`, {
+      label: petVisitBlockLabel.trim(),
+      startTime: petVisitBlockStartTime,
+      endTime: petVisitBlockEndTime,
+      priceCents: Math.round(Number(petVisitBlockPrice) * 100),
+    });
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+    setPetVisitBlockLabel("");
+    setPetVisitBlockStartTime("");
+    setPetVisitBlockEndTime("");
+    setPetVisitBlockPrice("");
+  },
+  onError: (error) => {
+    alert(getApiErrorMessage(error));
+  },
+});
+
   const groupedServices = services.reduce((acc: any, service: any) => {
     if (!acc[service.service]) acc[service.service] = [];
     acc[service.service].push(service);
@@ -992,16 +1034,17 @@ export default function SupplierServicesPage() {
               </div>
             ))}
           </div>
-        ) : (
-          <input
-            type="number"
-            min="0"
-            placeholder="Price (R)"
-            value={editForm.price}
-            onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
-            className="border rounded px-3 py-2 block w-full"
-          />
-        )}
+        ) : s.service === "PET_SITTING" &&
+  s.bookingModel === "BLOCK_CAPACITY" ? null : (
+  <input
+    type="number"
+    min="0"
+    placeholder="Price (R)"
+    value={editForm.price}
+    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+    className="border rounded px-3 py-2 block w-full"
+  />
+)}
 
         {s.service === "PET_SITTING" && s.bookingModel !== "BLOCK_CAPACITY" ? (
           <select
