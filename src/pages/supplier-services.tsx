@@ -2318,7 +2318,62 @@ export default function SupplierServicesPage() {
                         </p>
                       ) : null}
 
-                      {type === "PET_SITTING" && s.bookingModel === "BLOCK_CAPACITY" ? <div className="mt-3 rounded border bg-gray-50 p-3"><p className="font-medium text-gray-700">Pet visit blocks</p>{(s.bookingBlocks || []).length ? (s.bookingBlocks || []).map((block: any) => <p key={block.id}>{block.label}: {block.startTime}–{block.endTime} · {formatRandFromCents(block.priceCents)}{block.isActive === false ? " · Inactive" : ""}</p>) : <p>No pet visit blocks configured yet.</p>}</div> : null}
+                      {type === "PET_SITTING" && s.bookingModel === "BLOCK_CAPACITY" ? (
+  <div className="mt-3 rounded border bg-gray-50 p-3">
+    <p className="font-medium text-gray-700">Pet visit times & prices</p>
+    <input
+  type="text"
+  placeholder="Visit name, e.g. Morning visit"
+  value={petVisitBlockLabel}
+  onChange={(e) => setPetVisitBlockLabel(e.target.value)}
+  className="mt-2 border rounded px-3 py-2 block w-full"
+/>
+
+<input
+  type="time"
+  value={petVisitBlockStartTime}
+  onChange={(e) => setPetVisitBlockStartTime(e.target.value)}
+  className="mt-2 border rounded px-3 py-2 block w-full"
+/>
+
+<input
+  type="time"
+  value={petVisitBlockEndTime}
+  onChange={(e) => setPetVisitBlockEndTime(e.target.value)}
+  className="mt-2 border rounded px-3 py-2 block w-full"
+/>
+
+<input
+  type="number"
+  min="0"
+  placeholder="Visit price (R)"
+  value={petVisitBlockPrice}
+  onChange={(e) => setPetVisitBlockPrice(e.target.value)}
+  className="mt-2 border rounded px-3 py-2 block w-full"
+/>
+
+<button
+  type="button"
+  onClick={() => createPetVisitBlockMutation.mutate(s.id)}
+  disabled={createPetVisitBlockMutation.isPending}
+  className="mt-2 rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+>
+  {createPetVisitBlockMutation.isPending ? "Adding..." : "Add visit block"}
+</button>
+
+    {(s.bookingBlocks || []).length ? (
+      (s.bookingBlocks || []).map((block: any) => (
+        <p key={block.id}>
+          {block.label}: {block.startTime}–{block.endTime} ·{" "}
+          {formatRandFromCents(block.priceCents)}
+          {block.isActive === false ? " · Inactive" : ""}
+        </p>
+      ))
+    ) : (
+      <p>No pet visit blocks configured yet.</p>
+    )}
+  </div>
+) : null}
                       {renderSavedExpectations(s)}
                     </div>
 
