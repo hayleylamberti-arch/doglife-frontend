@@ -2266,10 +2266,7 @@ export default function SupplierServicesPage() {
                         </>
                       ) : type === "PET_SITTING" ? (
                         <>
-                          <p>
-                            R{(s.baseRateCents / 100).toFixed(0)}{" "}
-                            {getServiceUnit(type, s)}
-                          </p>
+                          {s.bookingModel !== "BLOCK_CAPACITY" ? <p>R{(s.baseRateCents / 100).toFixed(0)}{" "}{getServiceUnit(type, s)}</p> : null}
                           <p>
                             Location:{" "}
                             {formatPetSittingLocation(
