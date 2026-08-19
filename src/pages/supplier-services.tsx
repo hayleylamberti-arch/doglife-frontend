@@ -143,8 +143,9 @@ function getServiceUnit(service: string, s: any) {
     case "PET_TRANSPORT":
       return `${s.durationMinutes || 30} mins`;
     case "BOARDING":
-    case "PET_SITTING":
       return "per night";
+    case "PET_SITTING":
+      return s.bookingModel === "BLOCK_CAPACITY" ? "per visit" : "per night";
     case "DAYCARE":
       return "per day";
     default:
@@ -690,7 +691,7 @@ export default function SupplierServicesPage() {
         });
       }
 
-      if (!price || Number(price) <= 0) {
+      if (!(isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY") && (!price || Number(price) <= 0)) {
         throw new Error("Enter a valid price");
       }
 
@@ -724,7 +725,10 @@ export default function SupplierServicesPage() {
               isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY"
                 ? "PER_VISIT"
                 : defaults.unit,
-            baseRateCents: Math.round(Number(price) * 100),
+            baseRateCents:
+  isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY"
+    ? 0
+    : Math.round(Number(price) * 100),
             durationMinutes: requiresDuration ? Number(duration) : null,
             bufferMinutes: Number(bufferMinutes || "0"),
             additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
@@ -1831,10 +1835,11 @@ export default function SupplierServicesPage() {
         ) : null}
 
         {serviceType &&
-        serviceType !== "GROOMING" &&
-        serviceType !== "DAYCARE" &&
-        serviceType !== "MOBILE_VET" &&
-        !isSessionEventTraining ? (
+  serviceType !== "GROOMING" &&
+  serviceType !== "DAYCARE" &&
+  serviceType !== "MOBILE_VET" &&
+  !isSessionEventTraining &&
+  !(isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY") ? (
           <input
             type="number"
             min="0"
