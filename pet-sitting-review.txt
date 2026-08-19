@@ -1,0 +1,524 @@
+206-      return { unit: "PER_NIGHT" };
+207-    case "DAYCARE":
+208-      return { unit: "PER_DAY" };
+209-    case "GROOMING":
+210-      return { unit: "PER_VISIT" };
+211-    default:
+212-      return { unit: "PER_VISIT" };
+213-  }
+214-}
+215-
+216-type EditServiceForm = {
+217-  price: string;
+218-  durationMinutes: string;
+219-  bufferMinutes: string;
+220-  maxDogsPerBooking: string;
+221-  concurrentCapacityDogs: string;
+222-  additionalDogEnabled: boolean;
+223-  additionalDogPrice: string;
+224-  daycareHalfDayPrice: string;
+225-  daycareFullDayPrice: string;
+226:  petSittingLocation: string;
+227-  mobileVetPrices: Record<string, string>;
+228-  supplierProvides: string;
+229-  ownerProvides: string;
+230-  goodToKnow: string;
+231-};
+232-
+233-function emptyGroomingPrices() {
+234-  return {
+235-    small: "",
+236-    medium: "",
+237-    large: "",
+238-    xl: "",
+239-  };
+240-}
+241-
+242-function getTierPrice(tiers: any[], category: string, dogSize: string) {
+243-  const match = tiers.find(
+244-    (tier) => tier.category === category && tier.dogSize === dogSize
+245-  );
+246-
+247-  return match ? centsToRandInput(match.priceCents) : "";
+248-}
+249-
+250-export default function SupplierServicesPage() {
+251-  const queryClient = useQueryClient();
+252-
+253-  const { data, isLoading } = useQuery({
+254-    queryKey: ["supplier-services"],
+255-    queryFn: async () => {
+256-      const res = await api.get("/api/supplierServices");
+257-      return res.data.services;
+258-    },
+259-  });
+260-
+261-  const services = data ?? [];
+262-
+263-  const [serviceType, setServiceType] = useState("");
+264-
+265-  const [trainingBookingMode, setTrainingBookingMode] =
+266-    useState<TrainingBookingMode>("APPOINTMENT");
+267-
+268-  const [price, setPrice] = useState("");
+269-  const [duration, setDuration] = useState("");
+270-  const [bufferMinutes, setBufferMinutes] = useState("");
+271-
+272-  const [boardingExtraDogEnabled, setBoardingExtraDogEnabled] = useState(false);
+273-  const [boardingExtraDogPrice, setBoardingExtraDogPrice] = useState("");
+274-
+275-  const [daycareHalfDayPrice, setDaycareHalfDayPrice] = useState("");
+276-  const [daycareFullDayPrice, setDaycareFullDayPrice] = useState("");
+277-  const [daycareExtraDogEnabled, setDaycareExtraDogEnabled] = useState(false);
+278-  const [daycareExtraDogPrice, setDaycareExtraDogPrice] = useState("");
+279-
+280:  const [petSittingLocation, setPetSittingLocation] = useState("BOTH");
+281-  const [mobileVetPrices, setMobileVetPrices] = useState(emptyMobileVetPrices());
+282-
+283-  const [maxDogsPerBooking, setMaxDogsPerBooking] = useState("");
+284-  const [concurrentCapacityDogs, setConcurrentCapacityDogs] = useState("");
+285-
+286-  const [supplierProvides, setSupplierProvides] = useState("");
+287-  const [ownerProvides, setOwnerProvides] = useState("");
+288-  const [goodToKnow, setGoodToKnow] = useState("");
+289-
+290-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
+291-  const [editForm, setEditForm] = useState<EditServiceForm | null>(null);
+292-
+293-  const [blockInputs, setBlockInputs] = useState<
+294-    Record<string, { startDate: string; endDate: string; reason: string }>
+295-  >({});
+296-
+297-  const [washBrush, setWashBrush] = useState(emptyGroomingPrices());
+298-  const [washCut, setWashCut] = useState(emptyGroomingPrices());
+299-
+300-  const resetForm = () => {
+301-    setServiceType("");
+302-    setTrainingBookingMode("APPOINTMENT");
+303-    setPrice("");
+304-    setDuration("");
+305-    setBufferMinutes("");
+306-    setBoardingExtraDogEnabled(false);
+307-    setBoardingExtraDogPrice("");
+308-    setDaycareHalfDayPrice("");
+309-    setDaycareFullDayPrice("");
+310-    setDaycareExtraDogEnabled(false);
+311-    setDaycareExtraDogPrice("");
+312-    setPetSittingLocation("BOTH");
+313-    setMobileVetPrices(emptyMobileVetPrices());
+314-    setMaxDogsPerBooking("");
+315-    setConcurrentCapacityDogs("");
+316-    setSupplierProvides("");
+317-    setOwnerProvides("");
+318-    setGoodToKnow("");
+319-    setWashBrush(emptyGroomingPrices());
+320-    setWashCut(emptyGroomingPrices());
+321-  };
+322-
+323-  const startEditing = (s: any) => {
+324-    const tiers = s.pricingTiers || [];
+325-
+--
+337-        large: getTierPrice(tiers, "WASH_CUT", "LARGE"),
+338-        xl: getTierPrice(tiers, "WASH_CUT", "XL"),
+339-      });
+340-    }
+341-
+342-    setEditingServiceId(s.id);
+343-    setEditForm({
+344-      price: centsToRandInput(s.baseRateCents),
+345-      durationMinutes: s.durationMinutes ? String(s.durationMinutes) : "",
+346-      bufferMinutes: s.bufferMinutes ? String(s.bufferMinutes) : "",
+347-      maxDogsPerBooking: s.maxDogsPerBooking ? String(s.maxDogsPerBooking) : "",
+348-      concurrentCapacityDogs: s.concurrentCapacityDogs
+349-        ? String(s.concurrentCapacityDogs)
+350-        : "",
+351-      additionalDogEnabled: Boolean(s.additionalDogEnabled),
+352-      additionalDogPrice: centsToRandInput(s.additionalDogPriceCents),
+353-      daycareHalfDayPrice: centsToRandInput(s.pricingJson?.halfDayPriceCents),
+354-      daycareFullDayPrice: centsToRandInput(
+355-        s.pricingJson?.fullDayPriceCents ?? s.baseRateCents
+356-      ),
+357:      petSittingLocation: s.pricingJson?.petSittingLocation || "BOTH",
+358-      mobileVetPrices: getMobileVetPricesFromService(s),
+359-      supplierProvides: arrayToLines(s.pricingJson?.supplierProvides),
+360-      ownerProvides: arrayToLines(s.pricingJson?.ownerProvides),
+361-      goodToKnow: arrayToLines(s.pricingJson?.goodToKnow),
+362-    });
+363-  };
+364-
+365-  const cancelEditing = () => {
+366-    setEditingServiceId(null);
+367-    setEditForm(null);
+368-  };
+369-
+370-  const updateMutation = useMutation({
+371-    mutationFn: async ({ service }: { service: any }) => {
+372-      if (!editForm) throw new Error("Nothing to update");
+373-
+374-      const payload: any = {
+375-        bufferMinutes: Number(editForm.bufferMinutes || "0"),
+376-        maxDogsPerBooking:
+377-          editForm.maxDogsPerBooking === ""
+378-            ? null
+379-            : Number(editForm.maxDogsPerBooking),
+380-        concurrentCapacityDogs:
+381-          editForm.concurrentCapacityDogs === ""
+382-            ? null
+383-            : Number(editForm.concurrentCapacityDogs),
+384-        additionalDogEnabled: editForm.additionalDogEnabled,
+385-        additionalDogPriceCents: editForm.additionalDogEnabled
+386-          ? Math.round(Number(editForm.additionalDogPrice || "0") * 100)
+387-          : null,
+388-        pricingJson: buildExpectationsPricingJson(
+389-          service.pricingJson || {},
+390-          editForm.supplierProvides,
+391-          editForm.ownerProvides,
+392-          editForm.goodToKnow
+393-        ),
+394-      };
+395-
+396-      if (service.service === "GROOMING") {
+397-        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+398-          throw new Error("Enter a valid grooming slot length");
+399-        }
+400-
+401-        payload.durationMinutes = Number(editForm.durationMinutes);
+402-        payload.baseRateCents = 1;
+--
+416-        payload.baseRateCents = Math.round(
+417-          Number(editForm.daycareFullDayPrice) * 100
+418-        );
+419-        payload.pricingJson = {
+420-          ...payload.pricingJson,
+421-          halfDayPriceCents: Math.round(
+422-            Number(editForm.daycareHalfDayPrice) * 100
+423-          ),
+424-          fullDayPriceCents: Math.round(
+425-            Number(editForm.daycareFullDayPrice) * 100
+426-          ),
+427-        };
+428-      } else if (service.service === "PET_SITTING") {
+429-        if (!editForm.price || Number(editForm.price) <= 0) {
+430-          throw new Error("Enter a valid pet sitting price");
+431-        }
+432-
+433-        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+434-        payload.pricingJson = {
+435-          ...payload.pricingJson,
+436:          petSittingLocation: editForm.petSittingLocation || "BOTH",
+437-        };
+438-      } else if (service.service === "MOBILE_VET") {
+439-        const lowestPrice = getLowestMobileVetPriceCents(editForm.mobileVetPrices);
+440-
+441-        if (!lowestPrice) {
+442-          throw new Error("Add at least one mobile vet service price");
+443-        }
+444-
+445-        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+446-          throw new Error("Enter a valid mobile vet duration");
+447-        }
+448-
+449-        payload.baseRateCents = lowestPrice;
+450-        payload.durationMinutes = Number(editForm.durationMinutes);
+451-        payload.pricingJson = {
+452-          ...payload.pricingJson,
+453-          ...buildMobileVetPricingJson(editForm.mobileVetPrices),
+454-        };
+455-      } else {
+456-        if (!editForm.price || Number(editForm.price) <= 0) {
+457-          throw new Error("Enter a valid price");
+458-        }
+459-
+460-        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+461-      }
+462-
+463-      if (
+464-        !["BOARDING", "PET_SITTING", "DAYCARE", "MOBILE_VET"].includes(
+465-          service.service
+466-        )
+467-      ) {
+468-        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+469-          throw new Error("Enter a valid duration");
+470-        }
+471-
+472-        payload.durationMinutes = Number(editForm.durationMinutes);
+473-      }
+474-
+475-      return api.patch(`/api/supplierServices/${service.id}`, payload);
+476-    },
+477-    onSuccess: () => {
+478-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+479-      cancelEditing();
+480-    },
+481-  });
+--
+703-      return api.post("/api/supplierServices", {
+704-        services: [
+705-          {
+706-            service: serviceType,
+707-            bookingModel:
+708-              serviceType === "TRAINING"
+709-                ? trainingBookingMode
+710-                : undefined,
+711-            unit: defaults.unit,
+712-            baseRateCents: Math.round(Number(price) * 100),
+713-            durationMinutes: requiresDuration ? Number(duration) : null,
+714-            bufferMinutes: Number(bufferMinutes || "0"),
+715-            additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
+716-            additionalDogPriceCents:
+717-              isBoarding && boardingExtraDogEnabled
+718-                ? Math.round(Number(boardingExtraDogPrice) * 100)
+719-                : null,
+720-            pricingJson: isPetSitting
+721-              ? {
+722-                  ...expectationsPricingJson,
+723:                  petSittingLocation,
+724-                }
+725-              : expectationsPricingJson,
+726-            maxDogsPerBooking: showDogCapacity
+727-              ? Number(maxDogsPerBooking || "0") || null
+728-              : null,
+729-            concurrentCapacityDogs: showDogCapacity
+730-              ? Number(concurrentCapacityDogs || "0") || null
+731-              : null,
+732-          },
+733-        ],
+734-      });
+735-    },
+736-    onSuccess: () => {
+737-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+738-      resetForm();
+739-    },
+740-  });
+741-
+742-  const deleteMutation = useMutation({
+743-    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
+744-    onSuccess: () => {
+745-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+746-    },
+747-    onError: (error) => {
+748-      alert(getApiErrorMessage(error));
+749-    },
+750-  });
+751-
+752-  const groupedServices = services.reduce((acc: any, service: any) => {
+753-    if (!acc[service.service]) acc[service.service] = [];
+754-    acc[service.service].push(service);
+755-    return acc;
+756-  }, {});
+757-
+758-  const showDurationInput =
+759-    serviceType &&
+760-    !["GROOMING", "BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
+761-
+762-  const showBufferInput = Boolean(serviceType);
+763-  const isBoarding = serviceType === "BOARDING";
+764-  const isDaycare = serviceType === "DAYCARE";
+765-  const isTraining = serviceType === "TRAINING";
+766-
+767-  const isSessionEventTraining =
+768-    isTraining && trainingBookingMode === "SESSION_EVENT";
+--
+966-                    })
+967-                  }
+968-                  className="border rounded px-3 py-2 block w-full"
+969-                />
+970-              </div>
+971-            ))}
+972-          </div>
+973-        ) : (
+974-          <input
+975-            type="number"
+976-            min="0"
+977-            placeholder="Price (R)"
+978-            value={editForm.price}
+979-            onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+980-            className="border rounded px-3 py-2 block w-full"
+981-          />
+982-        )}
+983-
+984-        {s.service === "PET_SITTING" ? (
+985-          <select
+986:            value={editForm.petSittingLocation}
+987-            onChange={(e) =>
+988:              setEditForm({ ...editForm, petSittingLocation: e.target.value })
+989-            }
+990-            className="border rounded px-3 py-2 block w-full"
+991-          >
+992-            <option value="BOTH">Owner home or sitter home</option>
+993-            <option value="OWNER_HOME">Owner’s home only</option>
+994-            <option value="SITTER_HOME">Sitter’s home only</option>
+995-          </select>
+996-        ) : null}
+997-
+998-        {showDuration ? (
+999-          <input
+1000-            type="number"
+1001-            min="1"
+1002-            placeholder="Duration minutes"
+1003-            value={editForm.durationMinutes}
+1004-            onChange={(e) =>
+1005-              setEditForm({ ...editForm, durationMinutes: e.target.value })
+1006-            }
+1007-            className="border rounded px-3 py-2 block w-full"
+1008-          />
+1009-        ) : null}
+1010-
+1011-        <input
+1012-          type="number"
+1013-          min="0"
+1014-          placeholder="Buffer minutes"
+1015-          value={editForm.bufferMinutes}
+1016-          onChange={(e) =>
+1017-            setEditForm({ ...editForm, bufferMinutes: e.target.value })
+1018-          }
+1019-          className="border rounded px-3 py-2 block w-full"
+1020-        />
+1021-
+1022-        {showCapacity ? (
+1023-          <>
+1024-            <input
+1025-              type="number"
+1026-              min="1"
+1027-              placeholder="Maximum dogs per booking"
+1028-              value={editForm.maxDogsPerBooking}
+1029-              onChange={(e) =>
+1030-                setEditForm({ ...editForm, maxDogsPerBooking: e.target.value })
+1031-              }
+1032-              className="border rounded px-3 py-2 block w-full"
+1033-            />
+--
+1808-
+1809-        {serviceType &&
+1810-        serviceType !== "GROOMING" &&
+1811-        serviceType !== "DAYCARE" &&
+1812-        serviceType !== "MOBILE_VET" &&
+1813-        !isSessionEventTraining ? (
+1814-          <input
+1815-            type="number"
+1816-            min="0"
+1817-            placeholder="Price (R)"
+1818-            value={price}
+1819-            onChange={(e) => setPrice(e.target.value)}
+1820-            className="border rounded px-3 py-2 block w-full"
+1821-          />
+1822-        ) : null}
+1823-
+1824-        {isPetSitting ? (
+1825-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1826-            <p className="font-medium">Pet sitting location</p>
+1827-            <select
+1828:              value={petSittingLocation}
+1829-              onChange={(e) => setPetSittingLocation(e.target.value)}
+1830-              className="border rounded px-3 py-2 block w-full"
+1831-            >
+1832-              <option value="BOTH">Owner home or sitter home</option>
+1833-              <option value="OWNER_HOME">Owner’s home only</option>
+1834-              <option value="SITTER_HOME">Sitter’s home only</option>
+1835-            </select>
+1836-          </div>
+1837-        ) : null}
+1838-
+1839-        {isMobileVet ? (
+1840-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1841-            <p className="font-medium">Mobile vet services</p>
+1842-
+1843-            <input
+1844-              type="number"
+1845-              min="1"
+1846-              placeholder="Visit length (mins)"
+1847-              value={duration}
+1848-              onChange={(e) => setDuration(e.target.value)}
+1849-              className="border rounded px-3 py-2 block w-full"
+1850-            />
+1851-
+1852-            {MOBILE_VET_SERVICES.map((vetService) => (
+1853-              <div key={vetService.key} className="grid gap-2 md:grid-cols-2">
+1854-                <label className="text-sm text-gray-700">
+1855-                  {vetService.label}
+1856-                </label>
+1857-                <input
+1858-                  type="number"
+1859-                  min="0"
+1860-                  placeholder="Price (R)"
+1861-                  value={mobileVetPrices[vetService.key]}
+1862-                  onChange={(e) =>
+1863-                    setMobileVetPrices((prev) => ({
+1864-                      ...prev,
+1865-                      [vetService.key]: e.target.value,
+1866-                    }))
+1867-                  }
+1868-                  className="border rounded px-3 py-2 block w-full"
+1869-                />
+1870-              </div>
+1871-            ))}
+1872-          </div>
+1873-        ) : null}
+--
+2144-                            Half day:{" "}
+2145-                            {formatRandFromCents(s.pricingJson?.halfDayPriceCents)}
+2146-                          </p>
+2147-                          <p>
+2148-                            Full day:{" "}
+2149-                            {formatRandFromCents(
+2150-                              s.pricingJson?.fullDayPriceCents ??
+2151-                                s.baseRateCents
+2152-                            )}
+2153-                          </p>
+2154-                        </>
+2155-                      ) : type === "PET_SITTING" ? (
+2156-                        <>
+2157-                          <p>
+2158-                            R{(s.baseRateCents / 100).toFixed(0)}{" "}
+2159-                            {getServiceUnit(type, s)}
+2160-                          </p>
+2161-                          <p>
+2162-                            Location:{" "}
+2163-                            {formatPetSittingLocation(
+2164:                              s.pricingJson?.petSittingLocation
+2165-                            )}
+2166-                          </p>
+2167-                        </>
+2168-                      ) : type === "MOBILE_VET" ? (
+2169-                        <>
+2170-                          {s.pricingJson?.mobileVetServices?.length ? (
+2171-                            s.pricingJson.mobileVetServices.map((item: any) => (
+2172-                              <p key={item.key}>
+2173-                                {item.label}: {formatRandFromCents(item.priceCents)}
+2174-                              </p>
+2175-                            ))
+2176-                          ) : (
+2177-                            <p>
+2178-                              From {formatRandFromCents(s.baseRateCents)}{" "}
+2179-                              {getServiceUnit(type, s)}
+2180-                            </p>
+2181-                          )}
+2182-                        </>
+2183-                      ) : (
+2184-                        <p>
+2185-                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
+2186-                          {getServiceUnit(type, s)}
+2187-                        </p>
+2188-                      )}
+2189-
+2190-                      <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+2191-
+2192-                      {s.maxDogsPerBooking ? (
+2193-                        <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+2194-                      ) : null}
+2195-
+2196-                      {s.concurrentCapacityDogs ? (
+2197-                        <p>
+2198-                          Total concurrent capacity: {s.concurrentCapacityDogs}
+2199-                        </p>
+2200-                      ) : null}
+2201-
+2202-                      {(type === "BOARDING" || type === "DAYCARE") &&
+2203-                      s.additionalDogEnabled ? (
+2204-                        <p>
+2205-                          Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
+2206-                        </p>
+2207-                      ) : null}
+2208-
+2209-                      {renderSavedExpectations(s)}

@@ -1,0 +1,355 @@
+520-      }));
+521-    },
+522-  });
+523-
+524-  const deleteBlockMutation = useMutation({
+525-    mutationFn: async (blockId: string) =>
+526-      api.delete(`/api/supplierServices/availability-blocks/${blockId}`),
+527-    onSuccess: () => {
+528-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+529-    },
+530-  });
+531-
+532-  const createMutation = useMutation({
+533-    mutationFn: async () => {
+534-      if (!serviceType) throw new Error("Select a service");
+535-
+536-      const defaults = serviceDefaults(serviceType);
+537-      const showDogCapacity = shouldShowDogCapacity(serviceType);
+538-      const isDaycare = serviceType === "DAYCARE";
+539-      const isBoarding = serviceType === "BOARDING";
+540:      const isPetSitting = serviceType === "PET_SITTING";
+541-      const isMobileVet = serviceType === "MOBILE_VET";
+542-      const expectationsPricingJson = buildExpectationsPricingJson(
+543-        null,
+544-        supplierProvides,
+545-        ownerProvides,
+546-        goodToKnow
+547-      );
+548-
+549-      if (
+550-        showDogCapacity &&
+551-        maxDogsPerBooking &&
+552-        Number(maxDogsPerBooking) <= 0
+553-      ) {
+554-        throw new Error("Enter a valid maximum dogs per booking");
+555-      }
+556-
+557-      if (
+558-        showDogCapacity &&
+559-        concurrentCapacityDogs &&
+560-        Number(concurrentCapacityDogs) <= 0
+561-      ) {
+562-        throw new Error("Enter a valid concurrent capacity");
+563-      }
+564-
+565-      if (
+566-        showDogCapacity &&
+567-        maxDogsPerBooking &&
+568-        concurrentCapacityDogs &&
+569-        Number(concurrentCapacityDogs) < Number(maxDogsPerBooking)
+570-      ) {
+571-        throw new Error(
+572-          "Concurrent capacity cannot be less than maximum dogs per booking"
+573-        );
+574-      }
+575-
+576-      if (serviceType === "GROOMING") {
+577-        if (!duration || Number(duration) <= 0) {
+578-          throw new Error("Enter a valid grooming slot length");
+579-        }
+580-
+581-        return api.post("/api/supplierServices", {
+582-          services: [
+583-            {
+584-              service: "GROOMING",
+585-              unit: defaults.unit,
+586-              baseRateCents: 1,
+587-              durationMinutes: Number(duration),
+588-              bufferMinutes: Number(bufferMinutes || "0"),
+589-              groomingOptions: { washBrush, washCut },
+590-              pricingJson: expectationsPricingJson,
+591-              maxDogsPerBooking: null,
+592-              concurrentCapacityDogs: null,
+593-            },
+594-          ],
+595-        });
+596-      }
+597-
+598-      if (isDaycare) {
+599-        if (daycareHalfDayPrice === "" || Number(daycareHalfDayPrice) < 0) {
+600-          throw new Error("Enter a valid half day price");
+601-        }
+602-
+603-        if (daycareFullDayPrice === "" || Number(daycareFullDayPrice) < 0) {
+604-          throw new Error("Enter a valid full day price");
+605-        }
+606-
+607-        if (!maxDogsPerBooking || Number(maxDogsPerBooking) <= 0) {
+608-          throw new Error("Enter a valid maximum dogs per booking");
+609-        }
+610-
+611-        return api.post("/api/supplierServices", {
+612-          services: [
+613-            {
+614-              service: serviceType,
+615-              unit: defaults.unit,
+616-              baseRateCents: Math.round(Number(daycareFullDayPrice) * 100),
+617-              durationMinutes: null,
+618-              bufferMinutes: Number(bufferMinutes || "0"),
+619-              pricingJson: {
+620-                ...expectationsPricingJson,
+--
+704-        throw new Error("Enter a valid extra dog price");
+705-      }
+706-
+707-      return api.post("/api/supplierServices", {
+708-        services: [
+709-          {
+710-            service: serviceType,
+711-            bookingModel:
+712-              serviceType === "TRAINING"
+713-                ? trainingBookingMode
+714-                : undefined,
+715-            unit: defaults.unit,
+716-            baseRateCents: Math.round(Number(price) * 100),
+717-            durationMinutes: requiresDuration ? Number(duration) : null,
+718-            bufferMinutes: Number(bufferMinutes || "0"),
+719-            additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
+720-            additionalDogPriceCents:
+721-              isBoarding && boardingExtraDogEnabled
+722-                ? Math.round(Number(boardingExtraDogPrice) * 100)
+723-                : null,
+724:            pricingJson: isPetSitting
+725-              ? {
+726-                  ...expectationsPricingJson,
+727-                  petSittingLocation,
+728-                }
+729-              : expectationsPricingJson,
+730-            maxDogsPerBooking: showDogCapacity
+731-              ? Number(maxDogsPerBooking || "0") || null
+732-              : null,
+733-            concurrentCapacityDogs: showDogCapacity
+734-              ? Number(concurrentCapacityDogs || "0") || null
+735-              : null,
+736-          },
+737-        ],
+738-      });
+739-    },
+740-    onSuccess: () => {
+741-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+742-      resetForm();
+743-    },
+744-  });
+745-
+746-  const deleteMutation = useMutation({
+747-    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
+748-    onSuccess: () => {
+749-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+750-    },
+751-    onError: (error) => {
+752-      alert(getApiErrorMessage(error));
+753-    },
+754-  });
+755-
+756-  const groupedServices = services.reduce((acc: any, service: any) => {
+757-    if (!acc[service.service]) acc[service.service] = [];
+758-    acc[service.service].push(service);
+759-    return acc;
+760-  }, {});
+761-
+762-  const showDurationInput =
+763-    serviceType &&
+764-    !["GROOMING", "BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
+765-
+766-  const showBufferInput = Boolean(serviceType);
+767-  const isBoarding = serviceType === "BOARDING";
+768-  const isDaycare = serviceType === "DAYCARE";
+769-  const isTraining = serviceType === "TRAINING";
+770-
+771-  const isSessionEventTraining =
+772-    isTraining && trainingBookingMode === "SESSION_EVENT";
+773-
+774:  const isPetSitting = serviceType === "PET_SITTING";
+775-  const isMobileVet = serviceType === "MOBILE_VET";
+776-  const showDogCapacityInput = shouldShowDogCapacity(serviceType);
+777-
+778-  const renderExpectationInputs = (
+779-    currentSupplierProvides: string,
+780-    currentOwnerProvides: string,
+781-    currentGoodToKnow: string,
+782-    onSupplierProvidesChange: (value: string) => void,
+783-    onOwnerProvidesChange: (value: string) => void,
+784-    onGoodToKnowChange: (value: string) => void
+785-  ) => (
+786-    <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+787-      <div>
+788-        <p className="font-medium">Service expectations</p>
+789-        <p className="text-sm text-gray-500">
+790-          Add one item per line. These will appear on your public supplier profile.
+791-        </p>
+792-      </div>
+793-
+794-      <textarea
+795-        rows={3}
+796-        value={currentSupplierProvides}
+797-        onChange={(e) => onSupplierProvidesChange(e.target.value)}
+798-        placeholder={"What you provide, one per line\nExample: Poop bags\nWater breaks"}
+799-        className="border rounded px-3 py-2 block w-full"
+800-      />
+801-
+802-      <textarea
+803-        rows={3}
+804-        value={currentOwnerProvides}
+805-        onChange={(e) => onOwnerProvidesChange(e.target.value)}
+806-        placeholder={"What the owner provides, one per line\nExample: Collar or harness\nAccess to dog"}
+807-        className="border rounded px-3 py-2 block w-full"
+808-      />
+809-
+810-      <textarea
+811-        rows={3}
+812-        value={currentGoodToKnow}
+813-        onChange={(e) => onGoodToKnowChange(e.target.value)}
+814-        placeholder={"Good to know, one per line\nExample: Please mention nervous behaviour before booking."}
+815-        className="border rounded px-3 py-2 block w-full"
+816-      />
+817-    </div>
+818-  );
+819-
+820-  const renderSavedExpectations = (s: any) => {
+821-    const supplierItems = s.pricingJson?.supplierProvides || [];
+822-    const ownerItems = s.pricingJson?.ownerProvides || [];
+823-    const notes = s.pricingJson?.goodToKnow || [];
+824-
+825-    if (!supplierItems.length && !ownerItems.length && !notes.length) return null;
+826-
+827-    return (
+828-      <div className="mt-3 grid gap-3 md:grid-cols-3">
+829-        {supplierItems.length ? (
+830-          <div className="rounded border bg-green-50 p-3 text-green-800">
+831-            <p className="font-medium">What we provide</p>
+832-            {supplierItems.map((item: string) => (
+833-              <p key={item}>✓ {item}</p>
+834-            ))}
+835-          </div>
+836-        ) : null}
+837-
+838-        {ownerItems.length ? (
+839-          <div className="rounded border bg-blue-50 p-3 text-blue-800">
+840-            <p className="font-medium">What owner provides</p>
+841-            {ownerItems.map((item: string) => (
+842-              <p key={item}>✓ {item}</p>
+843-            ))}
+844-          </div>
+845-        ) : null}
+846-
+847-        {notes.length ? (
+848-          <div className="rounded border bg-gray-50 p-3 text-gray-700">
+849-            <p className="font-medium">Good to know</p>
+850-            {notes.map((item: string) => (
+851-              <p key={item}>• {item}</p>
+852-            ))}
+853-          </div>
+854-        ) : null}
+--
+1808-            </label>
+1809-          </div>
+1810-
+1811-        ) : null}
+1812-
+1813-        {serviceType &&
+1814-        serviceType !== "GROOMING" &&
+1815-        serviceType !== "DAYCARE" &&
+1816-        serviceType !== "MOBILE_VET" &&
+1817-        !isSessionEventTraining ? (
+1818-          <input
+1819-            type="number"
+1820-            min="0"
+1821-            placeholder="Price (R)"
+1822-            value={price}
+1823-            onChange={(e) => setPrice(e.target.value)}
+1824-            className="border rounded px-3 py-2 block w-full"
+1825-          />
+1826-        ) : null}
+1827-
+1828:        {isPetSitting ? (
+1829-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1830-            <p className="font-medium">Pet sitting location</p>
+1831-            <select
+1832-              value={petSittingLocation}
+1833-              onChange={(e) => setPetSittingLocation(e.target.value)}
+1834-              className="border rounded px-3 py-2 block w-full"
+1835-            >
+1836-              <option value="BOTH">Owner home or sitter home</option>
+1837-              <option value="OWNER_HOME">Owner’s home only</option>
+1838-              <option value="SITTER_HOME">Sitter’s home only</option>
+1839-            </select>
+1840-          </div>
+1841-        ) : null}
+1842-
+1843-        {isMobileVet ? (
+1844-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1845-            <p className="font-medium">Mobile vet services</p>
+1846-
+1847-            <input
+1848-              type="number"
+1849-              min="1"
+1850-              placeholder="Visit length (mins)"
+1851-              value={duration}
+1852-              onChange={(e) => setDuration(e.target.value)}
+1853-              className="border rounded px-3 py-2 block w-full"
+1854-            />
+1855-
+1856-            {MOBILE_VET_SERVICES.map((vetService) => (
+1857-              <div key={vetService.key} className="grid gap-2 md:grid-cols-2">
+1858-                <label className="text-sm text-gray-700">
+1859-                  {vetService.label}
+1860-                </label>
+1861-                <input
+1862-                  type="number"
+1863-                  min="0"
+1864-                  placeholder="Price (R)"
+1865-                  value={mobileVetPrices[vetService.key]}
+1866-                  onChange={(e) =>
+1867-                    setMobileVetPrices((prev) => ({
+1868-                      ...prev,
+1869-                      [vetService.key]: e.target.value,
+1870-                    }))
+1871-                  }
+1872-                  className="border rounded px-3 py-2 block w-full"
+1873-                />
+1874-              </div>
+1875-            ))}
+1876-          </div>
+1877-        ) : null}
+1878-
+1879-        {isDaycare ? (
+1880-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1881-            <input
+1882-              type="number"
+1883-              min="0"
+1884-              placeholder="Half day price (R)"
+1885-              value={daycareHalfDayPrice}
+1886-              onChange={(e) => setDaycareHalfDayPrice(e.target.value)}
+1887-              className="border rounded px-3 py-2 block w-full"
+1888-            />
+1889-
+1890-            <input
+1891-              type="number"
+1892-              min="0"
+1893-              placeholder="Full day price (R)"
+1894-              value={daycareFullDayPrice}
+1895-              onChange={(e) => setDaycareFullDayPrice(e.target.value)}
+1896-              className="border rounded px-3 py-2 block w-full"
+1897-            />
+1898-          </div>
+1899-        ) : null}
+1900-
+1901-        {isBoarding ? (
+1902-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1903-            <label className="flex items-center gap-2 text-sm font-medium">
+1904-              <input
+1905-                type="checkbox"
+1906-                checked={boardingExtraDogEnabled}
+1907-                onChange={(e) => setBoardingExtraDogEnabled(e.target.checked)}
+1908-              />

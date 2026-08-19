@@ -1,0 +1,341 @@
+462-        }
+463-
+464-        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+465-      }
+466-
+467-      if (
+468-        !["BOARDING", "PET_SITTING", "DAYCARE", "MOBILE_VET"].includes(
+469-          service.service
+470-        )
+471-      ) {
+472-        if (!editForm.durationMinutes || Number(editForm.durationMinutes) <= 0) {
+473-          throw new Error("Enter a valid duration");
+474-        }
+475-
+476-        payload.durationMinutes = Number(editForm.durationMinutes);
+477-      }
+478-
+479-      return api.patch(`/api/supplierServices/${service.id}`, payload);
+480-    },
+481-    onSuccess: () => {
+482-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+483-      cancelEditing();
+484-    },
+485-  });
+486-
+487:  const createBlockMutation = useMutation({
+488-    mutationFn: async ({
+489-      serviceId,
+490-      startDate,
+491-      endDate,
+492-      reason,
+493-    }: {
+494-      serviceId: string;
+495-      startDate: string;
+496-      endDate: string;
+497-      reason: string;
+498-    }) => {
+499-      if (!startDate || !endDate) {
+500-        throw new Error("Choose both an unavailable-from and unavailable-until date");
+501-      }
+502-
+503-      if (startDate > endDate) {
+504-        throw new Error(
+505-          "The unavailable-until date must be the same as or later than the start date."
+506-        );
+507-      }
+508-
+509-      return api.post(`/api/supplierServices/${serviceId}/availability-blocks`, {
+510-        startAt: `${startDate}T00:00:00.000Z`,
+511-        endAt: `${endDate}T23:59:59.000Z`,
+512-        reason: reason || null,
+513-      });
+514-    },
+515-    onSuccess: (_data, variables) => {
+516-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+517-      setBlockInputs((prev) => ({
+518-        ...prev,
+519-        [variables.serviceId]: { startDate: "", endDate: "", reason: "" },
+520-      }));
+521-    },
+522-  });
+523-
+524-  const deleteBlockMutation = useMutation({
+525-    mutationFn: async (blockId: string) =>
+526-      api.delete(`/api/supplierServices/availability-blocks/${blockId}`),
+527-    onSuccess: () => {
+528-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+529-    },
+530-  });
+531-
+532-  const createMutation = useMutation({
+533-    mutationFn: async () => {
+534-      if (!serviceType) throw new Error("Select a service");
+535-
+536-      const defaults = serviceDefaults(serviceType);
+537-      const showDogCapacity = shouldShowDogCapacity(serviceType);
+538-      const isDaycare = serviceType === "DAYCARE";
+539-      const isBoarding = serviceType === "BOARDING";
+540-      const isPetSitting = serviceType === "PET_SITTING";
+541-      const isMobileVet = serviceType === "MOBILE_VET";
+542-      const expectationsPricingJson = buildExpectationsPricingJson(
+543-        null,
+544-        supplierProvides,
+545-        ownerProvides,
+546-        goodToKnow
+547-      );
+548-
+549-      if (
+550-        showDogCapacity &&
+551-        maxDogsPerBooking &&
+552-        Number(maxDogsPerBooking) <= 0
+553-      ) {
+554-        throw new Error("Enter a valid maximum dogs per booking");
+555-      }
+556-
+557-      if (
+558-        showDogCapacity &&
+559-        concurrentCapacityDogs &&
+560-        Number(concurrentCapacityDogs) <= 0
+561-      ) {
+562-        throw new Error("Enter a valid concurrent capacity");
+563-      }
+564-
+565-      if (
+566-        showDogCapacity &&
+567-        maxDogsPerBooking &&
+--
+1539-            disabled={isCreatingThisSession}
+1540-            className="rounded bg-black px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+1541-          >
+1542-            {isCreatingThisSession ? "Adding session..." : "Add session"}
+1543-          </button>
+1544-
+1545-          {createSessionMutation.isError &&
+1546-          createSessionMutation.variables?.serviceId === s.id ? (
+1547-            <p className="text-sm text-red-600">
+1548-              {getApiErrorMessage(createSessionMutation.error)}
+1549-            </p>
+1550-          ) : null}
+1551-        </div>
+1552-      </div>
+1553-    );
+1554-  };
+1555-
+1556-  const renderAvailabilityBlocks = (s: any) => {
+1557-  const input = blockInputs[s.id] || {
+1558-    startDate: "",
+1559-    endDate: "",
+1560-    reason: "",
+1561-  };
+1562-
+1563-  const isAddingThisBlock =
+1564:    createBlockMutation.isPending &&
+1565:    createBlockMutation.variables?.serviceId === s.id;
+1566-
+1567-  return (
+1568-    <div className="mt-4 space-y-4 rounded-lg border border-gray-200 p-4">
+1569-      <div className="space-y-1">
+1570-        <p className="font-medium text-gray-800">Unavailable dates</p>
+1571-
+1572-        <p className="text-sm text-gray-600">
+1573-          Add holidays, leave or other dates when you cannot offer this
+1574-          service. Dog owners will not be able to request this service during
+1575-          the selected period.
+1576-        </p>
+1577-      </div>
+1578-
+1579-      {s.availabilityBlocks?.length ? (
+1580-        <div className="space-y-2">
+1581-          {s.availabilityBlocks.map((block: any) => (
+1582-            <div
+1583-              key={block.id}
+1584-              className="flex flex-col gap-3 rounded-lg border bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+1585-            >
+1586-              <div>
+1587-                <p className="font-medium text-gray-800">
+1588-                  Unavailable: {formatDate(block.startAt)} –{" "}
+1589-                  {formatDate(block.endAt)}
+1590-                </p>
+1591-
+1592-                {block.reason ? (
+1593-                  <p className="mt-1 text-sm text-gray-500">
+1594-                    {block.reason}
+1595-                  </p>
+1596-                ) : null}
+1597-              </div>
+1598-
+1599-              <button
+1600-                type="button"
+1601-                onClick={() => deleteBlockMutation.mutate(block.id)}
+1602-                disabled={deleteBlockMutation.isPending}
+1603-                className="self-start rounded border px-3 py-2 text-sm text-gray-700 disabled:opacity-50 sm:self-auto"
+1604-              >
+1605-                {deleteBlockMutation.isPending ? "Removing..." : "Remove"}
+1606-              </button>
+1607-            </div>
+1608-          ))}
+1609-        </div>
+1610-      ) : (
+1611-        <p className="text-sm text-gray-500">
+1612-          This service has no unavailable dates.
+1613-        </p>
+1614-      )}
+1615-
+1616-      <div className="grid gap-3 md:grid-cols-3">
+1617-        <label className="space-y-1">
+1618-          <span className="text-sm font-medium text-gray-700">
+1619-            Unavailable from
+1620-          </span>
+1621-
+1622-          <input
+1623-            type="date"
+1624-            value={input.startDate}
+1625-            onChange={(e) =>
+1626-              setBlockInputs((prev) => ({
+1627-                ...prev,
+1628-                [s.id]: {
+1629-                  ...input,
+1630-                  startDate: e.target.value,
+1631-                },
+1632-              }))
+1633-            }
+1634-            className="block w-full rounded border px-3 py-2"
+1635-          />
+1636-        </label>
+1637-
+1638-        <label className="space-y-1">
+1639-          <span className="text-sm font-medium text-gray-700">
+1640-            Unavailable until
+1641-          </span>
+1642-
+1643-          <input
+1644-            type="date"
+1645-            min={input.startDate || undefined}
+--
+1666-            type="text"
+1667-            placeholder="e.g. December holiday"
+1668-            value={input.reason}
+1669-            onChange={(e) =>
+1670-              setBlockInputs((prev) => ({
+1671-                ...prev,
+1672-                [s.id]: {
+1673-                  ...input,
+1674-                  reason: e.target.value,
+1675-                },
+1676-              }))
+1677-            }
+1678-            className="block w-full rounded border px-3 py-2"
+1679-          />
+1680-        </label>
+1681-      </div>
+1682-
+1683-      <p className="text-xs text-gray-500">
+1684-        Both the start and end dates will be unavailable. This only affects
+1685-        this service.
+1686-      </p>
+1687-
+1688-      <button
+1689-        type="button"
+1690-        onClick={() =>
+1691:          createBlockMutation.mutate({
+1692-            serviceId: s.id,
+1693-            startDate: input.startDate,
+1694-            endDate: input.endDate,
+1695-            reason: input.reason,
+1696-          })
+1697-        }
+1698-        disabled={
+1699-          isAddingThisBlock ||
+1700-          !input.startDate ||
+1701-          !input.endDate
+1702-        }
+1703-        className="rounded bg-black px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50"
+1704-      >
+1705-        {isAddingThisBlock ? "Blocking dates..." : "Block these dates"}
+1706-      </button>
+1707-
+1708:      {createBlockMutation.isError &&
+1709:      createBlockMutation.variables?.serviceId === s.id ? (
+1710-        <p className="text-sm text-red-600">
+1711:          {getApiErrorMessage(createBlockMutation.error)}
+1712-        </p>
+1713-      ) : null}
+1714-    </div>
+1715-  );
+1716-};
+1717-
+1718-  return (
+1719-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+1720-      <h1 className="text-2xl font-semibold">Manage Services</h1>
+1721-
+1722-      <div className="border rounded-xl p-6 bg-white space-y-4">
+1723-        <h2 className="text-lg font-medium">Add New Service</h2>
+1724-
+1725-        <select
+1726-          value={serviceType}
+1727-          onChange={(e) => {
+1728-            setServiceType(e.target.value);
+1729-            setTrainingBookingMode("APPOINTMENT");
+1730-            setPrice("");
+1731-            setDuration("");
+1732-            setBufferMinutes("");
+1733-            setBoardingExtraDogEnabled(false);
+1734-            setBoardingExtraDogPrice("");
+1735-            setDaycareHalfDayPrice("");
+1736-            setDaycareFullDayPrice("");
+1737-            setDaycareExtraDogEnabled(false);
+1738-            setDaycareExtraDogPrice("");
+1739-            setPetSittingLocation("BOTH");
+1740-            setMobileVetPrices(emptyMobileVetPrices());
+1741-            setMaxDogsPerBooking("");
+1742-            setConcurrentCapacityDogs("");
+1743-            setSupplierProvides("");
+1744-            setOwnerProvides("");
+1745-            setGoodToKnow("");
+1746-            setWashBrush(emptyGroomingPrices());
+1747-            setWashCut(emptyGroomingPrices());
+1748-          }}
+1749-          className="border rounded px-3 py-2 w-full"
+1750-        >
+1751-          <option value="">Select service</option>
+1752-          {SERVICE_TYPES.map((s) => (
+1753-            <option key={s} value={s}>
+1754-              {formatService(s)}
+1755-            </option>
+1756-          ))}
+1757-        </select>
+1758-
+1759-        {isTraining ? (
+1760-          <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+1761-            <div>
+1762-              <p className="font-medium">Training booking type</p>
+1763-
+1764-              <p className="text-sm text-gray-500">
+1765-                Choose how dog owners will book this training service.
+1766-              </p>
+1767-            </div>
+1768-
+1769-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+1770-              <input
+1771-                type="radio"
+1772-                name="trainingBookingMode"
+1773-                value="APPOINTMENT"
+1774-                checked={trainingBookingMode === "APPOINTMENT"}
+1775-                onChange={() =>
+1776-                  setTrainingBookingMode("APPOINTMENT")
+1777-                }
+1778-                className="mt-1"
+1779-              />
+1780-
+1781-              <span>
+1782-                <span className="block font-medium">
+1783-                  Private one-on-one training
+1784-                </span>
+1785-
+1786-                <span className="block text-sm text-gray-500">
+1787-                  The owner chooses an available appointment time for their dog.
+1788-                </span>
+1789-              </span>
+1790-            </label>
+1791-

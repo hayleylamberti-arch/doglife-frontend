@@ -291,6 +291,20 @@ export default function BookingModal({
   const [halfDayPeriod, setHalfDayPeriod] =
     useState<HalfDayPeriod>("MORNING");
 
+  const [selectedBookingBlockId, setSelectedBookingBlockId] =
+    useState<string | null>(null);
+
+  const bookingBlocks: any[] =
+    isBlockCapacityService &&
+    Array.isArray(service?.bookingBlocks)
+      ? service.bookingBlocks
+      : [];
+
+  const selectedBookingBlock =
+  bookingBlocks.find(
+    (block) => block.id === selectedBookingBlockId
+  ) || null;
+
   const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
     ? service.pricingTiers
     : [];
@@ -557,11 +571,15 @@ export default function BookingModal({
   ]);
 
   const displayPrice = useMemo(() => {
-    if (isSessionEventService) {
-      return Number(selectedServiceSession?.priceCents || 0);
-    }
+  if (isSessionEventService) {
+    return Number(selectedServiceSession?.priceCents || 0);
+  }
 
-    if (isBoarding) {
+  if (isBlockCapacityService && selectedBookingBlock) {
+    return toNumber(selectedBookingBlock.priceCents);
+  }
+
+  if (isBoarding) {
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
     }
 
@@ -613,6 +631,8 @@ export default function BookingModal({
     isBoarding,
     estimatedBoardingTotalCents,
     boardingBaseRateCents,
+    isBlockCapacityService,
+    selectedBookingBlock?.priceCents,
     isPetSitting,
     estimatedPetSittingTotalCents,
     isDaycare,
@@ -633,12 +653,19 @@ export default function BookingModal({
   ]);
 
   const displaySubtitle = useMemo(() => {
-    if (isSessionEventService) {
-  return `${formatPrice(
-    selectedServiceSession?.priceCents
-  )} per dog`;
-}
-    if (isBoarding) {
+  if (isSessionEventService) {
+    return `${formatPrice(
+      selectedServiceSession?.priceCents
+    )} per dog`;
+  }
+
+  if (isBlockCapacityService && selectedBookingBlock) {
+    return `${formatPrice(
+      selectedBookingBlock.priceCents
+    )} • ${selectedBookingBlock.label}`;
+  }
+
+  if (isBoarding) {
       if (arrivalDate && departureDate) {
         const dogCount = Math.max(1, selectedDogIds.length || 1);
 
@@ -715,6 +742,9 @@ export default function BookingModal({
     service?.unit,
     isSessionEventService,
     selectedServiceSession?.priceCents,
+    isBlockCapacityService,
+    selectedBookingBlock?.priceCents,
+    selectedBookingBlock?.label,
   ]);
 
   useEffect(() => {
@@ -1019,19 +1049,20 @@ export default function BookingModal({
       return alert("Select at least one dog");
     }
 
-    const selectedBookingBlock = isBlockCapacityService
-      ? resolveLegacyDaycareBlock(
-          service,
-          daycareSessionType,
-          halfDayPeriod
-        )
-      : null;
+    const resolvedBlock = isBlockCapacityService
+  ? selectedBookingBlock ||
+    resolveLegacyDaycareBlock(
+      service,
+      daycareSessionType,
+      halfDayPeriod
+    )
+  : null;
 
-    if (isBlockCapacityService && !selectedBookingBlock) {
-      return alert(
-        "No booking blocks are currently available for this service."
-      );
-    }
+if (isBlockCapacityService && !resolvedBlock) {
+  return alert(
+    "Please select a booking option."
+  );
+}
 
     if (
       maxDogsPerBooking > 0 &&
@@ -1167,7 +1198,7 @@ export default function BookingModal({
       } else if (isBlockCapacityService) {
         const blockTimes = buildBookingBlockTimes(
           date,
-          selectedBookingBlock!
+          resolvedBlock!
         );
 
         if (!blockTimes.startAt || !blockTimes.endAt) {
@@ -1224,6 +1255,10 @@ export default function BookingModal({
       const bookingResponse = await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
+        bookingBlockId:
+          isBlockCapacityService && resolvedBlock
+            ? resolvedBlock.id
+            : undefined,
 
         serviceSessionId: isSessionEventService
           ? selectedServiceSession?.id
@@ -1516,6 +1551,49 @@ export default function BookingModal({
                 ) : null}
               </div>
             ) : null}
+
+            {isBlockCapacityService &&
+bookingBlocks.length > 0 ? (
+  <div className="rounded-lg border border-gray-200 p-3">
+    <p className="mb-2 text-sm font-medium">
+      Select booking option
+    </p>
+
+    <div className="space-y-2">
+      {bookingBlocks.map((block) => (
+        <button
+          key={block.id}
+          type="button"
+          disabled={authRequired}
+          onClick={() =>
+            setSelectedBookingBlockId(block.id)
+          }
+          className={`w-full rounded border px-3 py-3 text-left text-sm disabled:opacity-50 ${
+            selectedBookingBlockId === block.id
+              ? "border-blue-600 bg-blue-50"
+              : "bg-white"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">
+                {block.label}
+              </p>
+
+              <p className="mt-1 text-xs text-gray-500">
+                {block.startTime} – {block.endTime}
+              </p>
+            </div>
+
+            <span className="font-medium">
+              {formatPrice(block.priceCents)}
+            </span>
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+) : null}
 
             {shouldRequireOwnerAddress &&
             ownerAddress ? (
