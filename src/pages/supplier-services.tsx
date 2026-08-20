@@ -2332,19 +2332,21 @@ export default function SupplierServicesPage() {
   <label className="text-sm text-gray-600">End time</label>
 </div>
 
+<div className="grid grid-cols-2 gap-2">
 <input
   type="time"
   value={petVisitBlockStartTime}
   onChange={(e) => setPetVisitBlockStartTime(e.target.value)}
-  className="mt-1 border rounded px-3 py-2 float-left w-[49%]"
+  className="mt-1 border rounded px-3 py-2 w-full"
 />
 
 <input
   type="time"
   value={petVisitBlockEndTime}
   onChange={(e) => setPetVisitBlockEndTime(e.target.value)}
-  className="mt-1 border rounded px-3 py-2 float-right w-[49%]"
+  className="mt-1 border rounded px-3 py-2 w-full"
 />
+</div>
 
 <input
   type="number"
@@ -2352,7 +2354,7 @@ export default function SupplierServicesPage() {
   placeholder="Visit price (R)"
   value={petVisitBlockPrice}
   onChange={(e) => setPetVisitBlockPrice(e.target.value)}
-  className="mt-2 clear-both border rounded px-3 py-2 block w-full"
+  className="mt-2 border rounded px-3 py-2 block w-full"
 />
 
 <button
