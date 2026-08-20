@@ -2336,14 +2336,14 @@ export default function SupplierServicesPage() {
   type="time"
   value={petVisitBlockStartTime}
   onChange={(e) => setPetVisitBlockStartTime(e.target.value)}
-  className="mt-1 mr-[2%] border rounded px-3 py-2 inline-block w-[48%]"
+  className="mt-1 mr-[2%] min-w-0 border rounded px-3 py-2 inline-block w-[48%]"
 />
 
 <input
   type="time"
   value={petVisitBlockEndTime}
   onChange={(e) => setPetVisitBlockEndTime(e.target.value)}
-  className="mt-1 border rounded px-3 py-2 inline-block w-[48%]"
+  className="mt-1 min-w-0 border rounded px-3 py-2 inline-block w-[48%]"
 />
 
 <input
