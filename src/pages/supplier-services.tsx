@@ -2317,7 +2317,8 @@ export default function SupplierServicesPage() {
 
                       {type === "PET_SITTING" && s.bookingModel === "BLOCK_CAPACITY" ? (
   <div className="mt-3 rounded border bg-gray-50 p-3">
-    <p className="font-medium text-gray-700">Pet visit times & prices</p>
+    <p className="font-medium text-gray-700">Set your pet visit times & prices</p>
+<p className="mt-1 text-sm text-gray-600">Create the bookable visit windows owners can choose from, for example Morning 08:00–10:00 or Midday 11:00–13:00.</p>
     <input
   type="text"
   placeholder="Visit name, e.g. Morning visit"
@@ -2326,18 +2327,23 @@ export default function SupplierServicesPage() {
   className="mt-2 border rounded px-3 py-2 block w-full"
 />
 
+<div className="mt-2 grid grid-cols-2 gap-2">
+  <label className="text-sm text-gray-600">Start time</label>
+  <label className="text-sm text-gray-600">End time</label>
+</div>
+
 <input
   type="time"
   value={petVisitBlockStartTime}
   onChange={(e) => setPetVisitBlockStartTime(e.target.value)}
-  className="mt-2 border rounded px-3 py-2 block w-full"
+  className="mt-1 mr-[2%] border rounded px-3 py-2 inline-block w-[49%]"
 />
 
 <input
   type="time"
   value={petVisitBlockEndTime}
   onChange={(e) => setPetVisitBlockEndTime(e.target.value)}
-  className="mt-2 border rounded px-3 py-2 block w-full"
+  className="mt-1 border rounded px-3 py-2 inline-block w-[49%]"
 />
 
 <input
