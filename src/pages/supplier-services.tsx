@@ -2333,19 +2333,23 @@ export default function SupplierServicesPage() {
 </div>
 
 <div className="grid grid-cols-2 gap-2">
+  <div className="min-w-0">
 <input
   type="time"
   value={petVisitBlockStartTime}
   onChange={(e) => setPetVisitBlockStartTime(e.target.value)}
-  className="mt-1 border rounded px-3 py-2 w-full"
+  className="mt-1 min-w-0 max-w-full border rounded px-3 py-2 w-full"
 />
+</div>
 
+<div className="min-w-0">
 <input
   type="time"
   value={petVisitBlockEndTime}
   onChange={(e) => setPetVisitBlockEndTime(e.target.value)}
-  className="mt-1 border rounded px-3 py-2 w-full"
+  className="mt-1 min-w-0 max-w-full border rounded px-3 py-2 w-full"
 />
+</div>
 </div>
 
 <input
