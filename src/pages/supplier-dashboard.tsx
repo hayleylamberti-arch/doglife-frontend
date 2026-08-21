@@ -51,6 +51,7 @@ function getOvernightStayDetails(booking: SupplierBooking) {
 
   if (
     !["BOARDING", "PET_SITTING"].includes(serviceType) ||
+    (serviceType === "PET_SITTING" && booking.supplierService?.unit === "PER_VISIT") ||
     !booking.startAt ||
     !booking.endAt
   ) {
