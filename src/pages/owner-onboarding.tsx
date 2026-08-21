@@ -31,9 +31,13 @@ export default function OwnerOnboarding() {
   const [showMissingSuburbHelp, setShowMissingSuburbHelp] =
     useState(false);
 
-  const [completed, setCompleted] = useState(
-    Boolean(user?.onboardingCompleted)
-  );
+  const [completed, setCompleted] = useState(false);
+
+  useEffect(() => {
+    if (user?.onboardingCompleted && !completed) {
+      navigate("/owner/dashboard", { replace: true });
+    }
+  }, [user?.onboardingCompleted, completed, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -131,8 +135,8 @@ export default function OwnerOnboarding() {
         onboardingCompleted: true,
       });
 
-      await refreshMe();
       setCompleted(true);
+      await refreshMe();
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||

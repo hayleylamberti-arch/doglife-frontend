@@ -30,11 +30,18 @@ const profileSchema = z.object({
     .regex(/^[\+]?[0-9\s\-\(\)]{10,}$/, "Please enter a valid phone number")
     .optional()
     .or(z.literal("")),
-  suburb: z.string().min(2, "Please enter your suburb").optional().or(z.literal("")),
   address: z.string().min(5, "Please enter a complete address").optional().or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
+
+type Suburb = {
+  id: string;
+  suburbName: string;
+  city: string;
+  province: string;
+};
+
 type SaveStatus = "idle" | "saved" | "error";
 
 function SaveFeedback({ status }: { status: SaveStatus }) {
@@ -54,10 +61,11 @@ function SaveFeedback({ status }: { status: SaveStatus }) {
 }
 
 export default function Profile() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, refreshMe } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [selectedSuburbId, setSelectedSuburbId] = useState("");
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -65,9 +73,17 @@ export default function Profile() {
       firstName: "",
       lastName: "",
       mobilePhone: "",
-      suburb: "",
       address: "",
     },
+  });
+
+  const { data: suburbs = [], isLoading: suburbsLoading } = useQuery<Suburb[]>({
+    queryKey: ["suburbs"],
+    queryFn: async () => {
+      const res = await api.get("/api/suburbs");
+      return Array.isArray(res.data?.suburbs) ? res.data.suburbs : [];
+    },
+    enabled: !!user,
   });
 
   const { data: ownerProfile, isLoading: ownerProfileLoading } = useQuery({
@@ -89,20 +105,29 @@ export default function Profile() {
       firstName: profileUser.firstName || "",
       lastName: profileUser.lastName || "",
       mobilePhone: profileUser.mobilePhone || "",
-      suburb: ownerProfile?.suburb || "",
       address: ownerProfile?.address || "",
     });
-  }, [profileUser, ownerProfile, form]);
+
+    setSelectedSuburbId(user?.suburbId || "");
+  }, [profileUser, ownerProfile, user?.suburbId, form]);
+
+  const selectedSuburb =
+    suburbs.find((suburb) => suburb.id === selectedSuburbId) || null;
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
       setSaveStatus("idle");
 
+      if (selectedSuburbId && selectedSuburbId !== user?.suburbId) {
+        await api.patch("/api/owner/onboarding", {
+          suburbId: selectedSuburbId,
+        });
+      }
+
       const res = await api.post("/api/owner/profile", {
         firstName: data.firstName,
         lastName: data.lastName,
         mobilePhone: data.mobilePhone || null,
-        suburb: data.suburb || null,
         address: data.address || null,
       });
 
@@ -115,6 +140,7 @@ export default function Profile() {
       await queryClient.invalidateQueries({ queryKey: ["owner-profile"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await refreshMe();
 
       window.setTimeout(() => {
         setSaveStatus("idle");
@@ -215,23 +241,44 @@ export default function Profile() {
                   <Input value={profileUser?.email || ""} disabled />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="suburb"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Suburb</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          value={field.value || ""}
-                          placeholder="Enter your suburb for faster service search"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-2">
+                  <label
+                    htmlFor="profile-suburb"
+                    className="text-sm font-medium"
+                  >
+                    Suburb
+                  </label>
+
+                  <select
+                    id="profile-suburb"
+                    value={selectedSuburbId}
+                    onChange={(event) =>
+                      setSelectedSuburbId(event.target.value)
+                    }
+                    disabled={suburbsLoading}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+                  >
+                    <option value="">
+                      {suburbsLoading
+                        ? "Loading suburbs..."
+                        : "Select your suburb"}
+                    </option>
+
+                    {suburbs.map((suburb) => (
+                      <option key={suburb.id} value={suburb.id}>
+                        {suburb.suburbName}
+                        {suburb.city &&
+                        suburb.city !== suburb.suburbName
+                          ? `, ${suburb.city}`
+                          : ""}
+                      </option>
+                    ))}
+                  </select>
+
+                  <p className="text-xs text-gray-500">
+                    This is the suburb DogLife uses to show services near you.
+                  </p>
+                </div>
 
                 <FormField
                   control={form.control}
@@ -253,7 +300,7 @@ export default function Profile() {
                 />
 
                 <div className="rounded-lg border bg-blue-50 border-blue-200 p-4 text-sm text-blue-800">
-                  Your suburb helps us show nearby providers faster. Your address is used for services that happen at your home, such as walking, home training, mobile grooming, or mobile vet bookings.
+                  Your suburb controls which nearby DogLife services you see. Your home address is only needed for services that take place at your home, such as walking, home training, mobile grooming, pet visits or mobile vet care.
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -300,7 +347,7 @@ export default function Profile() {
               <div>
                 <p className="font-medium">Suburb</p>
                 <p className="text-sm text-doglife-neutral">
-                  {form.watch("suburb") || "Not added yet"}
+                  {selectedSuburb?.suburbName || "Not added yet"}
                 </p>
               </div>
             </div>

@@ -779,12 +779,12 @@ function DogProfilePrompt() {
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
       <h2 className="text-xl font-semibold text-orange-900">
-        Create your Dog Passport 🐶
+        Add your dog 🐶
       </h2>
 
       <p className="mt-2 text-sm text-orange-800">
-        Your Dog Passport stores important health, care and behaviour
-        information so suppliers can safely care for your dog.
+        Start with your dog’s basic details. You can add health, care and
+        behaviour information to their Dog Passport anytime.
       </p>
 
       <div className="mt-3 text-sm text-orange-800">
@@ -802,7 +802,7 @@ function DogProfilePrompt() {
         to="/owner/my-dogs"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
       >
-        Create Dog Passport
+        Add your dog
       </Link>
     </div>
   );
@@ -812,20 +812,19 @@ function OwnerProfilePrompt() {
   return (
     <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
       <h2 className="text-xl font-semibold text-blue-900">
-        Complete your owner profile 📍
+        Add your home address 🏠
       </h2>
 
       <p className="mt-2 text-sm text-blue-800">
-        Add your suburb and home address so DogLife can show trusted
-        providers that operate in your area and prepare for home-based
-        services like walking, grooming, training and mobile vet visits.
+        Add your home address when you’re ready to use services at home,
+        such as walking, mobile grooming, pet visits or mobile vet care.
       </p>
 
       <Link
         to="/owner/profile"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
       >
-        Complete owner profile
+        Add home address
       </Link>
     </div>
   );
@@ -842,8 +841,8 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
 
           <p className="mt-1 text-sm text-gray-500">
             {hasDogs
-              ? "We'll show your preferred providers first, then trusted providers nearby."
-              : "Create your Dog Passport first, then you can book trusted services."}
+              ? "Find trusted services near you. Your preferred providers will appear first."
+              : "Add your dog first, then you can start finding trusted services."}
           </p>
         </div>
 
@@ -890,8 +889,8 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
   const steps = [
     {
       icon: "🐶",
-      title: "Create Dog Passport",
-      text: "Add health, care and behaviour details.",
+      title: "Add your dog",
+      text: "Start with their name. Add Passport details anytime.",
       active: !hasDogs,
       href: "/owner/my-dogs",
     },
@@ -934,7 +933,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           </h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            A simple journey from Dog Passport to trusted care.
+            A simple journey from finding care to a completed service.
           </p>
         </div>
 
@@ -942,7 +941,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           to={hasDogs ? "/search" : "/owner/my-dogs"}
           className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
-          {hasDogs ? "Find a service" : "Create Dog Passport"}
+          {hasDogs ? "Find a service" : "Add your dog"}
         </Link>
       </div>
 
@@ -1053,9 +1052,8 @@ export default function Dashboard() {
   const dogs = dogsData?.dogs || [];
   const hasDogs = dogs.length > 0;
 
-  const hasOwnerSuburb = Boolean(ownerProfileData?.suburb?.trim());
   const hasOwnerAddress = Boolean(ownerProfileData?.address?.trim());
-  const hasOwnerProfile = hasOwnerSuburb && hasOwnerAddress;
+  const hasOwnerProfile = hasOwnerAddress;
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -1867,8 +1865,8 @@ console.log("OWNER BOOKING DEBUG", {
             </h1>
 
             <p className="mt-2 text-sm text-gray-600">
-              Manage your Dog Passport, bookings, care reminders and
-              trusted dog services — all in one place.
+              Find trusted dog care, manage bookings and keep your dog’s
+              important information together — all in one place.
             </p>
           </div>
 
@@ -1878,7 +1876,7 @@ console.log("OWNER BOOKING DEBUG", {
           >
             {hasDogs
               ? "View Dog Passport"
-              : "Create Dog Passport"}
+              : "Add your dog"}
           </Link>
         </div>
       </div>
@@ -1916,7 +1914,7 @@ console.log("OWNER BOOKING DEBUG", {
       ) : null}
 
       <ServiceShortcuts
-        hasDogs={hasDogs && hasOwnerProfile}
+        hasDogs={hasDogs}
       />
 
       {notifications.length > 0 ? (

@@ -97,7 +97,8 @@ export default function LoginPage() {
         from &&
         from !== "/" &&
         from !== "/auth/login" &&
-        from !== "/auth"
+        from !== "/auth" &&
+        from !== "/owner/onboarding"
       ) {
         navigate(from, { replace: true });
         return;
