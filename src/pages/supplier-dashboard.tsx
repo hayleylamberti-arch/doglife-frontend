@@ -460,7 +460,7 @@ if (isActiveHomeServiceMissingAddress) {
         </div>
       )}
     </div>
-  ); 
+  );
 }
 
 function DogDetails({ booking }: { booking: SupplierBooking }) {
@@ -749,7 +749,12 @@ function BookingCard({
   const displayNotes = cleanNotesForDisplay(booking.notes);
   const overnightStay = getOvernightStayDetails(booking);
 
-  const petSittingLocation =
+
+    const isPetVisitBooking =
+      booking.serviceType === "PET_SITTING" &&
+      booking.supplierService?.unit === "PER_VISIT";
+
+    const petSittingLocation =
     booking.serviceType === "PET_SITTING"
       ? extractNoteValue(booking.notes, "Pet sitting location")
       : null;
@@ -796,7 +801,10 @@ const missingOwnerAddress =
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
-            {booking.serviceSession?.name || formatServiceName(booking.serviceType)}
+            {booking.serviceSession?.name ||
+                (isPetVisitBooking
+                  ? "Pet Visit"
+                  : formatServiceName(booking.serviceType))}
           </div>
 
           {booking.serviceSession?.occurrences?.length ? (
@@ -913,7 +921,9 @@ Date.now() >=
 
       {petSittingLocation ? (
         <div className="text-sm text-gray-700">
-          <span className="font-medium">🏠 Pet sitting location:</span>{" "}
+          <span className="font-medium">
+              🏠 {isPetVisitBooking ? "Pet visit location:" : "Pet sitting location:"}
+            </span>{" "}
           {formatLabel(petSittingLocation)}
         </div>
       ) : null}

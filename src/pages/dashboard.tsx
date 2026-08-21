@@ -1015,7 +1015,7 @@ export default function Dashboard() {
 
   const [savedAccessInstructionId, setSavedAccessInstructionId] =
     useState<string | null>(null);
-  
+
   const [cancellingBookingId, setCancellingBookingId] =
     useState<string | null>(null);
 
@@ -1444,6 +1444,12 @@ export default function Dashboard() {
 
     const overnightStay = getOvernightStayDetails(booking);
 
+
+    const isPetVisitBooking =
+      (booking.serviceType === "PET_SITTING" ||
+        booking.supplierService?.service === "PET_SITTING") &&
+      booking.supplierService?.unit === "PER_VISIT";
+
     const isTransportBooking =
       booking.serviceType === "PET_TRANSPORT" ||
       booking.supplierService?.service === "PET_TRANSPORT";
@@ -1563,18 +1569,20 @@ console.log("OWNER BOOKING DEBUG", {
                     {overnightStay.nights === 1 ? "night" : "nights"} • Departure{" "}
                     {overnightStay.departureDate} at {overnightStay.departureTime}
                   </p>
-              ) : null} 
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
-                {formatServiceLabel(
-                  booking.supplierService?.service ||
-                    booking.serviceType
-                )}
+                {isPetVisitBooking
+                ? "Pet Visit"
+                : formatServiceLabel(
+                    booking.supplierService?.service ||
+                      booking.serviceType
+                  )}
               </span>
 
-              {booking.supplierService?.unit ? (
+              {booking.supplierService?.unit && !isPetVisitBooking ? (
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                   {formatLabel(
                     String(
@@ -1612,10 +1620,15 @@ console.log("OWNER BOOKING DEBUG", {
 
                   return (
                     <BookingMetaPill
-                      key={detail}
-                      label={formattedDetail.label}
-                      value={formattedDetail.value}
-                    />
+                    key={detail}
+                    label={
+                      isPetVisitBooking &&
+                      formattedDetail.label.toLowerCase() === "pet sitting location"
+                        ? "Pet visit location"
+                        : formattedDetail.label
+                    }
+                    value={formattedDetail.value}
+                  />
                   );
                 })}
               </div>
