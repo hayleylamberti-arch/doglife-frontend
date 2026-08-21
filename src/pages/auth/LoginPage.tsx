@@ -23,10 +23,17 @@ export default function LoginPage() {
     }
   }, []);
 
-  const getDashboardPath = (role?: string | null) => {
-    if (role === "ADMIN") return "/admin";
-    if (role === "SUPPLIER") return "/supplier/dashboard";
-    if (role === "OWNER") return "/owner/dashboard";
+  const getDashboardPath = (user?: {
+    role?: string | null;
+    onboardingCompleted?: boolean;
+  } | null) => {
+    if (user?.role === "ADMIN") return "/admin";
+    if (user?.role === "SUPPLIER") return "/supplier/dashboard";
+    if (user?.role === "OWNER") {
+      return user.onboardingCompleted
+        ? "/owner/dashboard"
+        : "/owner/onboarding";
+    }
     return "/";
   };
 
@@ -76,13 +83,22 @@ export default function LoginPage() {
         localStorage.removeItem("doglife_remembered_email");
       }
 
-      const role = result?.user?.role;
-      const dashboardPath = getDashboardPath(role);
+      const dashboardPath = getDashboardPath(result?.user);
 
       const from = (location.state as { from?: { pathname?: string } } | null)
         ?.from?.pathname;
 
-      if (from && from !== "/" && from !== "/auth/login" && from !== "/auth") {
+      const incompleteOwner =
+        result?.user?.role === "OWNER" &&
+        !result?.user?.onboardingCompleted;
+
+      if (
+        !incompleteOwner &&
+        from &&
+        from !== "/" &&
+        from !== "/auth/login" &&
+        from !== "/auth"
+      ) {
         navigate(from, { replace: true });
         return;
       }

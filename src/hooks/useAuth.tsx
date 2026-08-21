@@ -19,6 +19,7 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   mobilePhone?: string;
+  suburbId?: string | null;
   onboardingCompleted?: boolean;
   onboardingStep?: number;
   emailVerified?: boolean;
