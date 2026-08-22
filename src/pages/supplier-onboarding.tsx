@@ -52,17 +52,26 @@ export default function SupplierOnboarding() {
     setError("");
 
     try {
+      const selectedSuburb = suburbs.find((item) => item.id === suburbId);
+
+      if (!selectedSuburb) {
+        setError("Please select a valid suburb");
+        setSaving(false);
+        return;
+      }
+
       const res = await api.post("/api/supplier/profile", {
-        businessName,
-        aboutServices,
-        businessAddress,
-        businessPhone,
-        suburbId,
+        businessName: businessName.trim(),
+        businessPhone: businessPhone.trim(),
+        suburb: selectedSuburb.suburbName,
+        operatingAreaIds: [suburbId],
+        aboutServices: aboutServices.trim() || null,
+        businessAddress: businessAddress.trim() || null,
       });
 
       console.log("Supplier profile saved:", res.data);
 
-      navigate("/supplier-dashboard", { replace: true });
+      navigate("/supplier/services", { replace: true });
 
     } catch (err) {
       console.error(err);
@@ -81,7 +90,16 @@ export default function SupplierOnboarding() {
         </h1>
 
         <p className="text-muted-foreground mt-1">
-          Step 1 of 2 — Tell customers about your services
+          Start with the essentials. You can add more detail later.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+        <p className="font-medium text-blue-900">
+          First, tell us who you are.
+        </p>
+        <p className="mt-1 text-sm text-blue-800">
+          Next, you’ll add your first service and set when you’re available.
         </p>
       </div>
 
@@ -92,7 +110,7 @@ export default function SupplierOnboarding() {
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Business Name
+            Business name
           </label>
 
           <input
@@ -106,35 +124,39 @@ export default function SupplierOnboarding() {
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Describe your services
+            About your business
+            <span className="ml-2 font-normal text-gray-500">
+              Optional
+            </span>
           </label>
 
           <textarea
             className="w-full border rounded-md px-3 py-2 min-h-[100px]"
-            placeholder="Tell dog owners about your services, experience and what makes you special."
+            placeholder="A short introduction to your business. You can come back to this later."
             value={aboutServices}
             onChange={(e) => setAboutServices(e.target.value)}
-            required
           />
         </div>
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Business Address
+            Business address
+            <span className="ml-2 font-normal text-gray-500">
+              Optional for now
+            </span>
           </label>
 
           <input
             className="w-full border rounded-md px-3 py-2"
-            placeholder="123 Main Street"
+            placeholder="You can add your full business address later"
             value={businessAddress}
             onChange={(e) => setBusinessAddress(e.target.value)}
-            required
           />
         </div>
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Business Phone
+            Business phone
           </label>
 
           <input
@@ -148,7 +170,7 @@ export default function SupplierOnboarding() {
 
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Suburb
+            Primary operating suburb
           </label>
 
           {loadingSuburbs ? (
@@ -186,7 +208,7 @@ export default function SupplierOnboarding() {
           disabled={saving}
           className="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-          {saving ? "Saving..." : "Continue"}
+          {saving ? "Saving..." : "Continue to add a service"}
         </button>
 
       </form>
