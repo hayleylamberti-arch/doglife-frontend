@@ -214,6 +214,49 @@ function serviceDefaults(serviceType: string) {
   }
 }
 
+type BoardingWindow = {
+  startTime: string;
+  endTime: string;
+};
+
+type BoardingWeeklyWindows = Record<string, BoardingWindow[]>;
+
+const BOARDING_WEEKDAYS = [
+  { key: "1", label: "Monday" },
+  { key: "2", label: "Tuesday" },
+  { key: "3", label: "Wednesday" },
+  { key: "4", label: "Thursday" },
+  { key: "5", label: "Friday" },
+  { key: "6", label: "Saturday" },
+  { key: "0", label: "Sunday" },
+];
+
+function normalizeBoardingWindows(value: unknown): BoardingWeeklyWindows {
+  const source =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
+
+  return BOARDING_WEEKDAYS.reduce((acc, day) => {
+    const windows = Array.isArray(source[day.key])
+      ? (source[day.key] as any[])
+          .filter(
+            (item) =>
+              item &&
+              typeof item.startTime === "string" &&
+              typeof item.endTime === "string"
+          )
+          .map((item) => ({
+            startTime: item.startTime,
+            endTime: item.endTime,
+          }))
+      : [];
+
+    acc[day.key] = windows;
+    return acc;
+  }, {} as BoardingWeeklyWindows);
+}
+
 type EditServiceForm = {
   price: string;
   durationMinutes: string;
@@ -272,6 +315,12 @@ export default function SupplierServicesPage() {
 
   const [boardingExtraDogEnabled, setBoardingExtraDogEnabled] = useState(false);
   const [boardingExtraDogPrice, setBoardingExtraDogPrice] = useState("");
+
+  const [boardingDropoffWindows, setBoardingDropoffWindows] =
+    useState<BoardingWeeklyWindows>(normalizeBoardingWindows(null));
+
+  const [boardingCollectionWindows, setBoardingCollectionWindows] =
+    useState<BoardingWeeklyWindows>(normalizeBoardingWindows(null));
 
   const [daycareHalfDayPrice, setDaycareHalfDayPrice] = useState("");
   const [daycareFullDayPrice, setDaycareFullDayPrice] = useState("");
@@ -332,6 +381,15 @@ export default function SupplierServicesPage() {
 
   const startEditing = (s: any) => {
     const tiers = s.pricingTiers || [];
+
+    if (s.service === "BOARDING") {
+      setBoardingDropoffWindows(
+        normalizeBoardingWindows(s.pricingJson?.boardingDropoffWindows)
+      );
+      setBoardingCollectionWindows(
+        normalizeBoardingWindows(s.pricingJson?.boardingCollectionWindows)
+      );
+    }
 
     if (s.service === "GROOMING") {
       setWashBrush({
@@ -418,7 +476,14 @@ export default function SupplierServicesPage() {
         return api.patch(`/api/supplierServices/${service.id}`, payload);
       }
 
-      if (service.service === "DAYCARE") {
+      if (service.service === "BOARDING") {
+        payload.baseRateCents = Math.round(Number(editForm.price) * 100);
+        payload.pricingJson = {
+          ...payload.pricingJson,
+          boardingDropoffWindows,
+          boardingCollectionWindows,
+        };
+      } else if (service.service === "DAYCARE") {
         if (
           editForm.daycareHalfDayPrice === "" ||
           editForm.daycareFullDayPrice === ""
@@ -1116,6 +1181,218 @@ export default function SupplierServicesPage() {
   />
 ) : null}
           </>
+        ) : null}
+
+        {s.service === "BOARDING" ? (
+          <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
+            <div>
+              <p className="font-medium text-gray-800">Boarding handover hours</p>
+              <p className="text-sm text-gray-500">
+                Set the times owners may drop off and collect dogs. You can add more than one window per day.
+              </p>
+            </div>
+
+            {BOARDING_WEEKDAYS.map((day) => {
+              const dropoffWindows = boardingDropoffWindows[day.key] || [];
+              const collectionWindows = boardingCollectionWindows[day.key] || [];
+
+              const updateWindow = (
+                kind: "dropoff" | "collection",
+                index: number,
+                field: "startTime" | "endTime",
+                value: string
+              ) => {
+                const source =
+                  kind === "dropoff"
+                    ? boardingDropoffWindows
+                    : boardingCollectionWindows;
+
+                const next = {
+                  ...source,
+                  [day.key]: [...(source[day.key] || [])],
+                };
+
+                next[day.key][index] = {
+                  ...next[day.key][index],
+                  [field]: value,
+                };
+
+                if (kind === "dropoff") {
+                  setBoardingDropoffWindows(next);
+                } else {
+                  setBoardingCollectionWindows(next);
+                }
+              };
+
+              const addWindow = (kind: "dropoff" | "collection") => {
+                const source =
+                  kind === "dropoff"
+                    ? boardingDropoffWindows
+                    : boardingCollectionWindows;
+
+                const next = {
+                  ...source,
+                  [day.key]: [
+                    ...(source[day.key] || []),
+                    { startTime: "07:00", endTime: "15:00" },
+                  ],
+                };
+
+                if (kind === "dropoff") {
+                  setBoardingDropoffWindows(next);
+                } else {
+                  setBoardingCollectionWindows(next);
+                }
+              };
+
+              const removeWindow = (
+                kind: "dropoff" | "collection",
+                index: number
+              ) => {
+                const source =
+                  kind === "dropoff"
+                    ? boardingDropoffWindows
+                    : boardingCollectionWindows;
+
+                const next = {
+                  ...source,
+                  [day.key]: (source[day.key] || []).filter(
+                    (_, windowIndex) => windowIndex !== index
+                  ),
+                };
+
+                if (kind === "dropoff") {
+                  setBoardingDropoffWindows(next);
+                } else {
+                  setBoardingCollectionWindows(next);
+                }
+              };
+
+              return (
+                <div key={day.key} className="rounded border border-gray-200 p-3">
+                  <p className="font-medium text-gray-700">{day.label}</p>
+
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-medium">Drop-off</p>
+                        <button
+                          type="button"
+                          onClick={() => addWindow("dropoff")}
+                          className="text-sm text-blue-600"
+                        >
+                          + Add window
+                        </button>
+                      </div>
+
+                      {dropoffWindows.length ? (
+                        dropoffWindows.map((window, index) => (
+                          <div
+                            key={`dropoff-${day.key}-${index}`}
+                            className="mb-2 grid grid-cols-[1fr_1fr_auto] gap-2"
+                          >
+                            <input
+                              type="time"
+                              value={window.startTime}
+                              onChange={(e) =>
+                                updateWindow(
+                                  "dropoff",
+                                  index,
+                                  "startTime",
+                                  e.target.value
+                                )
+                              }
+                              className="min-w-0 rounded border px-2 py-2"
+                            />
+                            <input
+                              type="time"
+                              value={window.endTime}
+                              onChange={(e) =>
+                                updateWindow(
+                                  "dropoff",
+                                  index,
+                                  "endTime",
+                                  e.target.value
+                                )
+                              }
+                              className="min-w-0 rounded border px-2 py-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeWindow("dropoff", index)}
+                              className="px-2 text-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400">No drop-off window</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-sm font-medium">Collection</p>
+                        <button
+                          type="button"
+                          onClick={() => addWindow("collection")}
+                          className="text-sm text-blue-600"
+                        >
+                          + Add window
+                        </button>
+                      </div>
+
+                      {collectionWindows.length ? (
+                        collectionWindows.map((window, index) => (
+                          <div
+                            key={`collection-${day.key}-${index}`}
+                            className="mb-2 grid grid-cols-[1fr_1fr_auto] gap-2"
+                          >
+                            <input
+                              type="time"
+                              value={window.startTime}
+                              onChange={(e) =>
+                                updateWindow(
+                                  "collection",
+                                  index,
+                                  "startTime",
+                                  e.target.value
+                                )
+                              }
+                              className="min-w-0 rounded border px-2 py-2"
+                            />
+                            <input
+                              type="time"
+                              value={window.endTime}
+                              onChange={(e) =>
+                                updateWindow(
+                                  "collection",
+                                  index,
+                                  "endTime",
+                                  e.target.value
+                                )
+                              }
+                              className="min-w-0 rounded border px-2 py-2"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeWindow("collection", index)}
+                              className="px-2 text-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-400">No collection window</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : null}
 
         {s.service === "BOARDING" || s.service === "DAYCARE" ? (
