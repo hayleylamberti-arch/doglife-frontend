@@ -723,6 +723,8 @@ function BookingCard({
   onDecline,
   onStart,
   onComplete,
+  onStartService,
+  onCompleteService,
   onMarkPaid,
   actionLoading,
   activeOccurrenceId,
@@ -737,6 +739,8 @@ function BookingCard({
   onDecline: (booking: SupplierBooking) => void;
   onStart: (bookingId: string, occurrenceId: string) => void;
   onComplete: (bookingId: string, occurrenceId: string) => void;
+  onStartService: (bookingId: string) => void;
+  onCompleteService: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
   actionLoading: boolean;
   activeOccurrenceId: string | null;
@@ -788,6 +792,20 @@ const missingOwnerAddress =
   !hasText(
     booking.serviceLocationSummary?.addressLine
   );
+
+const isSessionBooking = Boolean(booking.serviceSession);
+
+const canStartService =
+  !isSessionBooking &&
+  booking.status === "CONFIRMED" &&
+  Date.now() >=
+    new Date(booking.startAt).getTime() - 15 * 60 * 1000 &&
+  Date.now() <= new Date(booking.endAt).getTime();
+
+const canCompleteService =
+  !isSessionBooking &&
+  booking.status === "IN_PROGRESS" &&
+  Date.now() >= new Date(booking.endAt).getTime();
 
   return (
     <div
@@ -994,6 +1012,28 @@ Date.now() >=
         </div>
       ) : null}
 
+      {canStartService ? (
+        <button
+          type="button"
+          onClick={() => onStartService(booking.id)}
+          disabled={actionLoading || missingOwnerAddress}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Starting..." : "Start service"}
+        </button>
+      ) : null}
+
+      {canCompleteService ? (
+        <button
+          type="button"
+          onClick={() => onCompleteService(booking.id)}
+          disabled={actionLoading}
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Completing..." : "Complete service"}
+        </button>
+      ) : null}
+
       {booking.status === "COMPLETED_UNBILLED" ? (
         <button
           type="button"
@@ -1021,6 +1061,8 @@ function BookingSection({
   onDecline,
   onStart,
   onComplete,
+  onStartService,
+  onCompleteService,
   onMarkPaid,
   reviewInputs,
   activeReviewBookingId,
@@ -1044,6 +1086,8 @@ function BookingSection({
   onDecline: (booking: SupplierBooking) => void;
   onStart: (bookingId: string, occurrenceId: string) => void;
   onComplete: (bookingId: string, occurrenceId: string) => void;
+  onStartService: (bookingId: string) => void;
+  onCompleteService: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
   reviewInputs: Record<string, ReviewInput>;
   activeReviewBookingId: string | null;
@@ -1129,6 +1173,8 @@ function BookingSection({
                   onDecline={onDecline}
                   onStart={onStart}
                   onComplete={onComplete}
+                  onStartService={onStartService}
+                  onCompleteService={onCompleteService}
                   onMarkPaid={onMarkPaid}
                   actionLoading={activeBookingId === booking.id}
                   activeOccurrenceId={activeOccurrenceId}
@@ -1454,6 +1500,50 @@ const completeMutation = useMutation({
   },
 });
 
+const startServiceMutation = useMutation({
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/start`),
+
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+    setActiveOccurrenceId(null);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => {
+    setActiveBookingId(null);
+    setActiveOccurrenceId(null);
+  },
+});
+
+const completeServiceMutation = useMutation({
+  mutationFn: async (bookingId: string) =>
+    api.patch(`/api/supplier/bookings/${bookingId}/complete`),
+
+  onMutate: (bookingId) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+    setActiveOccurrenceId(null);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => {
+    setActiveBookingId(null);
+    setActiveOccurrenceId(null);
+  },
+});
+
 const markPaidMutation = useMutation({
   mutationFn: async (bookingId: string) =>
     api.patch(`/api/supplier/bookings/${bookingId}/mark-paid`),
@@ -1728,6 +1818,12 @@ const cancelled = sortBookingsByStart(
               occurrenceId,
             })
           }
+        onStartService={(bookingId) =>
+          startServiceMutation.mutate(bookingId)
+        }
+        onCompleteService={(bookingId) =>
+          completeServiceMutation.mutate(bookingId)
+        }
         onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
         isOpen={Boolean(openSections[sectionKey])}
         onToggle={() => toggleSection(sectionKey)}
