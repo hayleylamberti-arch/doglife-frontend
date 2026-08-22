@@ -1844,6 +1844,201 @@ const cancelled = sortBookingsByStart(
     );
   }
 
+  const supplierChecklist = Array.isArray(completionData?.checklist)
+    ? completionData.checklist
+    : [];
+
+  const checklistByKey = Object.fromEntries(
+    supplierChecklist.map((item: any) => [item.key, item])
+  );
+
+  const businessDetailsComplete = Boolean(
+    checklistByKey.businessName?.complete &&
+      checklistByKey.baseSuburb?.complete &&
+      checklistByKey.businessPhone?.complete
+  );
+
+  const firstServiceComplete = Boolean(checklistByKey.services?.complete);
+  const availabilityComplete = Boolean(checklistByKey.availability?.complete);
+
+  const requiredSetupComplete = Boolean(
+    businessDetailsComplete &&
+      firstServiceComplete &&
+      availabilityComplete
+  );
+
+  const isDraftSupplier =
+    !completionData?.approvalStatus ||
+    completionData.approvalStatus === "DRAFT";
+
+  if (isDraftSupplier) {
+    const setupSteps = [
+      {
+        number: 1,
+        title: "Business details",
+        text: "Add your business name, phone number and primary operating suburb.",
+        complete: businessDetailsComplete,
+        href: "/supplier/business-profile",
+        action: "Add business details",
+      },
+      {
+        number: 2,
+        title: "Add your first service",
+        text: "Tell owners what you offer and set your pricing.",
+        complete: firstServiceComplete,
+        href: "/supplier/services",
+        action: "Add a service",
+      },
+      {
+        number: 3,
+        title: "Set your availability",
+        text: "Choose when owners can request your services.",
+        complete: availabilityComplete,
+        href: "/supplier/availability",
+        action: "Set availability",
+      },
+      {
+        number: 4,
+        title: "Submit for review",
+        text: "Once the essentials are ready, send your business to DogLife for review.",
+        complete: false,
+        href: null,
+        action: "Submit for review",
+      },
+    ];
+
+    const currentStepIndex = setupSteps.findIndex((step) => !step.complete);
+
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-6">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome to DogLife 🐾
+          </h1>
+
+          <p className="mt-2 text-gray-600">
+            Let’s get your business ready for bookings.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Your setup
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Complete these essentials first. You can add more detail to your
+                public profile later.
+              </p>
+            </div>
+
+            <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+              {[
+                businessDetailsComplete,
+                firstServiceComplete,
+                availabilityComplete,
+              ].filter(Boolean).length}
+              /3 ready
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {setupSteps.map((step, index) => {
+              const isCurrent = index === currentStepIndex;
+              const canSubmit =
+                step.number === 4 && requiredSetupComplete;
+
+              return (
+                <div
+                  key={step.number}
+                  className={`rounded-xl border p-4 ${
+                    step.complete
+                      ? "border-green-200 bg-green-50"
+                      : isCurrent
+                      ? "border-blue-300 bg-blue-50"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                          step.complete
+                            ? "bg-green-600 text-white"
+                            : isCurrent
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {step.complete ? "✓" : step.number}
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {step.title}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-gray-600">
+                          {step.text}
+                        </p>
+                      </div>
+                    </div>
+
+                    {step.complete ? (
+                      <span className="text-sm font-medium text-green-700">
+                        Complete
+                      </span>
+                    ) : step.number === 4 ? (
+                      <button
+                        type="button"
+                        onClick={() => submitForReviewMutation.mutate()}
+                        disabled={
+                          !canSubmit ||
+                          submitForReviewMutation.isPending
+                        }
+                        className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold ${
+                          canSubmit
+                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                            : "cursor-not-allowed bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {submitForReviewMutation.isPending
+                          ? "Submitting..."
+                          : "Submit for review"}
+                      </button>
+                    ) : isCurrent ? (
+                      <Link
+                        to={step.href!}
+                        className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        {step.action}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-gray-400">Next</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <h2 className="font-semibold text-gray-900">
+            You can complete your profile later
+          </h2>
+
+          <p className="mt-1 text-sm text-gray-600">
+            Add your business description, logo, photos, website, social links
+            and additional service areas whenever you’re ready.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
