@@ -178,10 +178,10 @@ function formatServiceName(value?: string | null) {
 
 function formatBookingStatusLabel(status: BookingStatus) {
   const statusMap: Record<BookingStatus, string> = {
-    PENDING: "Pending",
+    PENDING: "Booking request",
     CONFIRMED: "Confirmed",
-    IN_PROGRESS: "In Progress",
-    COMPLETED_UNBILLED: "Awaiting Payment",
+    IN_PROGRESS: "In progress",
+    COMPLETED_UNBILLED: "Awaiting payment",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled",
   };
@@ -1258,11 +1258,11 @@ function SupplierBookingJourney({
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Your booking journey
+            How bookings work
           </h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            From request to completed care, DogLife helps you manage each step.
+            From a new request to completed care, DogLife keeps each booking organised.
           </p>
         </div>
 
@@ -1876,7 +1876,7 @@ const cancelled = sortBookingsByStart(
       {
         number: 1,
         title: "Business details",
-        text: "Add your business name, phone number and primary operating suburb.",
+        text: "Add your business name, contact number and main service area.",
         complete: businessDetailsComplete,
         href: "/supplier/business-profile",
         action: "Add business details",
@@ -1884,7 +1884,7 @@ const cancelled = sortBookingsByStart(
       {
         number: 2,
         title: "Add your first service",
-        text: "Tell owners what you offer and set your pricing.",
+        text: "Choose a service, add your pricing and tell owners what to expect.",
         complete: firstServiceComplete,
         href: "/supplier/services",
         action: "Add a service",
@@ -1892,7 +1892,7 @@ const cancelled = sortBookingsByStart(
       {
         number: 3,
         title: "Set your availability",
-        text: "Choose when owners can request your services.",
+        text: "Choose the days and times you’re available for bookings.",
         complete: availabilityComplete,
         href: "/supplier/availability",
         action: "Set availability",
@@ -1900,7 +1900,7 @@ const cancelled = sortBookingsByStart(
       {
         number: 4,
         title: "Submit for review",
-        text: "Once the essentials are ready, send your business to DogLife for review.",
+        text: "When everything above is ready, send your business to DogLife for review.",
         complete: false,
         href: null,
         action: "Submit for review",
@@ -1925,12 +1925,12 @@ const cancelled = sortBookingsByStart(
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
-                Your setup
+                Get ready for bookings
               </h2>
 
               <p className="mt-1 text-sm text-gray-500">
-                Complete these essentials first. You can add more detail to your
-                public profile later.
+                Complete these essentials so we can review your business. You can
+                build out your profile anytime.
               </p>
             </div>
 
@@ -2027,12 +2027,12 @@ const cancelled = sortBookingsByStart(
 
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <h2 className="font-semibold text-gray-900">
-            You can complete your profile later
+            Make your profile stand out
           </h2>
 
           <p className="mt-1 text-sm text-gray-600">
-            Add your business description, logo, photos, website, social links
-            and additional service areas whenever you’re ready.
+            Add your description, logo, photos, website, social links and more
+            service areas whenever you’re ready.
           </p>
         </div>
       </div>
@@ -2045,11 +2045,11 @@ const cancelled = sortBookingsByStart(
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Welcome to DogLife 🐾
+              Your DogLife dashboard
             </h1>
 
             <p className="mt-2 text-sm text-gray-600">
-              Complete your supplier setup so dog owners can find and book you.
+              Manage your bookings, availability and business profile.
             </p>
           </div>
 
@@ -2088,7 +2088,7 @@ const cancelled = sortBookingsByStart(
           onClick={() => openAndScroll("pending", "pending-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-amber-300 hover:shadow-sm md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">Pending</div>
+          <div className="text-xs text-gray-500 sm:text-sm">Booking requests</div>
           <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
             {pendingBookings.length}
           </div>
@@ -2150,11 +2150,11 @@ const cancelled = sortBookingsByStart(
       {completionData?.approvalStatus === "APPROVED" ? (
   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
     <h2 className="text-lg font-semibold text-emerald-900">
-      Your business is approved and live 🎉
+      Your business is live on DogLife 🎉
     </h2>
 
     <p className="mt-2 text-sm text-emerald-800">
-      Dog owners can now discover your business and request bookings.
+      Dog owners can now find your business and request bookings.
     </p>
 
     <p className="mt-2 text-sm text-emerald-800">
@@ -2166,12 +2166,12 @@ const cancelled = sortBookingsByStart(
 
     {(completionData?.completionPercent ?? 0) < 100 ? (
       <p className="mt-1 text-sm text-emerald-800">
-        Add more business details, services, service suburbs and
-        availability to help owners understand and choose your business.
+        Keep building your profile with more details, services and service
+        areas to help owners choose your business.
       </p>
     ) : (
       <p className="mt-1 text-sm text-emerald-800">
-        Your supplier setup is complete.
+        Your profile is looking great.
       </p>
     )}
 
@@ -2259,7 +2259,7 @@ const cancelled = sortBookingsByStart(
         onClick={() => submitForReviewMutation.mutate()}
         disabled={
           submitForReviewMutation.isPending ||
-          completionData?.completionPercent !== 100
+          !requiredSetupComplete
         }
         className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -2385,8 +2385,8 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "pending-bookings",
-          "Pending",
-          "No pending bookings.",
+          "Booking requests",
+          "No new booking requests.",
           pendingBookings,
           "pending",
           10
@@ -2403,7 +2403,7 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "in-progress-bookings",
-          "In Progress",
+          "In progress",
           "No bookings in progress.",
           inProgressBookings,
           "inProgress"
@@ -2411,7 +2411,7 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "completed-unbilled-bookings",
-          "Awaiting Payment",
+          "Awaiting payment",
           "No bookings awaiting payment.",
           completedUnbilledBookings,
           "completedUnbilled"
