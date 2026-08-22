@@ -2115,7 +2115,7 @@ const cancelled = sortBookingsByStart(
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-blue-300 hover:shadow-sm md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">
-            In Progress
+            In progress
           </div>
           <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
             {inProgressBookings.length}
@@ -2133,7 +2133,7 @@ const cancelled = sortBookingsByStart(
           className="col-span-2 rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-purple-300 hover:shadow-sm md:col-span-1 md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">
-            Awaiting Payment
+            Awaiting payment
           </div>
           <div className="mt-2 text-2xl font-bold text-purple-600 sm:text-3xl">
             {completedUnbilledBookings.length}
@@ -2321,7 +2321,16 @@ const cancelled = sortBookingsByStart(
 
       {notifications.length > 0 ? (
         <div className="space-y-2">
-          {notifications.slice(0, 3).map((notification: any) => (
+          {notifications
+            .filter(
+              (notification: any) =>
+                !(
+                  completionData?.approvalStatus === "SUBMITTED" &&
+                  notification.title === "Welcome to DogLife"
+                )
+            )
+            .slice(0, 3)
+            .map((notification: any) => (
             <button
               key={notification.id}
               type="button"
