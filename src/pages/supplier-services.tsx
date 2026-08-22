@@ -2592,6 +2592,66 @@ export default function SupplierServicesPage() {
                         </p>
                       ) : null}
 
+                      {type === "BOARDING" ? (() => {
+                        const dropoffWindows =
+                          s.pricingJson?.boardingDropoffWindows || {};
+                        const collectionWindows =
+                          s.pricingJson?.boardingCollectionWindows || {};
+
+                        const hasDropoffWindows = Object.values(
+                          dropoffWindows
+                        ).some(
+                          (windows: any) =>
+                            Array.isArray(windows) && windows.length > 0
+                        );
+
+                        const hasCollectionWindows = Object.values(
+                          collectionWindows
+                        ).some(
+                          (windows: any) =>
+                            Array.isArray(windows) && windows.length > 0
+                        );
+
+                        const handoverConfigured =
+                          hasDropoffWindows && hasCollectionWindows;
+
+                        return (
+                          <div
+                            className={`mt-3 rounded-lg border p-3 ${
+                              handoverConfigured
+                                ? "border-green-200 bg-green-50"
+                                : "border-amber-200 bg-amber-50"
+                            }`}
+                          >
+                            <p className="font-medium text-gray-800">
+                              Boarding handover hours
+                            </p>
+
+                            <p
+                              className={`mt-1 text-sm ${
+                                handoverConfigured
+                                  ? "text-green-700"
+                                  : "text-amber-700"
+                              }`}
+                            >
+                              {handoverConfigured
+                                ? "Configured ✓"
+                                : "Not set yet — choose when owners may drop off and collect dogs."}
+                            </p>
+
+                            <button
+                              type="button"
+                              onClick={() => startEditing(s)}
+                              className="mt-2 rounded border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800"
+                            >
+                              {handoverConfigured
+                                ? "Edit handover hours"
+                                : "Set handover hours"}
+                            </button>
+                          </div>
+                        );
+                      })() : null}
+
                       {type === "PET_SITTING" && s.bookingModel === "BLOCK_CAPACITY" ? (
   <div className="mt-3 rounded border bg-gray-50 p-3">
     <p className="font-medium text-gray-700">Set your pet visit times & prices</p>
