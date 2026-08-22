@@ -802,10 +802,15 @@ const canStartService =
     new Date(booking.startAt).getTime() - 15 * 60 * 1000 &&
   Date.now() <= new Date(booking.endAt).getTime();
 
+const isBoarding =
+  booking.supplierService?.service === "BOARDING" ||
+  booking.serviceType === "BOARDING";
+
 const canCompleteService =
   !isSessionBooking &&
   booking.status === "IN_PROGRESS" &&
-  Date.now() >= new Date(booking.endAt).getTime();
+  (isBoarding ||
+    Date.now() >= new Date(booking.endAt).getTime());
 
   return (
     <div
