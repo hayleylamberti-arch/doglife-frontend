@@ -311,6 +311,13 @@ export default function DogForm({ dog, onClose }: any) {
 
   await onClose();
 },
+onError: (error: any) => {
+  console.error("Failed to save Dog Passport:", error);
+  alert(
+    error?.message ||
+      "We couldn't save your Dog Passport. Please try again."
+  );
+},
   });
     return (
     <form
