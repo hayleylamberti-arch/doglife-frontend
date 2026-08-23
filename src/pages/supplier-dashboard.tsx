@@ -1854,8 +1854,11 @@ const cancelled = sortBookingsByStart(
 
   const businessDetailsComplete = Boolean(
     checklistByKey.businessName?.complete &&
-      checklistByKey.baseSuburb?.complete &&
-      checklistByKey.businessPhone?.complete
+      checklistByKey.businessPhone?.complete &&
+      (
+        checklistByKey.baseSuburb?.complete ||
+        checklistByKey.serviceSuburbs?.complete
+      )
   );
 
   const firstServiceComplete = Boolean(checklistByKey.services?.complete);
