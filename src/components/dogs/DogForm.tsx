@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { api } from "@/lib/api";
 import ImageUpload from "@/components/ImageUpload";
 
 const BREEDS = [
@@ -284,15 +285,11 @@ export default function DogForm({ dog, onClose }: any) {
         medicalNotes: emptyToNull(values.medicalNotes),
       };
 
-      const res = await apiRequest(
-        dog?.id ? `/api/owner/dogs/${dog.id}` : "/api/owner/dogs",
-        {
-          method: dog?.id ? "PATCH" : "POST",
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = dog?.id
+  ? await api.patch(`/api/owner/dogs/${dog.id}`, payload)
+  : await api.post("/api/owner/dogs", payload);
 
-      return res.json();
+return res.data;
     },
 
     onSuccess: async () => {
