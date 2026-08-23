@@ -314,9 +314,10 @@ export default function DogForm({ dog, onClose }: any) {
   });
     return (
     <form
-      onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-      className="mb-6 space-y-6 rounded-2xl bg-white p-6 shadow-sm"
-    >
+  noValidate
+  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+  className="mb-6 space-y-6 rounded-2xl bg-white p-6 shadow-sm"
+>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
         <h2 className="text-xl font-bold text-gray-900">
           Build your dog’s Dog Passport over time
@@ -346,10 +347,11 @@ export default function DogForm({ dog, onClose }: any) {
     Dog name
   </label>
   <Input
-    placeholder="Dog name"
-    {...form.register("name")}
-    required
-  />
+  placeholder="Dog name"
+  {...form.register("name", {
+    required: "Dog name is required.",
+  })}
+/>
 </div>
 
           <div>
