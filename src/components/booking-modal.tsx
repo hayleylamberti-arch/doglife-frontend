@@ -86,6 +86,49 @@ function getHttpStatus(error: unknown) {
   return (error as any)?.response?.status || null;
 }
 
+type BoardingHandoverWindow = {
+  startTime: string;
+  endTime: string;
+};
+
+function getBoardingWindowsForDate(
+  date: string,
+  weeklyWindows: unknown
+): BoardingHandoverWindow[] {
+  if (!date || !weeklyWindows || typeof weeklyWindows !== "object") {
+    return [];
+  }
+
+  const parsedDate = new Date(`${date}T12:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return [];
+  }
+
+  const dayKey = String(parsedDate.getDay());
+  const value = (weeklyWindows as Record<string, unknown>)[dayKey];
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (item: any) =>
+        item &&
+        typeof item.startTime === "string" &&
+        typeof item.endTime === "string"
+    )
+    .map((item: any) => ({
+      startTime: item.startTime,
+      endTime: item.endTime,
+    }));
+}
+
+function formatBoardingWindow(window: BoardingHandoverWindow) {
+  return `${window.startTime}–${window.endTime}`;
+}
+
 function getStayDays(arrivalDate: string, departureDate: string) {
   if (!arrivalDate || !departureDate) return 1;
 
@@ -255,6 +298,12 @@ export default function BookingModal({
   const [arrivalDate, setArrivalDate] = useState("");
   const [departureDate, setDepartureDate] = useState("");
 
+  const [selectedBoardingDropoffIndex, setSelectedBoardingDropoffIndex] =
+    useState<number | null>(null);
+
+  const [selectedBoardingCollectionIndex, setSelectedBoardingCollectionIndex] =
+    useState<number | null>(null);
+
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
 
@@ -290,6 +339,20 @@ export default function BookingModal({
 
   const [halfDayPeriod, setHalfDayPeriod] =
     useState<HalfDayPeriod>("MORNING");
+
+  const [selectedBookingBlockId, setSelectedBookingBlockId] =
+    useState<string | null>(null);
+
+  const bookingBlocks: any[] =
+    isBlockCapacityService &&
+    Array.isArray(service?.bookingBlocks)
+      ? service.bookingBlocks
+      : [];
+
+  const selectedBookingBlock =
+  bookingBlocks.find(
+    (block) => block.id === selectedBookingBlockId
+  ) || null;
 
   const groomingTiers: any[] = Array.isArray(service?.pricingTiers)
     ? service.pricingTiers
@@ -344,6 +407,46 @@ export default function BookingModal({
     () => getStayDays(arrivalDate, departureDate),
     [arrivalDate, departureDate]
   );
+
+  const boardingDropoffWindows = useMemo(
+    () =>
+      isBoarding
+        ? getBoardingWindowsForDate(
+            arrivalDate,
+            service?.pricingJson?.boardingDropoffWindows
+          )
+        : [],
+    [
+      isBoarding,
+      arrivalDate,
+      service?.pricingJson?.boardingDropoffWindows,
+    ]
+  );
+
+  const boardingCollectionWindows = useMemo(
+    () =>
+      isBoarding
+        ? getBoardingWindowsForDate(
+            departureDate,
+            service?.pricingJson?.boardingCollectionWindows
+          )
+        : [],
+    [
+      isBoarding,
+      departureDate,
+      service?.pricingJson?.boardingCollectionWindows,
+    ]
+  );
+
+  const selectedBoardingDropoffWindow =
+    selectedBoardingDropoffIndex != null
+      ? boardingDropoffWindows[selectedBoardingDropoffIndex] || null
+      : null;
+
+  const selectedBoardingCollectionWindow =
+    selectedBoardingCollectionIndex != null
+      ? boardingCollectionWindows[selectedBoardingCollectionIndex] || null
+      : null;
 
   const maxDogsPerBooking = useMemo(() => {
     return toNumber(service?.maxDogsPerBooking);
@@ -557,11 +660,15 @@ export default function BookingModal({
   ]);
 
   const displayPrice = useMemo(() => {
-    if (isSessionEventService) {
-      return Number(selectedServiceSession?.priceCents || 0);
-    }
+  if (isSessionEventService) {
+    return Number(selectedServiceSession?.priceCents || 0);
+  }
 
-    if (isBoarding) {
+  if (isBlockCapacityService && selectedBookingBlock) {
+    return toNumber(selectedBookingBlock.priceCents);
+  }
+
+  if (isBoarding) {
       return estimatedBoardingTotalCents ?? boardingBaseRateCents;
     }
 
@@ -613,6 +720,8 @@ export default function BookingModal({
     isBoarding,
     estimatedBoardingTotalCents,
     boardingBaseRateCents,
+    isBlockCapacityService,
+    selectedBookingBlock?.priceCents,
     isPetSitting,
     estimatedPetSittingTotalCents,
     isDaycare,
@@ -633,12 +742,19 @@ export default function BookingModal({
   ]);
 
   const displaySubtitle = useMemo(() => {
-    if (isSessionEventService) {
-  return `${formatPrice(
-    selectedServiceSession?.priceCents
-  )} per dog`;
-}
-    if (isBoarding) {
+  if (isSessionEventService) {
+    return `${formatPrice(
+      selectedServiceSession?.priceCents
+    )} per dog`;
+  }
+
+  if (isBlockCapacityService && selectedBookingBlock) {
+    return `${formatPrice(
+      selectedBookingBlock.priceCents
+    )} • ${selectedBookingBlock.label}`;
+  }
+
+  if (isBoarding) {
       if (arrivalDate && departureDate) {
         const dogCount = Math.max(1, selectedDogIds.length || 1);
 
@@ -715,6 +831,9 @@ export default function BookingModal({
     service?.unit,
     isSessionEventService,
     selectedServiceSession?.priceCents,
+    isBlockCapacityService,
+    selectedBookingBlock?.priceCents,
+    selectedBookingBlock?.label,
   ]);
 
   useEffect(() => {
@@ -1019,19 +1138,20 @@ export default function BookingModal({
       return alert("Select at least one dog");
     }
 
-    const selectedBookingBlock = isBlockCapacityService
-      ? resolveLegacyDaycareBlock(
-          service,
-          daycareSessionType,
-          halfDayPeriod
-        )
-      : null;
+    const resolvedBlock = isBlockCapacityService
+  ? selectedBookingBlock ||
+    resolveLegacyDaycareBlock(
+      service,
+      daycareSessionType,
+      halfDayPeriod
+    )
+  : null;
 
-    if (isBlockCapacityService && !selectedBookingBlock) {
-      return alert(
-        "No booking blocks are currently available for this service."
-      );
-    }
+if (isBlockCapacityService && !resolvedBlock) {
+  return alert(
+    "Please select a booking option."
+  );
+}
 
     if (
       maxDogsPerBooking > 0 &&
@@ -1047,6 +1167,22 @@ export default function BookingModal({
       (!arrivalDate || !departureDate)
     ) {
       return alert("Select arrival and departure dates");
+    }
+
+    if (
+      isBoarding &&
+      boardingDropoffWindows.length > 0 &&
+      !selectedBoardingDropoffWindow
+    ) {
+      return alert("Select a drop-off window");
+    }
+
+    if (
+      isBoarding &&
+      boardingCollectionWindows.length > 0 &&
+      !selectedBoardingCollectionWindow
+    ) {
+      return alert("Select a collection window");
     }
 
     if (isBlockCapacityService && !date) {
@@ -1162,12 +1298,23 @@ export default function BookingModal({
         startAt = new Date(selectedServiceSession.startAt);
         endAt = new Date(selectedServiceSession.endAt);
       } else if (isStayService) {
-        startAt = new Date(`${arrivalDate}T09:00`);
-        endAt = new Date(`${departureDate}T09:00`);
+        if (isBoarding) {
+          const dropoffTime =
+            selectedBoardingDropoffWindow?.startTime || "09:00";
+
+          const collectionTime =
+            selectedBoardingCollectionWindow?.endTime || "09:00";
+
+          startAt = new Date(`${arrivalDate}T${dropoffTime}`);
+          endAt = new Date(`${departureDate}T${collectionTime}`);
+        } else {
+          startAt = new Date(`${arrivalDate}T09:00`);
+          endAt = new Date(`${departureDate}T09:00`);
+        }
       } else if (isBlockCapacityService) {
         const blockTimes = buildBookingBlockTimes(
           date,
-          selectedBookingBlock!
+          resolvedBlock!
         );
 
         if (!blockTimes.startAt || !blockTimes.endAt) {
@@ -1224,6 +1371,10 @@ export default function BookingModal({
       const bookingResponse = await api.post("/api/bookings", {
         supplierId,
         supplierServiceId: service.id,
+        bookingBlockId:
+          isBlockCapacityService && resolvedBlock
+            ? resolvedBlock.id
+            : undefined,
 
         serviceSessionId: isSessionEventService
           ? selectedServiceSession?.id
@@ -1517,6 +1668,49 @@ export default function BookingModal({
               </div>
             ) : null}
 
+            {isBlockCapacityService &&
+bookingBlocks.length > 0 ? (
+  <div className="rounded-lg border border-gray-200 p-3">
+    <p className="mb-2 text-sm font-medium">
+      Select booking option
+    </p>
+
+    <div className="space-y-2">
+      {bookingBlocks.map((block) => (
+        <button
+          key={block.id}
+          type="button"
+          disabled={authRequired}
+          onClick={() =>
+            setSelectedBookingBlockId(block.id)
+          }
+          className={`w-full rounded border px-3 py-3 text-left text-sm disabled:opacity-50 ${
+            selectedBookingBlockId === block.id
+              ? "border-blue-600 bg-blue-50"
+              : "bg-white"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium">
+                {block.label}
+              </p>
+
+              <p className="mt-1 text-xs text-gray-500">
+                {block.startTime} – {block.endTime}
+              </p>
+            </div>
+
+            <span className="font-medium">
+              {formatPrice(block.priceCents)}
+            </span>
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+) : null}
+
             {shouldRequireOwnerAddress &&
             ownerAddress ? (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -1598,9 +1792,10 @@ export default function BookingModal({
         type="date"
         className={dateInputClass}
         value={arrivalDate}
-        onChange={(e) =>
-          setArrivalDate(e.target.value)
-        }
+        onChange={(e) => {
+          setArrivalDate(e.target.value);
+          setSelectedBoardingDropoffIndex(null);
+        }}
         disabled={authRequired}
       />
 
@@ -1609,12 +1804,81 @@ export default function BookingModal({
         className={dateInputClass}
         value={departureDate}
         min={arrivalDate || undefined}
-        onChange={(e) =>
-          setDepartureDate(e.target.value)
-        }
+        onChange={(e) => {
+          setDepartureDate(e.target.value);
+          setSelectedBoardingCollectionIndex(null);
+        }}
         disabled={authRequired}
       />
     </div>
+
+    {isBoarding && arrivalDate ? (
+      <div className="mt-3">
+        <p className="mb-1 text-sm font-medium">Drop-off window</p>
+
+        {boardingDropoffWindows.length ? (
+          <select
+            className="w-full rounded border px-3 py-2"
+            value={
+              selectedBoardingDropoffIndex == null
+                ? ""
+                : String(selectedBoardingDropoffIndex)
+            }
+            disabled={authRequired}
+            onChange={(e) =>
+              setSelectedBoardingDropoffIndex(
+                e.target.value === "" ? null : Number(e.target.value)
+              )
+            }
+          >
+            <option value="">Select drop-off window</option>
+            {boardingDropoffWindows.map((window, index) => (
+              <option key={`dropoff-${index}`} value={index}>
+                {formatBoardingWindow(window)}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Standard drop-off time applies for this date.
+          </p>
+        )}
+      </div>
+    ) : null}
+
+    {isBoarding && departureDate ? (
+      <div className="mt-3">
+        <p className="mb-1 text-sm font-medium">Collection window</p>
+
+        {boardingCollectionWindows.length ? (
+          <select
+            className="w-full rounded border px-3 py-2"
+            value={
+              selectedBoardingCollectionIndex == null
+                ? ""
+                : String(selectedBoardingCollectionIndex)
+            }
+            disabled={authRequired}
+            onChange={(e) =>
+              setSelectedBoardingCollectionIndex(
+                e.target.value === "" ? null : Number(e.target.value)
+              )
+            }
+          >
+            <option value="">Select collection window</option>
+            {boardingCollectionWindows.map((window, index) => (
+              <option key={`collection-${index}`} value={index}>
+                {formatBoardingWindow(window)}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <p className="text-xs text-gray-500">
+            Standard collection time applies for this date.
+          </p>
+        )}
+      </div>
+    ) : null}
 
     {isPetSitting ? (
       <div className="mt-3">

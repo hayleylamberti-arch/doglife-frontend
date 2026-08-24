@@ -93,6 +93,23 @@ export type BookingSupplierService = {
   baseRateCents?: number | null;
 };
 
+export type BookingServiceSessionOccurrence = {
+  id: string;
+  status: "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  label?: string | null;
+  startAt: string;
+  endAt: string;
+  cancelledAt?: string | null;
+};
+
+export type BookingServiceSession = {
+  id: string;
+  name?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  occurrences?: BookingServiceSessionOccurrence[];
+};
+
 export type BaseBooking = {
   id: string;
   status: BookingStatus;
@@ -121,6 +138,7 @@ export type BaseBooking = {
   owner?: BookingOwner | null;
   supplier?: BookingSupplier | null;
   supplierService?: BookingSupplierService | null;
+  serviceSession?: BookingServiceSession | null;
 
   dogs?: BookingDog[];
   events?: BookingEvent[];

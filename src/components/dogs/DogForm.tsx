@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
+import { api } from "@/lib/api";
 import ImageUpload from "@/components/ImageUpload";
 
 const BREEDS = [
@@ -125,6 +126,10 @@ type DogFormValues = {
   tickFleaTreatedAt: string;
   vetName: string;
   vetPhone: string;
+  microchipNumber: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  currentMedication: string;
   behavioralNotes: string;
   goodWithDogs: string;
   goodWithChildren: string;
@@ -225,6 +230,10 @@ export default function DogForm({ dog, onClose }: any) {
       tickFleaTreatedAt: dateInputValue(dog?.tickFleaTreatedAt),
       vetName: dog?.vetName || "",
       vetPhone: dog?.vetPhone || "",
+      microchipNumber: dog?.microchipNumber || "",
+      emergencyContactName: dog?.emergencyContactName || "",
+      emergencyContactPhone: dog?.emergencyContactPhone || "",
+      currentMedication: dog?.currentMedication || "",
       behavioralNotes: dog?.behavioralNotes || "",
       goodWithDogs:
         dog?.goodWithDogs === true
@@ -266,21 +275,21 @@ export default function DogForm({ dog, onClose }: any) {
         tickFleaTreatedAt: dateOrNull(values.tickFleaTreatedAt),
         vetName: emptyToNull(values.vetName),
         vetPhone: emptyToNull(values.vetPhone),
+        microchipNumber: emptyToNull(values.microchipNumber),
+        emergencyContactName: emptyToNull(values.emergencyContactName),
+        emergencyContactPhone: emptyToNull(values.emergencyContactPhone),
+        currentMedication: emptyToNull(values.currentMedication),
         behavioralNotes: emptyToNull(values.behavioralNotes),
         goodWithDogs: booleanFromSelect(values.goodWithDogs),
         goodWithChildren: booleanFromSelect(values.goodWithChildren),
         medicalNotes: emptyToNull(values.medicalNotes),
       };
 
-      const res = await apiRequest(
-        dog?.id ? `/api/owner/dogs/${dog.id}` : "/api/owner/dogs",
-        {
-          method: dog?.id ? "PATCH" : "POST",
-          body: JSON.stringify(payload),
-        }
-      );
+      const res = dog?.id
+  ? await api.patch(`/api/owner/dogs/${dog.id}`, payload)
+  : await api.post("/api/owner/dogs", payload);
 
-      return res.json();
+return res.data;
     },
 
     onSuccess: async () => {
@@ -299,21 +308,28 @@ export default function DogForm({ dog, onClose }: any) {
 
   await onClose();
 },
+onError: (error: any) => {
+  console.error("Failed to save Dog Passport:", error);
+  alert(
+    error?.message ||
+      "We couldn't save your Dog Passport. Please try again."
+  );
+},
   });
     return (
     <form
-      onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
-      className="mb-6 space-y-6 rounded-2xl bg-white p-6 shadow-sm"
-    >
+  noValidate
+  onSubmit={form.handleSubmit((data) => mutation.mutate(data))}
+  className="mb-6 space-y-6 rounded-2xl bg-white p-6 shadow-sm"
+>
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5">
         <h2 className="text-xl font-bold text-gray-900">
-          Build your dog’s Dog Passport
+          Build your dog’s Dog Passport over time
         </h2>
 
         <p className="mt-2 text-sm text-gray-700">
-          A complete Dog Passport helps suppliers safely care for your dog and
-          makes bookings smoother. Health, behaviour and emergency details are
-          shared securely with suppliers when you book.
+          Add what you know today. Only your dog’s name is needed to get started.
+          Everything else is optional and can be updated whenever you like.
         </p>
       </div>
 
@@ -326,7 +342,7 @@ export default function DogForm({ dog, onClose }: any) {
       <div className="rounded-2xl border border-gray-200 p-5">
         <SectionHeader
           title="Basic details"
-          description="Tell suppliers who your dog is."
+          description="Start with the basics. Only your dog’s name is required."
         />
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -335,10 +351,11 @@ export default function DogForm({ dog, onClose }: any) {
     Dog name
   </label>
   <Input
-    placeholder="Dog name"
-    {...form.register("name")}
-    required
-  />
+  placeholder="Dog name"
+  {...form.register("name", {
+    required: "Dog name is required.",
+  })}
+/>
 </div>
 
           <div>
@@ -440,8 +457,8 @@ export default function DogForm({ dog, onClose }: any) {
       {/* HEALTH */}
       <div className="rounded-2xl border border-gray-200 p-5">
         <SectionHeader
-          title="Health & vaccinations"
-          description="This helps suppliers keep all dogs safe."
+          title="Health & treatments — optional"
+          description="Add what you know now and come back anytime to update it."
         />
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -461,7 +478,7 @@ export default function DogForm({ dog, onClose }: any) {
 
           <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
-    Vaccination expiry
+    Vaccination next due / expiry
   </label>
   <Input
   type="date"
@@ -472,7 +489,7 @@ export default function DogForm({ dog, onClose }: any) {
 
 <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
-    Kennel cough last done
+    Last kennel cough vaccination
   </label>
   <Input
     type="date"
@@ -483,7 +500,7 @@ export default function DogForm({ dog, onClose }: any) {
 
 <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
-    Deworming last done
+    Last dewormed
   </label>
   <Input
     type="date"
@@ -494,7 +511,7 @@ export default function DogForm({ dog, onClose }: any) {
 
 <div>
   <label className="mb-1 block text-sm font-medium text-gray-700">
-    Tick & flea last treated
+    Last tick & flea treatment
   </label>
   <Input
     type="date"
@@ -505,16 +522,16 @@ export default function DogForm({ dog, onClose }: any) {
 </div>
 
         <p className="mt-3 text-xs text-gray-500">
-          DogLife uses these dates to send reminders and help keep your Dog
-          Passport supplier-ready.
+          These dates are optional. DogLife can use them to support future
+          reminders, but you don’t need to know them all now.
         </p>
       </div>
 
       {/* BEHAVIOUR */}
 <div className="rounded-2xl border border-gray-200 p-5">
   <SectionHeader
-    title="Behaviour & socialisation"
-    description="Help suppliers understand how to care for your dog."
+    title="Behaviour & care — optional"
+    description="Add anything that will help someone understand and care for your dog."
   />
 
   <div className="grid gap-4 md:grid-cols-2">
@@ -557,53 +574,126 @@ export default function DogForm({ dog, onClose }: any) {
       {/* VET */}
       <div className="rounded-2xl border border-gray-200 p-5">
         <SectionHeader
-          title="Vet & emergency details"
-          description="Important information suppliers may need in an emergency."
+          title="Vet & medical — optional"
+          description="Useful information to add over time for safer care."
         />
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-  <label className="mb-1 block text-sm font-medium text-gray-700">
-    Vet name
-  </label>
-  <Input
-    placeholder="Vet name"
-    {...form.register("vetName")}
-  />
-</div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Vet name
+            </label>
+            <Input
+              placeholder="Vet name"
+              {...form.register("vetName")}
+            />
+          </div>
 
           <div>
-  <label className="mb-1 block text-sm font-medium text-gray-700">
-    Vet phone number
-  </label>
-  <Input
-    placeholder="e.g. 0111234567 or +27111234567"
-    {...form.register("vetPhone", {
-      validate: (value) =>
-        isValidSouthAfricanPhone(value) ||
-        "Please enter a valid South African phone number.",
-    })}
-  />
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Vet phone number
+            </label>
+            <Input
+              placeholder="e.g. 0111234567 or +27111234567"
+              {...form.register("vetPhone", {
+                validate: (value) =>
+                  isValidSouthAfricanPhone(value) ||
+                  "Please enter a valid South African phone number.",
+              })}
+            />
 
-  {form.formState.errors.vetPhone ? (
-    <p className="mt-1 text-xs text-red-600">
-      {form.formState.errors.vetPhone.message}
-    </p>
-  ) : null}
-</div>
-</div>
+            {form.formState.errors.vetPhone ? (
+              <p className="mt-1 text-xs text-red-600">
+                {form.formState.errors.vetPhone.message}
+              </p>
+            ) : null}
+          </div>
+        </div>
 
-        <textarea
-          className="mt-4 min-h-[100px] w-full rounded border px-3 py-2"
-          placeholder="Medical notes (allergies, medication, injuries, sensitivities, conditions)"
-          {...form.register("medicalNotes")}
-        />
+        <div className="mt-6 border-t border-gray-100 pt-5">
+          <h4 className="font-semibold text-gray-900">
+            Safety & emergency — optional
+          </h4>
+          <p className="mt-1 text-sm text-gray-500">
+            Useful information if your dog is ever lost or you can’t be reached.
+          </p>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Microchip number
+              </label>
+              <Input
+                placeholder="If known"
+                {...form.register("microchipNumber")}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Emergency contact name
+              </label>
+              <Input
+                placeholder="If we can’t reach you"
+                {...form.register("emergencyContactName")}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">
+                Emergency contact mobile
+              </label>
+              <Input
+                placeholder="e.g. 0821234567"
+                {...form.register("emergencyContactPhone", {
+                  validate: (value) =>
+                    isValidSouthAfricanPhone(value) ||
+                    "Please enter a valid South African phone number.",
+                })}
+              />
+
+              {form.formState.errors.emergencyContactPhone ? (
+                <p className="mt-1 text-xs text-red-600">
+                  {form.formState.errors.emergencyContactPhone.message}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-gray-100 pt-5">
+          <h4 className="font-semibold text-gray-900">
+            Medication & medical notes — optional
+          </h4>
+
+          <div className="mt-4">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Current medication
+            </label>
+            <textarea
+              className="min-h-[90px] w-full rounded border px-3 py-2"
+              placeholder="e.g. Apoquel 16 mg — 1 tablet each morning"
+              {...form.register("currentMedication")}
+            />
+          </div>
+
+          <div className="mt-4">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Medical notes
+            </label>
+            <textarea
+              className="min-h-[100px] w-full rounded border px-3 py-2"
+              placeholder="Allergies, medical conditions, injuries or sensitivities"
+              {...form.register("medicalNotes")}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-green-200 bg-green-50 p-4">
         <p className="text-sm text-green-800">
-          🐾 The more complete your Dog Passport, the easier it is for trusted
-          suppliers to safely care for your dog.
+          🐾 Add information at your own pace. You can update your dog’s
+          Passport whenever something changes.
         </p>
       </div>
 

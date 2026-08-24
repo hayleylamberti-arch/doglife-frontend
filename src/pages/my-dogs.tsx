@@ -30,65 +30,6 @@ type Dog = {
   profileImageUrl?: string | null;
 };
 
-function hasValue(value: unknown) {
-  if (value === true || value === false) return true;
-  if (typeof value === "string") return value.trim().length > 0;
-  return Boolean(value);
-}
-
-function getPassportScore(dog: Dog) {
-  const fields = [
-    dog.name,
-    dog.breed,
-    dog.dateOfBirth,
-    dog.size,
-    dog.sex,
-    dog.isVaccinated,
-    dog.vaccinationExpiryDate,
-    dog.kennelCoughAt,
-    dog.dewormedAt,
-    dog.tickFleaTreatedAt,
-    dog.vetName,
-    dog.vetPhone,
-    dog.behavioralNotes,
-    dog.medicalNotes,
-    dog.goodWithDogs,
-    dog.goodWithChildren,
-  ];
-
-  const completed = fields.filter(hasValue).length;
-  return Math.round((completed / fields.length) * 100);
-}
-
-function getDueSoonCount(dogs: Dog[]) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return dogs.reduce((count, dog) => {
-    const dates = [
-      dog.vaccinationExpiryDate,
-      dog.kennelCoughAt,
-      dog.dewormedAt,
-      dog.tickFleaTreatedAt,
-    ];
-
-    const hasDueSoon = dates.some((value) => {
-      if (!value) return false;
-
-      const date = new Date(value);
-      date.setHours(0, 0, 0, 0);
-
-      const diffDays = Math.ceil(
-        (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      return diffDays <= 14;
-    });
-
-    return hasDueSoon ? count + 1 : count;
-  }, 0);
-}
-
 export default function MyDogsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingDog, setEditingDog] = useState<Dog | null>(null);
@@ -117,19 +58,6 @@ export default function MyDogsPage() {
 });
 
   const dogs: Dog[] = data?.dogs || [];
-
-  const averagePassportScore = useMemo(() => {
-    if (dogs.length === 0) return 0;
-
-    const total = dogs.reduce((sum, dog) => sum + getPassportScore(dog), 0);
-    return Math.round(total / dogs.length);
-  }, [dogs]);
-
-  const supplierReadyCount = useMemo(() => {
-    return dogs.filter((dog) => getPassportScore(dog) >= 85).length;
-  }, [dogs]);
-
-  const dueSoonCount = useMemo(() => getDueSoonCount(dogs), [dogs]);
 
   if (isLoading) {
     return <div className="p-10">Loading Dog Passports...</div>;
@@ -219,25 +147,18 @@ export default function MyDogsPage() {
       </div>
 
       {dogs.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Average passport completion</p>
+            <p className="text-sm text-gray-500">Dog Passports</p>
             <p className="mt-2 text-3xl font-bold text-gray-900">
-              {averagePassportScore}%
+              {dogs.length}
             </p>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Supplier-ready passports</p>
-            <p className="mt-2 text-3xl font-bold text-green-700">
-              {supplierReadyCount}/{dogs.length}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-sm text-gray-500">Health reminders due soon</p>
-            <p className="mt-2 text-3xl font-bold text-yellow-700">
-              {dueSoonCount}
+            <p className="text-sm text-gray-500">Keep details up to date</p>
+            <p className="mt-2 text-sm text-gray-700">
+              Add or update health, care and vet information whenever it’s useful.
             </p>
           </div>
         </div>

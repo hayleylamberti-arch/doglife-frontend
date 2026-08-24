@@ -24,6 +24,10 @@ type Dog = {
   tickFleaTreatedAt?: string | null;
   vetName?: string | null;
   vetPhone?: string | null;
+  microchipNumber?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactPhone?: string | null;
+  currentMedication?: string | null;
   profileImageUrl?: string | null;
 };
 
@@ -54,31 +58,6 @@ function hasValue(value: unknown) {
   if (value === true || value === false) return true;
   if (typeof value === "string") return value.trim().length > 0;
   return Boolean(value);
-}
-
-function getPassportScore(dog: Dog) {
-  const fields = [
-    dog.name,
-    dog.breed,
-    dog.dateOfBirth,
-    dog.size,
-    dog.sex,
-    dog.isNeutered,
-    dog.isVaccinated,
-    dog.vaccinationExpiryDate,
-    dog.kennelCoughAt,
-    dog.dewormedAt,
-    dog.tickFleaTreatedAt,
-    dog.vetName,
-    dog.vetPhone,
-    dog.behavioralNotes,
-    dog.medicalNotes,
-    dog.goodWithDogs,
-    dog.goodWithChildren,
-  ];
-
-  const completed = fields.filter(hasValue).length;
-  return Math.round((completed / fields.length) * 100);
 }
 
 function getAge(value?: string | null) {
@@ -150,12 +129,14 @@ function HealthCard({
   title,
   date,
   note,
+  showStatus = false,
 }: {
   title: string;
   date?: string | null;
   note?: string;
+  showStatus?: boolean;
 }) {
-  const status = getDueStatus(date);
+  const status = showStatus ? getDueStatus(date) : null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -166,9 +147,11 @@ function HealthCard({
           {note ? <p className="mt-1 text-xs text-gray-500">{note}</p> : null}
         </div>
 
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>
-          {status.label}
-        </span>
+        {status ? (
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>
+            {status.label}
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -200,30 +183,25 @@ export default function DogProfilePage() {
 
     return [
       {
-        title: "Core vaccinations",
+        title: "Core vaccinations — next due / expiry",
         date: dog.vaccinationExpiryDate,
-        note: "Usually updated annually depending on vet guidance.",
+        note: "Add the next due or expiry date if known.",
+        showStatus: true,
       },
       {
-        title: "Kennel cough",
-        date: addDays(dog.kennelCoughAt, 365),
-        note: dog.kennelCoughAt
-          ? `Last done: ${formatDate(dog.kennelCoughAt)}`
-          : "Add last kennel cough date.",
+        title: "Kennel cough — last vaccination",
+        date: dog.kennelCoughAt,
+        note: "Last vaccination date, if known.",
       },
       {
-        title: "Deworming",
-        date: addDays(dog.dewormedAt, 90),
-        note: dog.dewormedAt
-          ? `Last done: ${formatDate(dog.dewormedAt)}`
-          : "Add last deworming date.",
+        title: "Deworming — last treatment",
+        date: dog.dewormedAt,
+        note: "Last treatment date, if known.",
       },
       {
-        title: "Tick and flea",
-        date: addDays(dog.tickFleaTreatedAt, 30),
-        note: dog.tickFleaTreatedAt
-          ? `Last done: ${formatDate(dog.tickFleaTreatedAt)}`
-          : "Add last tick and flea treatment date.",
+        title: "Tick & flea — last treatment",
+        date: dog.tickFleaTreatedAt,
+        note: "Last treatment date, if known.",
       },
     ];
   }, [dog]);
@@ -264,9 +242,6 @@ export default function DogProfilePage() {
   if (isLoading) return <div className="p-10">Loading Dog Passport...</div>;
   if (!dog) return <div className="p-10">Dog not found</div>;
 
-  const passportScore = getPassportScore(dog);
-  const supplierReady = passportScore >= 85;
-
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-6">
       {birthdayAlert ? (
@@ -304,23 +279,13 @@ export default function DogProfilePage() {
             Birthday: {formatDate(dog.dateOfBirth)} • {getAge(dog.dateOfBirth)}
           </p>
 
-          <div className="mt-5 w-full max-w-md">
-            <div className="flex items-center justify-between text-sm text-gray-700">
-              <span>Passport completeness</span>
-              <span className="font-semibold">{passportScore}%</span>
-            </div>
-
-            <div className="mt-2 h-3 overflow-hidden rounded-full bg-white">
-              <div
-                className="h-full rounded-full bg-blue-600"
-                style={{ width: `${passportScore}%` }}
-              />
-            </div>
-
-            <p className="mt-3 text-sm text-gray-600">
-              {supplierReady
-                ? "This passport is supplier-ready and helps providers safely care for your dog."
-                : "Add more health, behaviour and vet details to make this passport supplier-ready."}
+          <div className="mt-5 w-full max-w-md rounded-xl border border-blue-100 bg-white p-4">
+            <p className="text-sm font-medium text-gray-900">
+              Add details at your own pace
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              Your dog’s Passport can grow over time. Add health, behaviour,
+              treatment and vet information whenever it’s useful.
             </p>
           </div>
 
@@ -379,17 +344,18 @@ export default function DogProfilePage() {
         {reminders.map((reminder) => (
           <HealthCard
             key={reminder.title}
-            title={`${reminder.title} due`}
+            title={reminder.title}
             date={reminder.date}
             note={reminder.note}
+            showStatus={reminder.showStatus}
           />
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900">
-            Behaviour & care notes
+            Behaviour & care
           </h2>
 
           <div className="mt-4 space-y-2 text-sm text-gray-700">
@@ -404,12 +370,36 @@ export default function DogProfilePage() {
 
         <div className="rounded-2xl bg-white p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900">
-            Emergency & vet details
+            Safety & emergency
+          </h2>
+
+          <div className="mt-4 space-y-2 text-sm text-gray-700">
+            <p>
+              Microchip number: {dog.microchipNumber || "Not added"}
+            </p>
+            <p>
+              Emergency contact: {dog.emergencyContactName || "Not added"}
+            </p>
+            <p>
+              Emergency mobile: {dog.emergencyContactPhone || "Not added"}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Vet & medical
           </h2>
 
           <div className="mt-4 space-y-2 text-sm text-gray-700">
             <p>Vet name: {dog.vetName || "Not added"}</p>
             <p>Vet phone: {dog.vetPhone || "Not added"}</p>
+
+            <p className="whitespace-pre-line">
+              Current medication:{" "}
+              {dog.currentMedication || "No current medication added."}
+            </p>
+
             <p className="whitespace-pre-line">
               Medical notes: {dog.medicalNotes || "No medical notes added."}
             </p>

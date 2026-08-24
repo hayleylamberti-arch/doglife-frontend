@@ -156,22 +156,23 @@ export default function SupplierPublicProfile() {
   const { data, isLoading, error } = useQuery({
   queryKey: ["publicSupplier", identifier],
   queryFn: async () => {
-  const apiBase = import.meta.env.VITE_API_BASE;
+    try {
+      const response = await api.get(
+        `/api/public/suppliers/${encodeURIComponent(identifier!)}`
+      );
 
-  const response = await fetch(
-    `${apiBase}/api/public/suppliers/${encodeURIComponent(identifier!)}`
-  );
+      return response.data.supplier;
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const payload = error?.response?.data;
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `Supplier request failed (${response.status}): ${errorText}`
-    );
-  }
-
-  const result = await response.json();
-  return result.supplier;
-},
+      throw new Error(
+        status
+          ? `Supplier request failed (${status}): ${JSON.stringify(payload)}`
+          : "Unable to load supplier"
+      );
+    }
+  },
   enabled: Boolean(identifier),
 });
 
@@ -372,14 +373,20 @@ export default function SupplierPublicProfile() {
             <span>{savingPreferred ? "Saving..." : "Preferred"}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleShareProfile}
-            className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 transition hover:bg-gray-50"
-          >
-            <span aria-hidden="true">↗</span>
-            <span>Share</span>
-          </button>
+          {supplier.isPublicVisible ? (
+  <button
+    type="button"
+    onClick={handleShareProfile}
+    className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1 text-gray-700 transition hover:bg-gray-50"
+  >
+    <span aria-hidden="true">↗</span>
+    <span>Share</span>
+  </button>
+) : (
+  <span className="inline-flex items-center rounded border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+    Preview only
+  </span>
+)}
         </div>
       </div>
 
@@ -533,6 +540,18 @@ export default function SupplierPublicProfile() {
             const isDaycare = service.service === "DAYCARE";
             const isBoarding = service.service === "BOARDING";
 
+          const isPetVisitService =
+            service.service === "PET_SITTING" &&
+            service.bookingModel === "BLOCK_CAPACITY" &&
+            service.unit === "PER_VISIT";
+
+          const petVisitBlocks = isPetVisitService
+            ? (Array.isArray(service.bookingBlocks)
+                ? service.bookingBlocks
+                : []
+              ).filter((block: any) => block.isActive !== false)
+            : [];
+
             const halfDayPriceCents = toNumber(
               service?.pricingJson?.halfDayPriceCents
             );
@@ -553,11 +572,47 @@ export default function SupplierPublicProfile() {
                 <CardContent className="space-y-4 p-6">
                   <div className="space-y-1">
                     <h3 className="text-lg font-semibold">
-                      {formatServiceName(service.service)}
+                      {isPetVisitService
+                        ? "Pet Visits"
+                        : formatServiceName(service.service)}
                     </h3>
 
                     <div className="space-y-1 text-gray-700">
-                      {isDaycare ? (
+                      {isPetVisitService ? (
+                        <>
+                          {service.maxDogsPerBooking ? (
+                            <p className="mb-3">
+                              Max dogs per booking: {service.maxDogsPerBooking}
+                            </p>
+                          ) : null}
+
+                          {petVisitBlocks.length > 0 ? (
+                            <div className="space-y-2 pt-1">
+                              {petVisitBlocks.map((block: any) => (
+                                <div
+                                  key={block.id}
+                                  className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3"
+                                >
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                      <p className="font-medium text-gray-900">
+                                        {block.label}
+                                      </p>
+                                      <p className="text-sm text-gray-500">
+                                        {block.startTime} – {block.endTime}
+                                      </p>
+                                    </div>
+
+                                    <p className="shrink-0 font-medium text-gray-900">
+                                      {formatPrice(block.priceCents)}
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : isDaycare ? (
                         <>
                           <p>Half day: {formatPrice(halfDayPriceCents)}</p>
                           <p>Full day: {formatPrice(fullDayPriceCents)}</p>

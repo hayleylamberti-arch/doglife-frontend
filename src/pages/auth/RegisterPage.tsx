@@ -94,7 +94,12 @@ export default function RegisterPage() {
       if (result.user.role === "SUPPLIER") {
         navigate("/supplier/dashboard", { replace: true });
       } else {
-        navigate("/owner/dashboard", { replace: true });
+        navigate(
+          result.user.onboardingCompleted
+            ? "/owner/dashboard"
+            : "/owner/onboarding",
+          { replace: true }
+        );
       }
     } catch (registerError: any) {
       setError(getRegisterErrorMessage(registerError));

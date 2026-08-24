@@ -1,0 +1,327 @@
+721-            baseRateCents: Math.round(Number(price) * 100),
+722-            durationMinutes: requiresDuration ? Number(duration) : null,
+723-            bufferMinutes: Number(bufferMinutes || "0"),
+724-            additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
+725-            additionalDogPriceCents:
+726-              isBoarding && boardingExtraDogEnabled
+727-                ? Math.round(Number(boardingExtraDogPrice) * 100)
+728-                : null,
+729-            pricingJson: isPetSitting
+730-              ? {
+731-                  ...expectationsPricingJson,
+732-                  petSittingLocation,
+733-                }
+734-              : expectationsPricingJson,
+735-            maxDogsPerBooking: showDogCapacity
+736-              ? Number(maxDogsPerBooking || "0") || null
+737-              : null,
+738-            concurrentCapacityDogs: showDogCapacity
+739-              ? Number(concurrentCapacityDogs || "0") || null
+740-              : null,
+741-          },
+742-        ],
+743-      });
+744-    },
+745-    onSuccess: () => {
+746-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+747-      resetForm();
+748-    },
+749-  });
+750-
+751-  const deleteMutation = useMutation({
+752-    mutationFn: async (id: string) => api.delete(`/api/supplierServices/${id}`),
+753-    onSuccess: () => {
+754-      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+755-    },
+756-    onError: (error) => {
+757-      alert(getApiErrorMessage(error));
+758-    },
+759-  });
+760-
+761:  const groupedServices = services.reduce((acc: any, service: any) => {
+762-    if (!acc[service.service]) acc[service.service] = [];
+763-    acc[service.service].push(service);
+764-    return acc;
+765-  }, {});
+766-
+767-  const showDurationInput =
+768-    serviceType &&
+769-    !["GROOMING", "BOARDING", "PET_SITTING", "DAYCARE"].includes(serviceType);
+770-
+771-  const showBufferInput = Boolean(serviceType);
+772-  const isBoarding = serviceType === "BOARDING";
+773-  const isDaycare = serviceType === "DAYCARE";
+774-  const isTraining = serviceType === "TRAINING";
+775-
+776-  const isSessionEventTraining =
+777-    isTraining && trainingBookingMode === "SESSION_EVENT";
+778-
+779-  const isPetSitting = serviceType === "PET_SITTING";
+780-  const isMobileVet = serviceType === "MOBILE_VET";
+781-  const showDogCapacityInput = shouldShowDogCapacity(serviceType);
+782-
+783-  const renderExpectationInputs = (
+784-    currentSupplierProvides: string,
+785-    currentOwnerProvides: string,
+786-    currentGoodToKnow: string,
+787-    onSupplierProvidesChange: (value: string) => void,
+788-    onOwnerProvidesChange: (value: string) => void,
+789-    onGoodToKnowChange: (value: string) => void
+790-  ) => (
+791-    <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+792-      <div>
+793-        <p className="font-medium">Service expectations</p>
+794-        <p className="text-sm text-gray-500">
+795-          Add one item per line. These will appear on your public supplier profile.
+796-        </p>
+797-      </div>
+798-
+799-      <textarea
+800-        rows={3}
+801-        value={currentSupplierProvides}
+802-        onChange={(e) => onSupplierProvidesChange(e.target.value)}
+803-        placeholder={"What you provide, one per line\nExample: Poop bags\nWater breaks"}
+804-        className="border rounded px-3 py-2 block w-full"
+805-      />
+806-
+807-      <textarea
+808-        rows={3}
+809-        value={currentOwnerProvides}
+810-        onChange={(e) => onOwnerProvidesChange(e.target.value)}
+811-        placeholder={"What the owner provides, one per line\nExample: Collar or harness\nAccess to dog"}
+812-        className="border rounded px-3 py-2 block w-full"
+813-      />
+814-
+815-      <textarea
+816-        rows={3}
+817-        value={currentGoodToKnow}
+818-        onChange={(e) => onGoodToKnowChange(e.target.value)}
+819-        placeholder={"Good to know, one per line\nExample: Please mention nervous behaviour before booking."}
+820-        className="border rounded px-3 py-2 block w-full"
+821-      />
+822-    </div>
+823-  );
+824-
+825-  const renderSavedExpectations = (s: any) => {
+826-    const supplierItems = s.pricingJson?.supplierProvides || [];
+827-    const ownerItems = s.pricingJson?.ownerProvides || [];
+828-    const notes = s.pricingJson?.goodToKnow || [];
+829-
+830-    if (!supplierItems.length && !ownerItems.length && !notes.length) return null;
+831-
+832-    return (
+833-      <div className="mt-3 grid gap-3 md:grid-cols-3">
+834-        {supplierItems.length ? (
+835-          <div className="rounded border bg-green-50 p-3 text-green-800">
+836-            <p className="font-medium">What we provide</p>
+837-            {supplierItems.map((item: string) => (
+838-              <p key={item}>✓ {item}</p>
+839-            ))}
+840-          </div>
+841-        ) : null}
+842-
+843-        {ownerItems.length ? (
+844-          <div className="rounded border bg-blue-50 p-3 text-blue-800">
+845-            <p className="font-medium">What owner provides</p>
+846-            {ownerItems.map((item: string) => (
+847-              <p key={item}>✓ {item}</p>
+848-            ))}
+849-          </div>
+850-        ) : null}
+851-
+852-        {notes.length ? (
+853-          <div className="rounded border bg-gray-50 p-3 text-gray-700">
+854-            <p className="font-medium">Good to know</p>
+855-            {notes.map((item: string) => (
+856-              <p key={item}>• {item}</p>
+857-            ))}
+858-          </div>
+859-        ) : null}
+860-      </div>
+861-    );
+862-  };
+863-
+864-  const renderEditForm = (s: any) => {
+865-    if (editingServiceId !== s.id || !editForm) return null;
+866-
+867-    const showCapacity = shouldShowDogCapacity(s.service);
+868-    const showDuration = ![
+869-      "BOARDING",
+870-      "PET_SITTING",
+871-      "DAYCARE",
+872-      "GROOMING",
+873-    ].includes(s.service);
+874-
+875-    return (
+876-      <div className="rounded-lg border border-gray-200 p-3 space-y-3 bg-gray-50">
+877-        <p className="font-medium text-gray-700">Edit Service</p>
+878-
+879-        {s.service === "GROOMING" ? (
+880-          <>
+881-            <input
+--
+2081-              value={bufferMinutes}
+2082-              onChange={(e) => setBufferMinutes(e.target.value)}
+2083-              className="border rounded px-3 py-2 block w-full"
+2084-            />
+2085-          </>
+2086-        ) : null}
+2087-
+2088-        {serviceType
+2089-          ? renderExpectationInputs(
+2090-              supplierProvides,
+2091-              ownerProvides,
+2092-              goodToKnow,
+2093-              setSupplierProvides,
+2094-              setOwnerProvides,
+2095-              setGoodToKnow
+2096-            )
+2097-          : null}
+2098-
+2099-        {serviceType ? (
+2100-          <button
+2101-            onClick={() => createMutation.mutate()}
+2102-            disabled={createMutation.isPending}
+2103-            className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
+2104-          >
+2105-            {createMutation.isPending ? "Saving..." : "Add Service"}
+2106-          </button>
+2107-        ) : null}
+2108-
+2109-        {createMutation.isError ? (
+2110-          <p className="text-sm text-red-600">
+2111-            {getApiErrorMessage(createMutation.error)}
+2112-          </p>
+2113-        ) : null}
+2114-      </div>
+2115-
+2116-      <div>
+2117-        <h2 className="text-lg font-medium mb-4">Your Services</h2>
+2118-
+2119-        {isLoading ? <p>Loading services...</p> : null}
+2120-
+2121:        {!isLoading && Object.keys(groupedServices).length === 0 ? (
+2122-          <p className="text-gray-500">No services added yet.</p>
+2123-        ) : null}
+2124-
+2125:        {Object.entries(groupedServices).map(([type, group]: any) => (
+2126-          <div key={type} className="border rounded-lg p-4 mb-4 bg-white">
+2127-            <p className="font-medium">{formatService(type)}</p>
+2128-
+2129-            <div className="text-sm text-gray-500 mt-2 space-y-4">
+2130-              {group.map((s: any) => (
+2131-                <div key={s.id} className="rounded border p-3 space-y-3">
+2132-                  <div className="flex items-start justify-between gap-3">
+2133-                    <div>
+2134-                      {type === "TRAINING" &&
+2135-                      s.bookingModel === "SESSION_EVENT" ? (
+2136-                        <>
+2137-                          <p className="font-medium text-gray-700">
+2138-                            Group class or course
+2139-                          </p>
+2140-                          <p>
+2141-                            Pricing and schedule are set per session.
+2142-                          </p>
+2143-                        </>
+2144-                      ) : type === "GROOMING" ? (
+2145-                        <>
+2146-                          {(s.pricingTiers || []).filter(
+2147-                            (t: any) => t.category === "WASH_BRUSH"
+2148-                          ).length > 0 ? (
+2149-                            <>
+2150-                              <p className="font-medium">Wash & Brush</p>
+2151-                              {(s.pricingTiers || [])
+2152-                                .filter((t: any) => t.category === "WASH_BRUSH")
+2153-                                .map((t: any) => (
+2154-                                  <p key={t.id}>
+2155-                                    {t.dogSize.toLowerCase()}: R
+2156-                                    {t.priceCents / 100}
+2157-                                  </p>
+2158-                                ))}
+2159-                            </>
+2160-                          ) : null}
+2161-
+2162-                          {(s.pricingTiers || []).filter(
+2163-                            (t: any) => t.category === "WASH_CUT"
+2164-                          ).length > 0 ? (
+2165-                            <>
+2166-                              <p className="font-medium mt-2">Wash & Cut</p>
+2167-                              {(s.pricingTiers || [])
+2168-                                .filter((t: any) => t.category === "WASH_CUT")
+2169-                                .map((t: any) => (
+2170-                                  <p key={t.id}>
+2171-                                    {t.dogSize.toLowerCase()}: R
+2172-                                    {t.priceCents / 100}
+2173-                                  </p>
+2174-                                ))}
+2175-                            </>
+2176-                          ) : null}
+2177-                        </>
+2178-                      ) : type === "DAYCARE" ? (
+2179-                        <>
+2180-                          <p>
+2181-                            Half day:{" "}
+2182-                            {formatRandFromCents(s.pricingJson?.halfDayPriceCents)}
+2183-                          </p>
+2184-                          <p>
+2185-                            Full day:{" "}
+2186-                            {formatRandFromCents(
+2187-                              s.pricingJson?.fullDayPriceCents ??
+2188-                                s.baseRateCents
+2189-                            )}
+2190-                          </p>
+2191-                        </>
+2192-                      ) : type === "PET_SITTING" ? (
+2193-                        <>
+2194-                          <p>
+2195-                            R{(s.baseRateCents / 100).toFixed(0)}{" "}
+2196-                            {getServiceUnit(type, s)}
+2197-                          </p>
+2198-                          <p>
+2199-                            Location:{" "}
+2200-                            {formatPetSittingLocation(
+2201-                              s.pricingJson?.petSittingLocation
+2202-                            )}
+2203-                          </p>
+2204-                        </>
+2205-                      ) : type === "MOBILE_VET" ? (
+2206-                        <>
+2207-                          {s.pricingJson?.mobileVetServices?.length ? (
+2208-                            s.pricingJson.mobileVetServices.map((item: any) => (
+2209-                              <p key={item.key}>
+2210-                                {item.label}: {formatRandFromCents(item.priceCents)}
+2211-                              </p>
+2212-                            ))
+2213-                          ) : (
+2214-                            <p>
+2215-                              From {formatRandFromCents(s.baseRateCents)}{" "}
+2216-                              {getServiceUnit(type, s)}
+2217-                            </p>
+2218-                          )}
+2219-                        </>
+2220-                      ) : (
+2221-                        <p>
+2222-                          R{(s.baseRateCents / 100).toFixed(0)}{" "}
+2223-                          {getServiceUnit(type, s)}
+2224-                        </p>
+2225-                      )}
+2226-
+2227-                      <p>{formatBufferMinutes(s.bufferMinutes)}</p>
+2228-
+2229-                      {s.maxDogsPerBooking ? (
+2230-                        <p>Max dogs per booking: {s.maxDogsPerBooking}</p>
+2231-                      ) : null}
+2232-
+2233-                      {s.concurrentCapacityDogs ? (
+2234-                        <p>
+2235-                          Total concurrent capacity: {s.concurrentCapacityDogs}
+2236-                        </p>
+2237-                      ) : null}
+2238-
+2239-                      {(type === "BOARDING" || type === "DAYCARE") &&
+2240-                      s.additionalDogEnabled ? (
+2241-                        <p>
+2242-                          Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}
+2243-                        </p>
+2244-                      ) : null}
+2245-

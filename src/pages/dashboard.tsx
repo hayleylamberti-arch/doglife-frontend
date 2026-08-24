@@ -103,6 +103,7 @@ function getOvernightStayDetails(booking: any) {
 
   if (
     !["BOARDING", "PET_SITTING"].includes(serviceType) ||
+    (serviceType === "PET_SITTING" && booking.supplierService?.unit === "PER_VISIT") ||
     !booking.startAt ||
     !booking.endAt
   ) {
@@ -778,12 +779,12 @@ function DogProfilePrompt() {
   return (
     <div className="rounded-2xl border border-orange-200 bg-orange-50 p-5 shadow-sm">
       <h2 className="text-xl font-semibold text-orange-900">
-        Create your Dog Passport 🐶
+        Add your dog 🐶
       </h2>
 
       <p className="mt-2 text-sm text-orange-800">
-        Your Dog Passport stores important health, care and behaviour
-        information so suppliers can safely care for your dog.
+        Start with your dog’s basic details. You can add health, care and
+        behaviour information to their Dog Passport anytime.
       </p>
 
       <div className="mt-3 text-sm text-orange-800">
@@ -801,7 +802,7 @@ function DogProfilePrompt() {
         to="/owner/my-dogs"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-orange-500 px-5 py-3 text-sm font-semibold text-white hover:bg-orange-600"
       >
-        Create Dog Passport
+        Add your dog
       </Link>
     </div>
   );
@@ -811,20 +812,19 @@ function OwnerProfilePrompt() {
   return (
     <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
       <h2 className="text-xl font-semibold text-blue-900">
-        Complete your owner profile 📍
+        Add your home address 🏠
       </h2>
 
       <p className="mt-2 text-sm text-blue-800">
-        Add your suburb and home address so DogLife can show trusted
-        providers that operate in your area and prepare for home-based
-        services like walking, grooming, training and mobile vet visits.
+        Add your home address when you’re ready to use services at home,
+        such as walking, mobile grooming, pet visits or mobile vet care.
       </p>
 
       <Link
         to="/owner/profile"
         className="mt-4 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-700"
       >
-        Complete owner profile
+        Add home address
       </Link>
     </div>
   );
@@ -841,8 +841,8 @@ function ServiceShortcuts({ hasDogs }: { hasDogs: boolean }) {
 
           <p className="mt-1 text-sm text-gray-500">
             {hasDogs
-              ? "We'll show your preferred providers first, then trusted providers nearby."
-              : "Create your Dog Passport first, then you can book trusted services."}
+              ? "Find trusted services near you. Your preferred providers will appear first."
+              : "Add your dog first, then you can start finding trusted services."}
           </p>
         </div>
 
@@ -889,8 +889,8 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
   const steps = [
     {
       icon: "🐶",
-      title: "Create Dog Passport",
-      text: "Add health, care and behaviour details.",
+      title: "Add your dog",
+      text: "Start with their name. Add Passport details anytime.",
       active: !hasDogs,
       href: "/owner/my-dogs",
     },
@@ -933,7 +933,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           </h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            A simple journey from Dog Passport to trusted care.
+            A simple journey from finding care to a completed service.
           </p>
         </div>
 
@@ -941,7 +941,7 @@ function OwnerBookingJourney({ hasDogs }: { hasDogs: boolean }) {
           to={hasDogs ? "/search" : "/owner/my-dogs"}
           className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
-          {hasDogs ? "Find a service" : "Create Dog Passport"}
+          {hasDogs ? "Find a service" : "Add your dog"}
         </Link>
       </div>
 
@@ -1015,6 +1015,9 @@ export default function Dashboard() {
   const [savedAccessInstructionId, setSavedAccessInstructionId] =
     useState<string | null>(null);
 
+  const [cancellingBookingId, setCancellingBookingId] =
+    useState<string | null>(null);
+
   const [reviewInputs, setReviewInputs] = useState<
     Record<string, { rating: string; comment: string }>
   >({});
@@ -1049,9 +1052,8 @@ export default function Dashboard() {
   const dogs = dogsData?.dogs || [];
   const hasDogs = dogs.length > 0;
 
-  const hasOwnerSuburb = Boolean(ownerProfileData?.suburb?.trim());
   const hasOwnerAddress = Boolean(ownerProfileData?.address?.trim());
-  const hasOwnerProfile = hasOwnerSuburb && hasOwnerAddress;
+  const hasOwnerProfile = hasOwnerAddress;
 
   const { data: notifications = [] } = useQuery({
     queryKey: ["notifications"],
@@ -1062,13 +1064,17 @@ export default function Dashboard() {
   });
 
   const cancelBookingMutation = useMutation({
-    mutationFn: async (bookingId: string) => {
-      await api.patch(`/api/bookings/${bookingId}/cancel`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-    },
-  });
+  mutationFn: async (bookingId: string) => {
+    setCancellingBookingId(bookingId);
+    await api.patch(`/api/bookings/${bookingId}/cancel`);
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+  },
+  onSettled: () => {
+    setCancellingBookingId(null);
+  },
+});
 
   const updateAccessInstructionsMutation = useMutation({
     mutationFn: async ({
@@ -1436,6 +1442,12 @@ export default function Dashboard() {
 
     const overnightStay = getOvernightStayDetails(booking);
 
+
+    const isPetVisitBooking =
+      (booking.serviceType === "PET_SITTING" ||
+        booking.supplierService?.service === "PET_SITTING") &&
+      booking.supplierService?.unit === "PER_VISIT";
+
     const isTransportBooking =
       booking.serviceType === "PET_TRANSPORT" ||
       booking.supplierService?.service === "PET_TRANSPORT";
@@ -1447,6 +1459,14 @@ export default function Dashboard() {
     const highlightReview =
       focusAction === "review" &&
       focusBookingId === booking.id;
+
+console.log("OWNER BOOKING DEBUG", {
+  id: booking.id,
+  serviceType: booking.serviceType,
+  serviceSessionId: booking.serviceSessionId,
+  serviceSession: booking.serviceSession,
+  occurrences: booking.serviceSession?.occurrences,
+});
 
     return (
       <div
@@ -1468,11 +1488,57 @@ export default function Dashboard() {
                   "Service Provider"}
               </p>
 
-              <p className="text-sm text-gray-500">
-                {formatDate(booking.startAt)} •{" "}
-                {formatTime(booking.startAt)} –{" "}
-                {formatTime(booking.endAt)}
-              </p>
+              {booking.serviceSession ? (
+  <div className="space-y-1">
+    <p className="text-sm font-medium text-gray-700">
+      {booking.serviceSession.name}
+    </p>
+
+    <p className="text-sm text-gray-500">
+      {booking.serviceSession.occurrences?.length ?? 0} course{" "}
+      {(booking.serviceSession.occurrences?.length ?? 0) === 1
+        ? "session"
+        : "sessions"}
+    </p>
+  </div>
+) : (
+  <p className="text-sm text-gray-500">
+    {formatDate(booking.startAt)} •{" "}
+    {formatTime(booking.startAt)} –{" "}
+    {formatTime(booking.endAt)}
+  </p>
+)}
+
+              {booking.serviceSession?.occurrences?.length > 0 && (
+  <div className="mt-3 space-y-2">
+    <p className="text-sm font-medium text-gray-700">
+      Course sessions
+    </p>
+
+    {booking.serviceSession.occurrences.map((occurrence: any) => (
+      <div
+        key={occurrence.id}
+        className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2 text-sm"
+      >
+        <span>
+          {formatDate(occurrence.startAt)} •{" "}
+          {formatTime(occurrence.startAt)} –{" "}
+          {formatTime(occurrence.endAt)}
+        </span>
+
+        <span className="text-xs font-medium text-gray-500">
+          {occurrence.status === "COMPLETED"
+            ? "Completed"
+            : occurrence.status === "IN_PROGRESS"
+              ? "In progress"
+              : occurrence.status === "CONFIRMED"
+                ? "Confirmed"
+                : occurrence.status}
+        </span>
+      </div>
+    ))}
+  </div>
+)}
 
               {isTransportBooking ? (
                 <>
@@ -1501,18 +1567,20 @@ export default function Dashboard() {
                     {overnightStay.nights === 1 ? "night" : "nights"} • Departure{" "}
                     {overnightStay.departureDate} at {overnightStay.departureTime}
                   </p>
-              ) : null} 
+              ) : null}
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
-                {formatServiceLabel(
-                  booking.supplierService?.service ||
-                    booking.serviceType
-                )}
+                {isPetVisitBooking
+                ? "Pet Visit"
+                : formatServiceLabel(
+                    booking.supplierService?.service ||
+                      booking.serviceType
+                  )}
               </span>
 
-              {booking.supplierService?.unit ? (
+              {booking.supplierService?.unit && !isPetVisitBooking ? (
                 <span className="inline-block rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700">
                   {formatLabel(
                     String(
@@ -1550,10 +1618,15 @@ export default function Dashboard() {
 
                   return (
                     <BookingMetaPill
-                      key={detail}
-                      label={formattedDetail.label}
-                      value={formattedDetail.value}
-                    />
+                    key={detail}
+                    label={
+                      isPetVisitBooking &&
+                      formattedDetail.label.toLowerCase() === "pet sitting location"
+                        ? "Pet visit location"
+                        : formattedDetail.label
+                    }
+                    value={formattedDetail.value}
+                  />
                   );
                 })}
               </div>
@@ -1768,10 +1841,10 @@ export default function Dashboard() {
                 onClick={() =>
                   cancelBookingMutation.mutate(booking.id)
                 }
-                disabled={cancelBookingMutation.isPending}
+                disabled={cancellingBookingId === booking.id}
                 className="rounded-lg bg-red-500 px-3 py-1.5 text-sm text-white transition hover:bg-red-600 disabled:opacity-50"
               >
-                {cancelBookingMutation.isPending
+                {cancellingBookingId === booking.id
                   ? "Cancelling..."
                   : "Cancel"}
               </button>
@@ -1792,8 +1865,8 @@ export default function Dashboard() {
             </h1>
 
             <p className="mt-2 text-sm text-gray-600">
-              Manage your Dog Passport, bookings, care reminders and
-              trusted dog services — all in one place.
+              Find trusted dog care, manage bookings and keep your dog’s
+              important information together — all in one place.
             </p>
           </div>
 
@@ -1803,7 +1876,7 @@ export default function Dashboard() {
           >
             {hasDogs
               ? "View Dog Passport"
-              : "Create Dog Passport"}
+              : "Add your dog"}
           </Link>
         </div>
       </div>
@@ -1841,7 +1914,7 @@ export default function Dashboard() {
       ) : null}
 
       <ServiceShortcuts
-        hasDogs={hasDogs && hasOwnerProfile}
+        hasDogs={hasDogs}
       />
 
       {notifications.length > 0 ? (

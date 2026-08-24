@@ -11,6 +11,7 @@ import RoleDashboardRedirect from "@/components/RoleDashboardRedirect";
 
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
+import OwnerOnboarding from "@/pages/owner-onboarding";
 import NotificationsPage from "@/pages/notifications";
 import Profile from "@/pages/profile";
 import Search from "@/pages/search";
@@ -77,6 +78,8 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<RequireAuth allowRoles={["OWNER"]} />}>
+        <Route path="owner/onboarding" element={<OwnerOnboarding />} />
+
         <Route element={<OwnerLayout />}>
           <Route path="owner/dashboard" element={<Dashboard />} />
           <Route path="owner/search" element={<Search />} />

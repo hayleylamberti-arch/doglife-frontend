@@ -51,6 +51,7 @@ function getOvernightStayDetails(booking: SupplierBooking) {
 
   if (
     !["BOARDING", "PET_SITTING"].includes(serviceType) ||
+    (serviceType === "PET_SITTING" && booking.supplierService?.unit === "PER_VISIT") ||
     !booking.startAt ||
     !booking.endAt
   ) {
@@ -177,10 +178,10 @@ function formatServiceName(value?: string | null) {
 
 function formatBookingStatusLabel(status: BookingStatus) {
   const statusMap: Record<BookingStatus, string> = {
-    PENDING: "Pending",
+    PENDING: "Booking request",
     CONFIRMED: "Confirmed",
-    IN_PROGRESS: "In Progress",
-    COMPLETED_UNBILLED: "Awaiting Payment",
+    IN_PROGRESS: "In progress",
+    COMPLETED_UNBILLED: "Awaiting payment",
     COMPLETED: "Completed",
     CANCELLED: "Cancelled",
   };
@@ -459,7 +460,7 @@ if (isActiveHomeServiceMissingAddress) {
         </div>
       )}
     </div>
-  ); 
+  );
 }
 
 function DogDetails({ booking }: { booking: SupplierBooking }) {
@@ -722,8 +723,11 @@ function BookingCard({
   onDecline,
   onStart,
   onComplete,
+  onStartService,
+  onCompleteService,
   onMarkPaid,
   actionLoading,
+  activeOccurrenceId,
   reviewInput,
   reviewLoading,
   onReviewChange,
@@ -733,10 +737,13 @@ function BookingCard({
   booking: SupplierBooking;
   onAccept: (bookingId: string) => void;
   onDecline: (booking: SupplierBooking) => void;
-  onStart: (bookingId: string) => void;
-  onComplete: (bookingId: string) => void;
+  onStart: (bookingId: string, occurrenceId: string) => void;
+  onComplete: (bookingId: string, occurrenceId: string) => void;
+  onStartService: (bookingId: string) => void;
+  onCompleteService: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
   actionLoading: boolean;
+  activeOccurrenceId: string | null;
   reviewInput?: ReviewInput;
   reviewLoading: boolean;
   onReviewChange: (bookingId: string, values: ReviewInput) => void;
@@ -746,7 +753,12 @@ function BookingCard({
   const displayNotes = cleanNotesForDisplay(booking.notes);
   const overnightStay = getOvernightStayDetails(booking);
 
-  const petSittingLocation =
+
+    const isPetVisitBooking =
+      booking.serviceType === "PET_SITTING" &&
+      booking.supplierService?.unit === "PER_VISIT";
+
+    const petSittingLocation =
     booking.serviceType === "PET_SITTING"
       ? extractNoteValue(booking.notes, "Pet sitting location")
       : null;
@@ -781,6 +793,25 @@ const missingOwnerAddress =
     booking.serviceLocationSummary?.addressLine
   );
 
+const isSessionBooking = Boolean(booking.serviceSession);
+
+const canStartService =
+  !isSessionBooking &&
+  booking.status === "CONFIRMED" &&
+  Date.now() >=
+    new Date(booking.startAt).getTime() - 15 * 60 * 1000 &&
+  Date.now() <= new Date(booking.endAt).getTime();
+
+const isBoarding =
+  booking.supplierService?.service === "BOARDING" ||
+  booking.serviceType === "BOARDING";
+
+const canCompleteService =
+  !isSessionBooking &&
+  booking.status === "IN_PROGRESS" &&
+  (isBoarding ||
+    Date.now() >= new Date(booking.endAt).getTime());
+
   return (
     <div
       id={`booking-${booking.id}`}
@@ -793,13 +824,71 @@ const missingOwnerAddress =
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="font-semibold text-gray-900">
-            {formatServiceName(booking.serviceType)}
+            {booking.serviceSession?.name ||
+                (isPetVisitBooking
+                  ? "Pet Visit"
+                  : formatServiceName(booking.serviceType))}
           </div>
 
-          <div className="text-sm text-gray-500">
-            {formatDateTime(booking.startAt)} –{" "}
-            {formatDateTime(booking.endAt)}
-          </div>
+          {booking.serviceSession?.occurrences?.length ? (
+  <div className="mt-1 space-y-2 text-sm text-gray-500">
+    {booking.serviceSession.occurrences.map((occurrence) => {
+  const isThisOccurrenceLoading =
+    actionLoading && activeOccurrenceId === occurrence.id;
+
+  return (
+      <div
+  key={occurrence.id}
+  className="flex items-center justify-between gap-3"
+>
+  <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+    <div>
+      {formatDateTime(occurrence.startAt)} {" – "}
+      {formatDateTime(occurrence.endAt)}
+    </div>
+
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${getStatusBadgeClass(
+        occurrence.status
+      )}`}
+    >
+      {formatBookingStatusLabel(occurrence.status)}
+    </span>
+  </div>
+
+        {booking.status !== "CANCELLED" &&
+occurrence.status === "CONFIRMED" &&
+Date.now() >=
+  new Date(occurrence.startAt).getTime() - 15 * 60 * 1000 ? (
+  <button
+    type="button"
+    onClick={() => onStart(booking.id, occurrence.id)}
+    disabled={isThisOccurrenceLoading || missingOwnerAddress}
+    className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+  >
+    {isThisOccurrenceLoading ? "Starting..." : "Start session"}
+  </button>
+) : booking.status !== "CANCELLED" &&
+  occurrence.status === "IN_PROGRESS" ? (
+  <button
+    type="button"
+    onClick={() => onComplete(booking.id, occurrence.id)}
+    disabled={isThisOccurrenceLoading}
+    className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-medium text-white disabled:opacity-50"
+  >
+    {isThisOccurrenceLoading ? "Completing..." : "Complete session"}
+  </button>
+) : null}
+      </div>
+      );
+      })}
+  </div>
+) : (
+  <div className="text-sm text-gray-500">
+    {formatDateTime(booking.startAt)} {" - "}
+    {formatDateTime(booking.endAt)}
+  </div>
+)}
 
           {overnightStay ? (
             <div className="mt-1 text-sm font-medium text-gray-600">
@@ -855,7 +944,9 @@ const missingOwnerAddress =
 
       {petSittingLocation ? (
         <div className="text-sm text-gray-700">
-          <span className="font-medium">🏠 Pet sitting location:</span>{" "}
+          <span className="font-medium">
+              🏠 {isPetVisitBooking ? "Pet visit location:" : "Pet sitting location:"}
+            </span>{" "}
           {formatLabel(petSittingLocation)}
         </div>
       ) : null}
@@ -926,32 +1017,21 @@ const missingOwnerAddress =
         </div>
       ) : null}
 
-        {booking.status === "CONFIRMED" ? (
-        <div>
-          <button
-            type="button"
-            onClick={() => onStart(booking.id)}
-            disabled={actionLoading || missingOwnerAddress}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {actionLoading
-              ? "Starting..."
-              : "Start service"}
-          </button>
-
-          {missingOwnerAddress ? (
-            <p className="mt-2 text-sm text-amber-700">
-              Waiting for the owner to provide the service
-              address.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {booking.status === "IN_PROGRESS" ? (
+      {canStartService ? (
         <button
           type="button"
-          onClick={() => onComplete(booking.id)}
+          onClick={() => onStartService(booking.id)}
+          disabled={actionLoading || missingOwnerAddress}
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {actionLoading ? "Starting..." : "Start service"}
+        </button>
+      ) : null}
+
+      {canCompleteService ? (
+        <button
+          type="button"
+          onClick={() => onCompleteService(booking.id)}
           disabled={actionLoading}
           className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
@@ -981,10 +1061,13 @@ function BookingSection({
   isLoading,
   error,
   activeBookingId,
+  activeOccurrenceId,
   onAccept,
   onDecline,
   onStart,
   onComplete,
+  onStartService,
+  onCompleteService,
   onMarkPaid,
   reviewInputs,
   activeReviewBookingId,
@@ -1003,10 +1086,13 @@ function BookingSection({
   isLoading: boolean;
   error: unknown;
   activeBookingId: string | null;
+  activeOccurrenceId: string | null;
   onAccept: (bookingId: string) => void;
   onDecline: (booking: SupplierBooking) => void;
-  onStart: (bookingId: string) => void;
-  onComplete: (bookingId: string) => void;
+  onStart: (bookingId: string, occurrenceId: string) => void;
+  onComplete: (bookingId: string, occurrenceId: string) => void;
+  onStartService: (bookingId: string) => void;
+  onCompleteService: (bookingId: string) => void;
   onMarkPaid: (bookingId: string) => void;
   reviewInputs: Record<string, ReviewInput>;
   activeReviewBookingId: string | null;
@@ -1092,8 +1178,11 @@ function BookingSection({
                   onDecline={onDecline}
                   onStart={onStart}
                   onComplete={onComplete}
+                  onStartService={onStartService}
+                  onCompleteService={onCompleteService}
                   onMarkPaid={onMarkPaid}
                   actionLoading={activeBookingId === booking.id}
+                  activeOccurrenceId={activeOccurrenceId}
                   reviewInput={reviewInputs[booking.id]}
                   reviewLoading={
                     activeReviewBookingId === booking.id
@@ -1169,11 +1258,11 @@ function SupplierBookingJourney({
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            Your booking journey
+            How bookings work
           </h2>
 
           <p className="mt-1 text-sm text-gray-500">
-            From request to completed care, DogLife helps you manage each step.
+            From a new request to completed care, DogLife keeps each booking organised.
           </p>
         </div>
 
@@ -1215,6 +1304,7 @@ export default function SupplierDashboardPage() {
   const focusAction = searchParams.get("action");
 
   const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
+  const [activeOccurrenceId, setActiveOccurrenceId] = useState<string | null>(null);
 
   const [bookingActionError, setBookingActionError] = useState<string | null>(
   null
@@ -1356,12 +1446,73 @@ export default function SupplierDashboardPage() {
 });
 
 const startMutation = useMutation({
+  mutationFn: async ({
+  bookingId,
+  occurrenceId,
+}: {
+  bookingId: string;
+  occurrenceId: string;
+}) =>
+  api.patch(
+    `/api/supplier/bookings/${bookingId}/occurrences/${occurrenceId}/start`
+  ),
+
+  onMutate: ({ bookingId, occurrenceId }) => {
+  setBookingActionError(null);
+  setActiveBookingId(bookingId);
+  setActiveOccurrenceId(occurrenceId);
+},
+
+onSuccess: refreshBookings,
+
+onError: (error) => {
+  setBookingActionError(getBookingActionError(error));
+},
+
+onSettled: () => {
+  setActiveBookingId(null);
+  setActiveOccurrenceId(null);
+},
+});
+
+const completeMutation = useMutation({
+  mutationFn: async ({
+    bookingId,
+    occurrenceId,
+  }: {
+    bookingId: string;
+    occurrenceId: string;
+  }) =>
+    api.patch(
+      `/api/supplier/bookings/${bookingId}/occurrences/${occurrenceId}/complete`
+    ),
+
+  onMutate: ({ bookingId, occurrenceId }) => {
+    setBookingActionError(null);
+    setActiveBookingId(bookingId);
+    setActiveOccurrenceId(occurrenceId);
+  },
+
+  onSuccess: refreshBookings,
+
+  onError: (error) => {
+    setBookingActionError(getBookingActionError(error));
+  },
+
+  onSettled: () => {
+    setActiveBookingId(null);
+    setActiveOccurrenceId(null);
+  },
+});
+
+const startServiceMutation = useMutation({
   mutationFn: async (bookingId: string) =>
     api.patch(`/api/supplier/bookings/${bookingId}/start`),
 
   onMutate: (bookingId) => {
     setBookingActionError(null);
     setActiveBookingId(bookingId);
+    setActiveOccurrenceId(null);
   },
 
   onSuccess: refreshBookings,
@@ -1370,16 +1521,20 @@ const startMutation = useMutation({
     setBookingActionError(getBookingActionError(error));
   },
 
-  onSettled: () => setActiveBookingId(null),
+  onSettled: () => {
+    setActiveBookingId(null);
+    setActiveOccurrenceId(null);
+  },
 });
 
-const completeMutation = useMutation({
+const completeServiceMutation = useMutation({
   mutationFn: async (bookingId: string) =>
     api.patch(`/api/supplier/bookings/${bookingId}/complete`),
 
   onMutate: (bookingId) => {
     setBookingActionError(null);
     setActiveBookingId(bookingId);
+    setActiveOccurrenceId(null);
   },
 
   onSuccess: refreshBookings,
@@ -1388,7 +1543,10 @@ const completeMutation = useMutation({
     setBookingActionError(getBookingActionError(error));
   },
 
-  onSettled: () => setActiveBookingId(null),
+  onSettled: () => {
+    setActiveBookingId(null);
+    setActiveOccurrenceId(null);
+  },
 });
 
 const markPaidMutation = useMutation({
@@ -1650,10 +1808,27 @@ const cancelled = sortBookingsByStart(
         isLoading={isLoading}
         error={error}
         activeBookingId={activeBookingId}
+        activeOccurrenceId={activeOccurrenceId}
         onAccept={(bookingId) => acceptMutation.mutate(bookingId)}
         onDecline={handleDecline}
-        onStart={(bookingId) => startMutation.mutate(bookingId)}
-        onComplete={(bookingId) => completeMutation.mutate(bookingId)}
+        onStart={(bookingId, occurrenceId) =>
+          startMutation.mutate({
+            bookingId,
+            occurrenceId,
+          })
+        }
+        onComplete={(bookingId, occurrenceId) =>
+          completeMutation.mutate({
+            bookingId,
+              occurrenceId,
+            })
+          }
+        onStartService={(bookingId) =>
+          startServiceMutation.mutate(bookingId)
+        }
+        onCompleteService={(bookingId) =>
+          completeServiceMutation.mutate(bookingId)
+        }
         onMarkPaid={(bookingId) => markPaidMutation.mutate(bookingId)}
         isOpen={Boolean(openSections[sectionKey])}
         onToggle={() => toggleSection(sectionKey)}
@@ -1669,17 +1844,215 @@ const cancelled = sortBookingsByStart(
     );
   }
 
+  const supplierChecklist = Array.isArray(completionData?.checklist)
+    ? completionData.checklist
+    : [];
+
+  const checklistByKey = Object.fromEntries(
+    supplierChecklist.map((item: any) => [item.key, item])
+  );
+
+  const businessDetailsComplete = Boolean(
+    checklistByKey.businessName?.complete &&
+      checklistByKey.businessPhone?.complete &&
+      (
+        checklistByKey.baseSuburb?.complete ||
+        checklistByKey.serviceSuburbs?.complete
+      )
+  );
+
+  const firstServiceComplete = Boolean(checklistByKey.services?.complete);
+  const availabilityComplete = Boolean(checklistByKey.availability?.complete);
+
+  const requiredSetupComplete = Boolean(
+    businessDetailsComplete &&
+      firstServiceComplete &&
+      availabilityComplete
+  );
+
+  const isDraftSupplier =
+    !completionData?.approvalStatus ||
+    completionData.approvalStatus === "DRAFT";
+
+  if (isDraftSupplier) {
+    const setupSteps = [
+      {
+        number: 1,
+        title: "Business details",
+        text: "Add your business name, contact number and main service area.",
+        complete: businessDetailsComplete,
+        href: "/supplier/business-profile",
+        action: "Add business details",
+      },
+      {
+        number: 2,
+        title: "Add your first service",
+        text: "Choose a service, add your pricing and tell owners what to expect.",
+        complete: firstServiceComplete,
+        href: "/supplier/services",
+        action: "Add a service",
+      },
+      {
+        number: 3,
+        title: "Set your availability",
+        text: "Choose the days and times you’re available for bookings.",
+        complete: availabilityComplete,
+        href: "/supplier/availability",
+        action: "Set availability",
+      },
+      {
+        number: 4,
+        title: "Submit for review",
+        text: "When everything above is ready, send your business to DogLife for review.",
+        complete: false,
+        href: null,
+        action: "Submit for review",
+      },
+    ];
+
+    const currentStepIndex = setupSteps.findIndex((step) => !step.complete);
+
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 p-6">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome to DogLife 🐾
+          </h1>
+
+          <p className="mt-2 text-gray-600">
+            Let’s get your business ready for bookings.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Get ready for bookings
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Complete these essentials so we can review your business. You can
+                build out your profile anytime.
+              </p>
+            </div>
+
+            <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+              {[
+                businessDetailsComplete,
+                firstServiceComplete,
+                availabilityComplete,
+              ].filter(Boolean).length}
+              /3 ready
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {setupSteps.map((step, index) => {
+              const isCurrent = index === currentStepIndex;
+              const canSubmit =
+                step.number === 4 && requiredSetupComplete;
+
+              return (
+                <div
+                  key={step.number}
+                  className={`rounded-xl border p-4 ${
+                    step.complete
+                      ? "border-green-200 bg-green-50"
+                      : isCurrent
+                      ? "border-blue-300 bg-blue-50"
+                      : "border-gray-200 bg-gray-50"
+                  }`}
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                          step.complete
+                            ? "bg-green-600 text-white"
+                            : isCurrent
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {step.complete ? "✓" : step.number}
+                      </div>
+
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {step.title}
+                        </h3>
+
+                        <p className="mt-1 text-sm text-gray-600">
+                          {step.text}
+                        </p>
+                      </div>
+                    </div>
+
+                    {step.complete ? (
+                      <span className="text-sm font-medium text-green-700">
+                        Complete
+                      </span>
+                    ) : step.number === 4 ? (
+                      <button
+                        type="button"
+                        onClick={() => submitForReviewMutation.mutate()}
+                        disabled={
+                          !canSubmit ||
+                          submitForReviewMutation.isPending
+                        }
+                        className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold ${
+                          canSubmit
+                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                            : "cursor-not-allowed bg-gray-200 text-gray-500"
+                        }`}
+                      >
+                        {submitForReviewMutation.isPending
+                          ? "Submitting..."
+                          : "Submit for review"}
+                      </button>
+                    ) : isCurrent ? (
+                      <Link
+                        to={step.href!}
+                        className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        {step.action}
+                      </Link>
+                    ) : (
+                      <span className="text-sm text-gray-400">Next</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5">
+          <h2 className="font-semibold text-gray-900">
+            Make your profile stand out
+          </h2>
+
+          <p className="mt-1 text-sm text-gray-600">
+            Add your description, logo, photos, website, social links and more
+            service areas whenever you’re ready.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6">
       <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Welcome to DogLife 🐾
+              Your DogLife dashboard
             </h1>
 
             <p className="mt-2 text-sm text-gray-600">
-              Complete your supplier setup so dog owners can find and book you.
+              Manage your bookings, availability and business profile.
             </p>
           </div>
 
@@ -1718,7 +2091,7 @@ const cancelled = sortBookingsByStart(
           onClick={() => openAndScroll("pending", "pending-bookings")}
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-amber-300 hover:shadow-sm md:p-5"
         >
-          <div className="text-xs text-gray-500 sm:text-sm">Pending</div>
+          <div className="text-xs text-gray-500 sm:text-sm">Booking requests</div>
           <div className="mt-2 text-2xl font-bold text-amber-600 sm:text-3xl">
             {pendingBookings.length}
           </div>
@@ -1745,7 +2118,7 @@ const cancelled = sortBookingsByStart(
           className="rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-blue-300 hover:shadow-sm md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">
-            In Progress
+            In progress
           </div>
           <div className="mt-2 text-2xl font-bold text-blue-600 sm:text-3xl">
             {inProgressBookings.length}
@@ -1763,7 +2136,7 @@ const cancelled = sortBookingsByStart(
           className="col-span-2 rounded-2xl border border-gray-200 bg-white p-4 text-left hover:border-purple-300 hover:shadow-sm md:col-span-1 md:p-5"
         >
           <div className="text-xs text-gray-500 sm:text-sm">
-            Awaiting Payment
+            Awaiting payment
           </div>
           <div className="mt-2 text-2xl font-bold text-purple-600 sm:text-3xl">
             {completedUnbilledBookings.length}
@@ -1780,11 +2153,11 @@ const cancelled = sortBookingsByStart(
       {completionData?.approvalStatus === "APPROVED" ? (
   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
     <h2 className="text-lg font-semibold text-emerald-900">
-      Your business is approved and live 🎉
+      Your business is live on DogLife 🎉
     </h2>
 
     <p className="mt-2 text-sm text-emerald-800">
-      Dog owners can now discover your business and request bookings.
+      Dog owners can now find your business and request bookings.
     </p>
 
     <p className="mt-2 text-sm text-emerald-800">
@@ -1796,12 +2169,12 @@ const cancelled = sortBookingsByStart(
 
     {(completionData?.completionPercent ?? 0) < 100 ? (
       <p className="mt-1 text-sm text-emerald-800">
-        Add more business details, services, service suburbs and
-        availability to help owners understand and choose your business.
+        Keep building your profile with more details, services and service
+        areas to help owners choose your business.
       </p>
     ) : (
       <p className="mt-1 text-sm text-emerald-800">
-        Your supplier setup is complete.
+        Your profile is looking great.
       </p>
     )}
 
@@ -1889,7 +2262,7 @@ const cancelled = sortBookingsByStart(
         onClick={() => submitForReviewMutation.mutate()}
         disabled={
           submitForReviewMutation.isPending ||
-          completionData?.completionPercent !== 100
+          !requiredSetupComplete
         }
         className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -1951,7 +2324,16 @@ const cancelled = sortBookingsByStart(
 
       {notifications.length > 0 ? (
         <div className="space-y-2">
-          {notifications.slice(0, 3).map((notification: any) => (
+          {notifications
+            .filter(
+              (notification: any) =>
+                !(
+                  completionData?.approvalStatus === "SUBMITTED" &&
+                  notification.title === "Welcome to DogLife"
+                )
+            )
+            .slice(0, 3)
+            .map((notification: any) => (
             <button
               key={notification.id}
               type="button"
@@ -2015,8 +2397,8 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "pending-bookings",
-          "Pending",
-          "No pending bookings.",
+          "Booking requests",
+          "No new booking requests.",
           pendingBookings,
           "pending",
           10
@@ -2033,7 +2415,7 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "in-progress-bookings",
-          "In Progress",
+          "In progress",
           "No bookings in progress.",
           inProgressBookings,
           "inProgress"
@@ -2041,7 +2423,7 @@ const cancelled = sortBookingsByStart(
 
         {renderSection(
           "completed-unbilled-bookings",
-          "Awaiting Payment",
+          "Awaiting payment",
           "No bookings awaiting payment.",
           completedUnbilledBookings,
           "completedUnbilled"

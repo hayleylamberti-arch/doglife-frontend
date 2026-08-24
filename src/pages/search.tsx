@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ function isValidService(value: string | null): value is ValidService {
 export default function SearchPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const serviceFromUrl = params.get("service");
   const suburbFromUrl = params.get("suburb") || params.get("location") || "";
@@ -282,20 +284,41 @@ export default function SearchPage() {
 
     async function loadOwnerDefaults() {
       try {
-        const res = await api.get("/api/owner/profile");
-        const profile = res.data?.profile;
+        let defaultSuburb = "";
 
-        const profileSuburb =
-          typeof profile?.suburb === "string" && profile.suburb.trim()
-            ? profile.suburb.trim()
-            : "";
+        if (user?.suburbId) {
+          const suburbsRes = await api.get("/api/suburbs");
+          const suburbs = Array.isArray(suburbsRes.data?.suburbs)
+            ? suburbsRes.data.suburbs
+            : [];
 
-        if (!cancelled && !suburb.trim() && profileSuburb) {
-          setSuburb(profileSuburb);
-          setSuburbQuery(profileSuburb);
+          const matchedSuburb = suburbs.find(
+            (item: SuburbResult) => item.id === user.suburbId
+          );
+
+          if (matchedSuburb?.suburbName) {
+            defaultSuburb = matchedSuburb.suburbName;
+          }
+        }
+
+        if (!defaultSuburb) {
+          const profileRes = await api.get("/api/owner/profile");
+          const profile = profileRes.data?.profile;
+
+          if (
+            typeof profile?.suburb === "string" &&
+            profile.suburb.trim()
+          ) {
+            defaultSuburb = profile.suburb.trim();
+          }
+        }
+
+        if (!cancelled && !suburb.trim() && defaultSuburb) {
+          setSuburb(defaultSuburb);
+          setSuburbQuery(defaultSuburb);
         }
       } catch (err) {
-        console.error("OWNER PROFILE LOAD ERROR:", err);
+        console.error("OWNER SEARCH DEFAULT LOAD ERROR:", err);
       } finally {
         if (!cancelled) {
           setOwnerProfileLoaded(true);
@@ -308,7 +331,7 @@ export default function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.suburbId]);
 
   useEffect(() => {
     if (!suburb.trim()) {
