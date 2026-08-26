@@ -304,6 +304,16 @@ export default function SupplierServicesPage() {
 
   const services = data ?? [];
 
+  const { data: suburbData } = useQuery({
+    queryKey: ["suburbs"],
+    queryFn: async () => {
+      const res = await api.get("/api/suburbs");
+      return res.data?.suburbs ?? [];
+    },
+  });
+
+  const suburbs = Array.isArray(suburbData) ? suburbData : [];
+
   const [serviceType, setServiceType] = useState("");
 
   const [trainingBookingMode, setTrainingBookingMode] =
@@ -350,6 +360,10 @@ export default function SupplierServicesPage() {
 
   const [blockInputs, setBlockInputs] = useState<
     Record<string, { startDate: string; endDate: string; reason: string }>
+  >({});
+
+  const [serviceSuburbDrafts, setServiceSuburbDrafts] = useState<
+    Record<string, string[]>
   >({});
 
   const [washBrush, setWashBrush] = useState(emptyGroomingPrices());
@@ -877,6 +891,54 @@ export default function SupplierServicesPage() {
     alert(getApiErrorMessage(error));
   },
 });
+
+  const getServiceSuburbIds = (service: any): string[] => {
+    const draft = serviceSuburbDrafts[service.id];
+
+    if (draft) {
+      return draft;
+    }
+
+    return (service.operatingAreas || [])
+      .map((area: any) => area.suburbId ?? area.suburb?.id)
+      .filter((id: unknown): id is string => typeof id === "string");
+  };
+
+  const toggleServiceSuburb = (service: any, suburbId: string) => {
+    const current = getServiceSuburbIds(service);
+
+    setServiceSuburbDrafts((prev) => ({
+      ...prev,
+      [service.id]: current.includes(suburbId)
+        ? current.filter((id) => id !== suburbId)
+        : [...current, suburbId],
+    }));
+  };
+
+  const updateServiceSuburbsMutation = useMutation({
+    mutationFn: async ({
+      serviceId,
+      suburbIds,
+    }: {
+      serviceId: string;
+      suburbIds: string[];
+    }) =>
+      api.put(`/api/supplierServices/${serviceId}/operating-areas`, {
+        suburbIds,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["supplier-services"] });
+
+      setServiceSuburbDrafts((prev) => {
+        const next = { ...prev };
+        delete next[variables.serviceId];
+        return next;
+      });
+    },
+    onError: (error) => {
+      alert(getApiErrorMessage(error));
+    },
+  });
 
   const groupedServices = services.reduce((acc: any, service: any) => {
     if (!acc[service.service]) acc[service.service] = [];
@@ -1904,7 +1966,13 @@ export default function SupplierServicesPage() {
     createBlockMutation.variables?.serviceId === s.id;
 
   return (
-    <div className="mt-4 space-y-4 rounded-lg border border-gray-200 p-4">
+              <details className="mt-4 rounded-lg border border-gray-200">
+                <summary className="cursor-pointer px-4 py-3 font-medium text-gray-800">
+                  {s.availabilityBlocks?.length
+                    ? `Unavailable dates (${s.availabilityBlocks.length} blocked ${s.availabilityBlocks.length === 1 ? "period" : "periods"})`
+                    : "Unavailable dates"}
+                </summary>
+                <div className="space-y-4 border-t p-4">
       <div className="space-y-1">
         <p className="font-medium text-gray-800">Unavailable dates</p>
 
@@ -2050,7 +2118,8 @@ export default function SupplierServicesPage() {
           {getApiErrorMessage(createBlockMutation.error)}
         </p>
       ) : null}
-    </div>
+                </div>
+              </details>
   );
 };
 
@@ -2740,15 +2809,87 @@ export default function SupplierServicesPage() {
                     </div>
                   </div>
 
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                    <p className="font-medium text-gray-800">
+                      Service areas
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-600">
+                      Choose the suburbs where owners can find and book this service.
+                      If none are selected, DogLife uses your business-level service areas.
+                    </p>
+
+                    <details className="mt-3 rounded border bg-white">
+                      <summary className="cursor-pointer px-3 py-2 font-medium text-gray-700">
+                        {getServiceSuburbIds(s).length > 0
+                          ? `Select service areas (${getServiceSuburbIds(s).length} selected)`
+                          : "Select service areas"}
+                      </summary>
+
+                      <div className="max-h-64 overflow-y-auto border-t p-2">
+                        {suburbs.map((suburb: any) => {
+                          const selected = getServiceSuburbIds(s).includes(suburb.id);
+
+                          return (
+                            <label
+                              key={suburb.id}
+                              className="flex items-center gap-2 rounded px-3 py-2 hover:bg-gray-50"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleServiceSuburb(s, suburb.id)}
+                              />
+                              <span>
+                                {suburb.suburbName ?? suburb.name ?? suburb.id}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </details>
+
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateServiceSuburbsMutation.mutate({
+                            serviceId: s.id,
+                            suburbIds: getServiceSuburbIds(s),
+                          })
+                        }
+                        disabled={
+                          updateServiceSuburbsMutation.isPending &&
+                          updateServiceSuburbsMutation.variables?.serviceId === s.id
+                        }
+                        className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+                      >
+                        {updateServiceSuburbsMutation.isPending &&
+                        updateServiceSuburbsMutation.variables?.serviceId === s.id
+                          ? "Saving..."
+                          : "Save service areas"}
+                      </button>
+                    </div>
+                  </div>
+
                   {renderEditForm(s)}
 
                   {renderSessionManager(s)}
 
-                  <ServiceOperatingHours
-                    serviceId={s.id}
-                    operatingHours={s.operatingHours || []}
-                  />
+                    <details className="rounded-lg border border-gray-200">
+                      <summary className="cursor-pointer px-4 py-3 font-medium text-gray-800">
+                        {s.operatingHours?.length
+                          ? "Service availability (Custom schedule)"
+                          : "Service availability (Business default)"}
+                      </summary>
 
+                      <div className="border-t p-4">
+                        <ServiceOperatingHours
+                          serviceId={s.id}
+                          operatingHours={s.operatingHours || []}
+                        />
+                      </div>
+                    </details>
                   {renderAvailabilityBlocks(s)}
                 </div>
               ))}
