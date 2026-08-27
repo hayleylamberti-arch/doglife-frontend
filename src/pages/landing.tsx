@@ -15,7 +15,7 @@ export default function Landing() {
   return (
     <div>
       <div className="border-b bg-blue-50 py-2 text-center text-sm text-blue-700">
-        🐾 Now growing across Gauteng — Sandton, Fourways, Midrand, Bryanston, Randburg and Linksfield
+      🐾 Now growing across Gauteng — Sandton, Fourways, Midrand, Bryanston and Linksfield
       </div>
 
       <InstallBanner />

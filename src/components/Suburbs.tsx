@@ -8,7 +8,6 @@ export default function Suburbs() {
     "Sandton",
     "Midrand",
     "Bryanston",
-    "Randburg",
     "Linksfield"
   ];
 

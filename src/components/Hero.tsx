@@ -55,7 +55,7 @@ export default function Hero() {
       </button>
 
       <p className="text-sm text-gray-500 mt-6">
-        Now launching in Gauteng: Sandton • Fourways • Midrand • Bryanston • Randburg • Linksfield
+        Now launching in Gauteng: Sandton • Fourways • Midrand • Bryanston • Linksfield
       </p>
     </section>
   );
