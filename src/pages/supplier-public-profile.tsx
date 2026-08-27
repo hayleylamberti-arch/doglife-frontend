@@ -61,7 +61,7 @@ function TrustBadge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium ${styles}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium sm:px-3 sm:text-sm ${styles}`}
     >
       {label}
     </span>
@@ -348,17 +348,17 @@ export default function SupplierPublicProfile() {
       Boolean(supplier.premisesVerified));
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-4 sm:space-y-8 sm:p-6">
+      <div className="flex flex-wrap items-center gap-3 sm:justify-between">
         <button
           type="button"
           onClick={handleBackToSearch}
-          className="text-sm text-gray-500 hover:underline"
+          className="shrink-0 text-sm text-gray-500 hover:underline"
         >
           ← Back to search
         </button>
 
-        <div className="flex items-center gap-4 text-sm">
+        <div className="ml-auto flex items-center gap-2 text-sm sm:gap-4">
           <button
             type="button"
             onClick={togglePreferredSupplier}
@@ -390,18 +390,18 @@ export default function SupplierPublicProfile() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between rounded-2xl bg-white p-6 shadow">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 rounded-2xl bg-white p-4 shadow sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
           {supplier.logoUrl && (
             <img
               src={supplier.logoUrl}
-              className="h-16 w-16 rounded-xl border object-cover"
+              className="h-14 w-14 shrink-0 rounded-xl border object-cover sm:h-16 sm:w-16"
               alt={supplier.businessName}
             />
           )}
 
-          <div>
-            <h1 className="text-2xl leading-tight font-bold md:text-3xl">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold leading-tight sm:text-2xl md:text-3xl">
               {supplier.businessName}
             </h1>
             <p className="mt-1 text-gray-500">{supplier.suburb || ""}</p>
@@ -447,8 +447,9 @@ export default function SupplierPublicProfile() {
         </div>
 
         <Button
-          size="lg"
-          onClick={() => {
+  size="lg"
+  className="w-full sm:w-auto"
+  onClick={() => {
             const firstService = supplier.services?.[0];
 
             if (!firstService) {

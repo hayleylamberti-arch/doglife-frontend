@@ -187,6 +187,14 @@ function isValidSouthAfricanPhone(value: string) {
   return /^(\+27|0)[6-8][0-9]{8}$/.test(cleaned);
 }
 
+function isValidSouthAfricanVetPhone(value: string) {
+  if (!value?.trim()) return true;
+
+  const cleaned = value.replace(/\s/g, "");
+
+  return /^(\+27|0)[1-8][0-9]{8}$/.test(cleaned);
+}
+
 function SectionHeader({
   title,
   description,
@@ -597,7 +605,7 @@ onError: (error: any) => {
               placeholder="e.g. 0111234567 or +27111234567"
               {...form.register("vetPhone", {
                 validate: (value) =>
-                  isValidSouthAfricanPhone(value) ||
+                  isValidSouthAfricanVetPhone(value) ||
                   "Please enter a valid South African phone number.",
               })}
             />

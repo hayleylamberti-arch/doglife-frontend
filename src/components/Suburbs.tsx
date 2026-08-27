@@ -5,10 +5,11 @@ export default function Suburbs() {
 
   const suburbs = [
     "Fourways",
-    "Lonehill",
-    "Paulshof",
-    "Sunninghill",
-    "Kyalami",
+    "Sandton",
+    "Midrand",
+    "Bryanston",
+    "Randburg",
+    "Linksfield"
   ];
 
   const handleClick = (suburb: string) => {
