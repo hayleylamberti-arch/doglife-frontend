@@ -2150,70 +2150,7 @@ const cancelled = sortBookingsByStart(
         }
       />
 
-      {completionData?.approvalStatus === "APPROVED" ? (
-  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-    <h2 className="text-lg font-semibold text-emerald-900">
-      Your business is live on DogLife 🎉
-    </h2>
-
-    <p className="mt-2 text-sm text-emerald-800">
-      Dog owners can now find your business and request bookings.
-    </p>
-
-    <p className="mt-2 text-sm text-emerald-800">
-      Profile strength:{" "}
-      <span className="font-semibold">
-        {completionData?.completionPercent ?? 0}%
-      </span>
-    </p>
-
-    {(completionData?.completionPercent ?? 0) < 100 ? (
-      <p className="mt-1 text-sm text-emerald-800">
-        Keep building your profile with more details, services and service
-        areas to help owners choose your business.
-      </p>
-    ) : (
-      <p className="mt-1 text-sm text-emerald-800">
-        Your profile is looking great.
-      </p>
-    )}
-
-    {completionData?.checklist?.length ? (
-  <div className="mt-4 space-y-2">
-    {completionData.checklist.map((item: any) => (
-      <div
-        key={item.key}
-        className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-2"
-      >
-        <div className="flex items-center gap-2">
-          <span>{item.complete ? "✅" : "⬜"}</span>
-
-          <span className="text-sm text-gray-700">
-            {item.label}
-          </span>
-        </div>
-
-        {!item.complete ? (
-          <Link
-            to={item.href}
-            className="text-sm font-medium text-blue-600 hover:underline"
-          >
-            Complete →
-          </Link>
-        ) : null}
-      </div>
-    ))}
-  </div>
-) : null}
-
-    <Link
-      to="/supplier/business-profile"
-      className="mt-4 inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-    >
-      View business profile
-    </Link>
-  </div>
-) : completionData?.approvalStatus === "SUBMITTED" ? (
+          {completionData?.approvalStatus === "SUBMITTED" ? (
   <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
     <h2 className="text-lg font-semibold text-blue-900">
       Your profile is under review
@@ -2272,7 +2209,7 @@ const cancelled = sortBookingsByStart(
       </button>
     </div>
   </div>
-) : (
+) : completionData?.approvalStatus === "APPROVED" ? null : (
   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
     <h2 className="text-lg font-semibold text-emerald-900">
       Complete your supplier setup
