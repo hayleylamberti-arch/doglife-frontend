@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { api } from "@/lib/api";
 import { ShieldCheck, HeartPulse, AlertTriangle, CalendarDays } from "lucide-react";
 
 type Dog = {
@@ -163,8 +163,8 @@ export default function DogProfilePage() {
   const { data, isLoading } = useQuery({
     queryKey: [`/api/owner/dogs/${id}`],
     queryFn: async () => {
-      const res = await apiRequest(`/api/owner/dogs/${id}`);
-      return res.json();
+      const res = await api.get(`/api/owner/dogs/${id}`);
+      return res.data;
     },
   });
 
