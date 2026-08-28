@@ -453,6 +453,29 @@ export default function SupplierServicesPage() {
     mutationFn: async ({ service }: { service: any }) => {
       if (!editForm) throw new Error("Nothing to update");
 
+      if (
+        service.service === "WALKING" &&
+        editForm.additionalDogEnabled &&
+        (!editForm.maxDogsPerBooking ||
+          Number(editForm.maxDogsPerBooking) < 2)
+      ) {
+        throw new Error(
+          "Maximum dogs per booking must be at least 2 when additional dogs are allowed"
+        );
+      }
+
+      if (
+        service.service === "WALKING" &&
+        editForm.maxDogsPerBooking &&
+        editForm.concurrentCapacityDogs &&
+        Number(editForm.concurrentCapacityDogs) <
+          Number(editForm.maxDogsPerBooking)
+      ) {
+        throw new Error(
+          "Concurrent capacity cannot be less than maximum dogs per booking"
+        );
+      }
+
       const payload: any = {
         bufferMinutes: Number(editForm.bufferMinutes || "0"),
         maxDogsPerBooking:
@@ -628,6 +651,7 @@ export default function SupplierServicesPage() {
       const showDogCapacity = shouldShowDogCapacity(serviceType);
       const isDaycare = serviceType === "DAYCARE";
       const isBoarding = serviceType === "BOARDING";
+      const isWalking = serviceType === "WALKING";
       const isPetSitting = serviceType === "PET_SITTING";
       const isMobileVet = serviceType === "MOBILE_VET";
       const expectationsPricingJson = buildExpectationsPricingJson(
@@ -661,6 +685,16 @@ export default function SupplierServicesPage() {
       ) {
         throw new Error(
           "Concurrent capacity cannot be less than maximum dogs per booking"
+        );
+      }
+
+      if (
+        isWalking &&
+        boardingExtraDogEnabled &&
+        (!maxDogsPerBooking || Number(maxDogsPerBooking) < 2)
+      ) {
+        throw new Error(
+          "Maximum dogs per booking must be at least 2 when additional dogs are allowed"
         );
       }
 
@@ -788,7 +822,7 @@ export default function SupplierServicesPage() {
       }
 
       if (
-        isBoarding &&
+        (isBoarding || isWalking) &&
         boardingExtraDogEnabled &&
         (!boardingExtraDogPrice || Number(boardingExtraDogPrice) < 0)
       ) {
@@ -815,9 +849,10 @@ export default function SupplierServicesPage() {
     : Math.round(Number(price) * 100),
             durationMinutes: requiresDuration ? Number(duration) : null,
             bufferMinutes: Number(bufferMinutes || "0"),
-            additionalDogEnabled: isBoarding ? boardingExtraDogEnabled : false,
+            additionalDogEnabled:
+              isBoarding || isWalking ? boardingExtraDogEnabled : false,
             additionalDogPriceCents:
-              isBoarding && boardingExtraDogEnabled
+              (isBoarding || isWalking) && boardingExtraDogEnabled
                 ? Math.round(Number(boardingExtraDogPrice) * 100)
                 : null,
             pricingJson: isPetSitting
@@ -1457,7 +1492,7 @@ export default function SupplierServicesPage() {
           </div>
         ) : null}
 
-        {s.service === "BOARDING" || s.service === "DAYCARE" ? (
+        {["BOARDING", "DAYCARE", "WALKING"].includes(s.service) ? (
           <>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
@@ -1470,7 +1505,9 @@ export default function SupplierServicesPage() {
                   })
                 }
               />
-              Enable extra dog pricing
+              {s.service === "WALKING"
+                ? "Allow more than one dog from the same household"
+                : "Enable extra dog pricing"}
             </label>
 
             {editForm.additionalDogEnabled ? (
@@ -2347,7 +2384,7 @@ export default function SupplierServicesPage() {
           </div>
         ) : null}
 
-        {isBoarding ? (
+        {isBoarding || serviceType === "WALKING" ? (
           <div className="space-y-3 rounded-lg border border-gray-200 p-4">
             <label className="flex items-center gap-2 text-sm font-medium">
               <input
@@ -2355,7 +2392,9 @@ export default function SupplierServicesPage() {
                 checked={boardingExtraDogEnabled}
                 onChange={(e) => setBoardingExtraDogEnabled(e.target.checked)}
               />
-              Enable extra dog pricing
+              {serviceType === "WALKING"
+                ? "Allow more than one dog from the same household"
+                : "Enable extra dog pricing"}
             </label>
 
             {boardingExtraDogEnabled ? (
@@ -2654,7 +2693,7 @@ export default function SupplierServicesPage() {
                         </p>
                       ) : null}
 
-                      {(type === "BOARDING" || type === "DAYCARE") &&
+                      {["BOARDING", "DAYCARE", "WALKING"].includes(type) &&
                       s.additionalDogEnabled ? (
                         <p>
                           Extra dog: {formatRandFromCents(s.additionalDogPriceCents)}

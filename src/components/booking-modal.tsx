@@ -452,6 +452,32 @@ export default function BookingModal({
     return toNumber(service?.maxDogsPerBooking);
   }, [service?.maxDogsPerBooking]);
 
+  const walkingAdditionalDogEnabled = useMemo(
+    () => isWalking && toBoolean(service?.additionalDogEnabled),
+    [isWalking, service?.additionalDogEnabled]
+  );
+
+  const walkingAdditionalDogPriceCents = useMemo(
+    () => toNumber(service?.additionalDogPriceCents),
+    [service?.additionalDogPriceCents]
+  );
+
+  const estimatedWalkingTotalCents = useMemo(() => {
+    if (!isWalking) return null;
+
+    const dogCount = Math.max(1, selectedDogIds.length || 1);
+
+    return (
+      toNumber(service?.baseRateCents) +
+      walkingAdditionalDogPriceCents * Math.max(0, dogCount - 1)
+    );
+  }, [
+    isWalking,
+    selectedDogIds.length,
+    service?.baseRateCents,
+    walkingAdditionalDogPriceCents,
+  ]);
+
   const boardingBaseRateCents = useMemo(() => {
     return toNumber(service?.baseRateCents);
   }, [service?.baseRateCents]);
@@ -680,6 +706,10 @@ export default function BookingModal({
       return estimatedDaycareTotalCents ?? daycareBaseSessionPriceCents;
     }
 
+    if (isWalking) {
+      return estimatedWalkingTotalCents ?? toNumber(service?.baseRateCents);
+    }
+
     if (isPetTransport) {
       return (
         estimatedPetTransportTotalCents ?? petTransportOneWayPriceCents
@@ -727,6 +757,8 @@ export default function BookingModal({
     isDaycare,
     estimatedDaycareTotalCents,
     daycareBaseSessionPriceCents,
+    isWalking,
+    estimatedWalkingTotalCents,
     isPetTransport,
     estimatedPetTransportTotalCents,
     petTransportOneWayPriceCents,
@@ -793,6 +825,14 @@ export default function BookingModal({
       }`;
     }
 
+    if (isWalking) {
+      const dogCount = Math.max(1, selectedDogIds.length || 1);
+
+      return `${formatPrice(displayPrice)} total • ${dogCount} dog${
+        dogCount > 1 ? "s" : ""
+      }`;
+    }
+
     if (isPetTransport) {
       const journeyLabel =
         journeyType === "RETURN" ? "return journey" : "one way";
@@ -817,6 +857,7 @@ export default function BookingModal({
     isBoarding,
     isPetSitting,
     isDaycare,
+    isWalking,
     isPetTransport,
     isGrooming,
     arrivalDate,
@@ -1030,11 +1071,22 @@ export default function BookingModal({
   ]);
 
   function toggleDog(id: string) {
-    setSelectedDogIds((prev) =>
-      prev.includes(id)
-        ? prev.filter((dogId) => dogId !== id)
-        : [...prev, id]
-    );
+    setSelectedDogIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((dogId) => dogId !== id);
+      }
+
+      if (isWalking && !walkingAdditionalDogEnabled) {
+        return [id];
+      }
+
+      if (maxDogsPerBooking > 0 && prev.length >= maxDogsPerBooking) {
+        alert(`You can only book up to ${maxDogsPerBooking} dog(s) for this service`);
+        return prev;
+      }
+
+      return [...prev, id];
+    });
   }
 
   function buildNotes(params?: {
@@ -1136,6 +1188,14 @@ export default function BookingModal({
 
     if (selectedDogIds.length === 0) {
       return alert("Select at least one dog");
+    }
+
+    if (
+      isWalking &&
+      !walkingAdditionalDogEnabled &&
+      selectedDogIds.length > 1
+    ) {
+      return alert("This walking service allows one dog per booking");
     }
 
     const resolvedBlock = isBlockCapacityService
@@ -1563,6 +1623,12 @@ if (isBlockCapacityService && !resolvedBlock) {
                 <p className="text-xs text-gray-500">
                   Maximum dogs allowed for this booking:{" "}
                   {maxDogsPerBooking}
+                </p>
+              ) : null}
+
+              {isWalking && !walkingAdditionalDogEnabled ? (
+                <p className="text-xs text-gray-500">
+                  This walker allows one dog per household booking.
                 </p>
               ) : null}
             </div>
