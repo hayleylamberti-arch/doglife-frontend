@@ -199,6 +199,36 @@ export default function AdminSuppliersPage() {
     onSettled: () => setActiveSupplierId(null),
   });
 
+  const suspendMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      await api.post(`/api/admin/suppliers/${supplierId}/suspend`);
+    },
+    onMutate: (supplierId) => setActiveSupplierId(supplierId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
+    },
+    onError: (err: any) => {
+      console.error("Suspend supplier failed:", err?.response?.data || err);
+      alert(err?.response?.data?.error || "Failed to suspend supplier");
+    },
+    onSettled: () => setActiveSupplierId(null),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (supplierId: string) => {
+      await api.post(`/api/admin/suppliers/${supplierId}/restore`);
+    },
+    onMutate: (supplierId) => setActiveSupplierId(supplierId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-suppliers"] });
+    },
+    onError: (err: any) => {
+      console.error("Restore supplier failed:", err?.response?.data || err);
+      alert(err?.response?.data?.error || "Failed to restore supplier");
+    },
+    onSettled: () => setActiveSupplierId(null),
+  });
+
   function handleReject(supplier: SupplierItem) {
     const reason = window.prompt(
       `Reject ${supplier.businessName || "this supplier"}.\nAdd a reason for the rejection:`,
@@ -356,24 +386,58 @@ export default function AdminSuppliersPage() {
                             View
                           </Link>
 
-                          {!isApproved ? (
-                            <Button
-                              onClick={() => approveMutation.mutate(supplier.id)}
-                              disabled={isBusy}
-                            >
-                              {isBusy ? "Working..." : "Approve"}
-                            </Button>
-                          ) : null}
+              {["SUBMITTED", "UNDER_REVIEW", "REJECTED"].includes(
+                supplier.approvalStatus
+              ) ? (
+                <>
+                  <Button
+                    onClick={() => approveMutation.mutate(supplier.id)}
+                    disabled={isBusy}
+                  >
+                    {isBusy ? "Working..." : "Approve"}
+                  </Button>
 
-                          <Button
-                            variant="outline"
-                            onClick={() => handleReject(supplier)}
-                            disabled={isBusy}
-                          >
-                            {isBusy ? "Working..." : isApproved ? "Suspend" : "Reject"}
-                          </Button>
-                        </div>
-                      </td>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleReject(supplier)}
+                    disabled={isBusy}
+                  >
+                    {isBusy ? "Working..." : "Reject"}
+                  </Button>
+                </>
+              ) : null}
+
+              {supplier.approvalStatus === "APPROVED" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Suspend ${
+                          supplier.businessName || "this supplier"
+                        }? They will be hidden from public discovery.`
+                      )
+                    ) {
+                      suspendMutation.mutate(supplier.id);
+                    }
+                  }}
+                  disabled={isBusy}
+                >
+                  {isBusy ? "Working..." : "Suspend"}
+                </Button>
+              ) : null}
+
+              {supplier.approvalStatus === "SUSPENDED" ? (
+                <Button
+                  variant="outline"
+                  onClick={() => restoreMutation.mutate(supplier.id)}
+                  disabled={isBusy}
+                >
+                  {isBusy ? "Working..." : "Restore"}
+                </Button>
+              ) : null}
+                      </div>
+            </td>
 
                       <td className="px-5 py-4">
                         <span
