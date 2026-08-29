@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -47,9 +47,96 @@ type UsersInsightsResponse = {
   };
 };
 
+type BookingSummaryResponse = {
+  ok: boolean;
+  period: {
+    key: string;
+    currentStart: string | null;
+    currentEnd: string;
+    previousStart: string | null;
+    previousEnd: string | null;
+    timezone: string;
+  };
+  summary: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    inProgress: number;
+    completedUnbilled: number;
+    completed: number;
+    cancelled: number;
+    bookingValueCents: number;
+    completedBookingValueCents: number;
+  };
+  previousSummary: {
+    total: number;
+    bookingValueCents: number;
+    completedBookingValueCents: number;
+  } | null;
+  growth: {
+    bookingsPercent: number | null;
+    bookingValuePercent: number | null;
+    completedBookingValuePercent: number | null;
+  } | null;
+  byService: Array<{
+    service: string;
+    bookingCount: number;
+  }>;
+  bySupplier: Array<{
+    supplierId: string;
+    businessName: string;
+    bookingCount: number;
+    bookingValueCents: number;
+  }>;
+};
+
 function formatLabel(value?: string | null) {
   if (!value) return "—";
   return value.replace(/_/g, " ");
+}
+
+function formatCurrency(cents?: number) {
+  return new Intl.NumberFormat("en-ZA", {
+    style: "currency",
+    currency: "ZAR",
+    maximumFractionDigits: 2,
+  }).format((cents ?? 0) / 100);
+}
+
+function formatGrowth(
+  value: number | null | undefined,
+  currentValue: number,
+  previousValue: number
+) {
+  if (value === null || value === undefined) {
+    if (currentValue > 0 && previousValue === 0) {
+      return {
+        label: "New vs previous period",
+        className: "text-emerald-600",
+      };
+    }
+
+    return null;
+  }
+
+  if (value > 0) {
+    return {
+      label: `↑ ${value}% vs previous period`,
+      className: "text-emerald-600",
+    };
+  }
+
+  if (value < 0) {
+    return {
+      label: `↓ ${Math.abs(value)}% vs previous period`,
+      className: "text-red-600",
+    };
+  }
+
+  return {
+    label: "No change vs previous period",
+    className: "text-gray-500",
+  };
 }
 
 function getUserName(user?: UserInsight | null) {
@@ -64,6 +151,9 @@ function getUrgencyClass(count: number) {
 }
 
 export default function AdminDashboard() {
+  const [bookingPeriod, setBookingPeriod] = useState<
+    "today" | "7d" | "30d" | "all"
+  >("30d");
   const waitlistQuery = useQuery<WaitlistSummaryResponse>({
     queryKey: ["waitlistSummary"],
     queryFn: async () => {
@@ -88,11 +178,53 @@ export default function AdminDashboard() {
     },
   });
 
+  const bookingsQuery = useQuery<BookingSummaryResponse>({
+    queryKey: ["admin-bookings-summary", bookingPeriod],
+    queryFn: async () => {
+      const res = await api.get(
+        `/api/admin/bookings/summary?period=${bookingPeriod}`
+      );
+      return res.data;
+    },
+  });
+
   const suburbSummary = waitlistQuery.data?.suburbSummary ?? [];
   const serviceSummary = waitlistQuery.data?.serviceSummary ?? {};
   const suppliers = suppliersQuery.data?.suppliers ?? [];
   const users = usersQuery.data?.users ?? [];
   const marketplace = usersQuery.data?.marketplace;
+  const bookingSummary = bookingsQuery.data?.summary;
+  const bookingPrevious = bookingsQuery.data?.previousSummary;
+  const bookingGrowth = bookingsQuery.data?.growth;
+  const bookingServices = bookingsQuery.data?.byService ?? [];
+  const bookingSuppliers = bookingsQuery.data?.bySupplier ?? [];
+
+  const bookingsGrowthDisplay =
+    bookingSummary && bookingPrevious && bookingGrowth
+      ? formatGrowth(
+          bookingGrowth.bookingsPercent,
+          bookingSummary.total,
+          bookingPrevious.total
+        )
+      : null;
+
+  const bookingValueGrowthDisplay =
+    bookingSummary && bookingPrevious && bookingGrowth
+      ? formatGrowth(
+          bookingGrowth.bookingValuePercent,
+          bookingSummary.bookingValueCents,
+          bookingPrevious.bookingValueCents
+        )
+      : null;
+
+  const completedValueGrowthDisplay =
+    bookingSummary && bookingPrevious && bookingGrowth
+      ? formatGrowth(
+          bookingGrowth.completedBookingValuePercent,
+          bookingSummary.completedBookingValueCents,
+          bookingPrevious.completedBookingValueCents
+        )
+      : null;
 
   const topWaitlistSuburbs = useMemo(
     () => [...suburbSummary].sort((a, b) => b._count.id - a._count.id),
@@ -215,6 +347,180 @@ export default function AdminDashboard() {
             Of {userMetrics.total} users
           </p>
         </Link>
+      </div>
+
+      <div className="rounded-xl bg-white p-5 shadow">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-900">Booking Operations</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Booking activity by creation date, value and supplier.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              ["today", "Today"],
+              ["7d", "Last 7 days"],
+              ["30d", "Last 30 days"],
+              ["all", "All time"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() =>
+                  setBookingPeriod(
+                    value as "today" | "7d" | "30d" | "all"
+                  )
+                }
+                className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                  bookingPeriod === value
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {bookingsQuery.isLoading ? (
+          <p className="mt-4 text-sm text-gray-500">Loading booking data...</p>
+        ) : bookingsQuery.error ? (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="font-medium text-red-700">Booking data is unavailable.</p>
+            <p className="mt-1 text-sm text-red-600">
+              The rest of the admin dashboard is still available.
+            </p>
+          </div>
+        ) : bookingSummary ? (
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Total bookings</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">
+                  {bookingSummary.total}
+                </p>
+                {bookingsGrowthDisplay && (
+                  <p className={`mt-1 text-xs font-medium ${bookingsGrowthDisplay.className}`}>
+                    {bookingsGrowthDisplay.label}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm text-gray-500">Pending</p>
+                <p className="mt-1 text-3xl font-bold text-amber-700">
+                  {bookingSummary.pending}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <p className="text-sm text-gray-500">In progress</p>
+                <p className="mt-1 text-3xl font-bold text-blue-700">
+                  {bookingSummary.inProgress}
+                </p>
+              </div>
+
+              <div
+                className={`rounded-lg border p-4 ${
+                  bookingSummary.completedUnbilled > 0
+                    ? "border-red-300 bg-red-50"
+                    : "border-gray-100"
+                }`}
+              >
+                <p className="text-sm text-gray-500">Completed unbilled</p>
+                <p
+                  className={`mt-1 text-3xl font-bold ${
+                    bookingSummary.completedUnbilled > 0
+                      ? "text-red-700"
+                      : "text-gray-900"
+                  }`}
+                >
+                  {bookingSummary.completedUnbilled}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Total booking value</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900">
+                  {formatCurrency(bookingSummary.bookingValueCents)}
+                </p>
+                {bookingValueGrowthDisplay && (
+                  <p className={`mt-1 text-xs font-medium ${bookingValueGrowthDisplay.className}`}>
+                    {bookingValueGrowthDisplay.label}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Completed booking value</p>
+                <p className="mt-1 text-2xl font-bold text-gray-900">
+                  {formatCurrency(bookingSummary.completedBookingValueCents)}
+                </p>
+                {completedValueGrowthDisplay && (
+                  <p className={`mt-1 text-xs font-medium ${completedValueGrowthDisplay.className}`}>
+                    {completedValueGrowthDisplay.label}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border border-gray-100 p-4">
+                <h3 className="font-semibold text-gray-900">Booking status</h3>
+                <div className="mt-3 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Pending</span><span className="font-semibold">{bookingSummary.pending}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Confirmed</span><span className="font-semibold">{bookingSummary.confirmed}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">In progress</span><span className="font-semibold">{bookingSummary.inProgress}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Completed unbilled</span><span className="font-semibold">{bookingSummary.completedUnbilled}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Completed</span><span className="font-semibold">{bookingSummary.completed}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Cancelled</span><span className="font-semibold">{bookingSummary.cancelled}</span></div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <h3 className="font-semibold text-gray-900">Booked services</h3>
+                <div className="mt-3 space-y-2">
+                  {bookingServices.length === 0 ? (
+                    <p className="text-sm text-gray-500">No bookings yet.</p>
+                  ) : (
+                    bookingServices.slice(0, 5).map((item) => (
+                      <div key={item.service} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{formatLabel(item.service)}</span>
+                        <span className="font-semibold">{item.bookingCount}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <h3 className="font-semibold text-gray-900">Supplier booking activity</h3>
+                <div className="mt-3 space-y-3">
+                  {bookingSuppliers.length === 0 ? (
+                    <p className="text-sm text-gray-500">No supplier bookings yet.</p>
+                  ) : (
+                    bookingSuppliers.slice(0, 5).map((item) => (
+                      <div key={item.supplierId} className="flex items-start justify-between gap-3 text-sm">
+                        <div>
+                          <p className="font-medium text-gray-900">{item.businessName}</p>
+                          <p className="text-xs text-gray-500">{formatCurrency(item.bookingValueCents)}</p>
+                        </div>
+                        <span className="font-semibold">{item.bookingCount}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="mt-4 text-sm text-gray-500">No booking data yet.</p>
+        )}
       </div>
 
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
