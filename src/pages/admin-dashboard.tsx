@@ -49,6 +49,24 @@ type UsersInsightsResponse = {
 
 type BookingSummaryResponse = {
   ok: boolean;
+  liveOperations: {
+    timezone: string;
+    inProgress: number;
+    startingToday: number;
+    endingToday: number;
+    startingNext7Days: number;
+    inProgressBookings: Array<{
+      id: string;
+      status: string;
+      serviceType: string;
+      startAt: string;
+      endAt: string;
+      supplier: {
+        id: string;
+        businessName: string | null;
+      };
+    }>;
+  };
   period: {
     key: string;
     currentStart: string | null;
@@ -139,6 +157,17 @@ function formatGrowth(
   };
 }
 
+function formatOperationalDate(value: string) {
+  return new Intl.DateTimeFormat("en-ZA", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Africa/Johannesburg",
+  }).format(new Date(value));
+}
+
 function getUserName(user?: UserInsight | null) {
   if (!user) return "—";
   return [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
@@ -154,6 +183,7 @@ export default function AdminDashboard() {
   const [bookingPeriod, setBookingPeriod] = useState<
     "today" | "7d" | "30d" | "all"
   >("30d");
+  const [showInProgressBookings, setShowInProgressBookings] = useState(false);
   const waitlistQuery = useQuery<WaitlistSummaryResponse>({
     queryKey: ["waitlistSummary"],
     queryFn: async () => {
@@ -193,6 +223,7 @@ export default function AdminDashboard() {
   const suppliers = suppliersQuery.data?.suppliers ?? [];
   const users = usersQuery.data?.users ?? [];
   const marketplace = usersQuery.data?.marketplace;
+  const liveOperations = bookingsQuery.data?.liveOperations;
   const bookingSummary = bookingsQuery.data?.summary;
   const bookingPrevious = bookingsQuery.data?.previousSummary;
   const bookingGrowth = bookingsQuery.data?.growth;
@@ -347,6 +378,112 @@ export default function AdminDashboard() {
             Of {userMetrics.total} users
           </p>
         </Link>
+      </div>
+
+      <div className="rounded-xl bg-white p-5 shadow">
+        <div>
+          <h2 className="font-semibold text-gray-900">Live Operations</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Services happening now and starting or ending soon.
+          </p>
+        </div>
+
+        {bookingsQuery.isLoading ? (
+          <p className="mt-4 text-sm text-gray-500">Loading live operations...</p>
+        ) : bookingsQuery.error ? (
+          <p className="mt-4 text-sm text-red-600">
+            Live operations are unavailable.
+          </p>
+        ) : liveOperations ? (
+          <>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                className={`rounded-lg border p-4 ${
+                  liveOperations.inProgress > 0
+                    ? "border-blue-200 bg-blue-50"
+                    : "border-gray-100"
+                }`}
+              >
+                <p className="text-sm text-gray-500">In progress</p>
+                <p className="mt-1 text-3xl font-bold text-blue-700">
+                  {liveOperations.inProgress}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Starting today</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">
+                  {liveOperations.startingToday}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Ending today</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">
+                  {liveOperations.endingToday}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 p-4">
+                <p className="text-sm text-gray-500">Starting next 7 days</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">
+                  {liveOperations.startingNext7Days}
+                </p>
+              </div>
+            </div>
+
+            {liveOperations.inProgressBookings.length > 0 && (
+            <div className="mt-4 rounded-lg border border-gray-100 p-4">
+              <button
+                type="button"
+                onClick={() =>
+                  setShowInProgressBookings((current) => !current)
+                }
+                className="flex w-full items-center justify-between gap-3 text-left"
+                aria-expanded={showInProgressBookings}
+              >
+                <h3 className="font-semibold text-gray-900">
+                  Currently in progress ({liveOperations.inProgressBookings.length})
+                </h3>
+
+                <span className="text-lg text-gray-500">
+                  {showInProgressBookings ? "−" : "+"}
+                </span>
+              </button>
+
+              {showInProgressBookings && (
+                <div className="mt-3 space-y-3">
+                  {liveOperations.inProgressBookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="flex flex-col gap-1 border-b border-gray-100 pb-3 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {booking.supplier.businessName || "Unnamed supplier"}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {formatLabel(booking.serviceType)}
+                        </p>
+                      </div>
+
+                      <p className="text-sm text-gray-600">
+                        {formatOperationalDate(booking.startAt)}
+                        {" → "}
+                        {formatOperationalDate(booking.endAt)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          </>
+        ) : (
+          <p className="mt-4 text-sm text-gray-500">
+            No live operational data yet.
+          </p>
+        )}
       </div>
 
       <div className="rounded-xl bg-white p-5 shadow">
