@@ -336,7 +336,7 @@ export default function SendSlotCard() {
       }
 
       setShareUrl(
-        `${window.location.origin}/booking-hold/${encodeURIComponent(
+        `${window.location.origin}/book/hold/${encodeURIComponent(
           token,
         )}`,
       );
