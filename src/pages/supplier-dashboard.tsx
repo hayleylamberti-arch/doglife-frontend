@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import SendSlotCard from "@/components/send-slot-card";
 
 import type {
   BookingStatus,
@@ -2073,6 +2074,8 @@ const cancelled = sortBookingsByStart(
           </div>
         </div>
       </div>
+
+      <SendSlotCard />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5 md:gap-4">
         <button
