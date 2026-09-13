@@ -18,6 +18,7 @@ import Search from "@/pages/search";
 import MyDogs from "@/pages/my-dogs";
 import DogProfilePage from "@/pages/dog-profile";
 import TrustAndSafetyPage from "@/pages/TrustAndSafetyPage";
+import BookingHoldPage from "@/pages/booking-hold";
 
 import PrivacyPolicy from "@/pages/legal/PrivacyPolicy";
 import TermsAndConditions from "@/pages/legal/TermsAndConditions";
@@ -62,6 +63,7 @@ export default function AppRoutes() {
         <Route path="search" element={<Search />} />
         <Route path="trust-and-safety" element={<TrustAndSafetyPage />} />
         <Route path="supplier/:identifier" element={<SupplierPublicProfile />} />
+        <Route path="book/hold/:token" element={<BookingHoldPage />} />
 
         <Route path="legal/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="legal/terms" element={<TermsAndConditions />} />
@@ -70,8 +72,8 @@ export default function AppRoutes() {
         <Route path="legal/refunds" element={<RefundPolicy />} />
         <Route path="legal/health-safety" element={<HealthSafetyPolicy />} />
         <Route path="legal/trust-safety" element={<TrustSafetyPolicy />} />
-<Route path="legal/community-standards" element={<CommunityStandards />} />
-<Route path="legal/disclaimer" element={<Disclaimer />} />
+        <Route path="legal/community-standards" element={<CommunityStandards />} />
+        <Route path="legal/disclaimer" element={<Disclaimer />} />
       </Route>
 
       <Route element={<RequireAuth />}>
@@ -104,15 +106,15 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<RequireAuth allowRoles={["ADMIN"]} />}>
-  <Route element={<AdminLayout />}>
-    <Route path="admin" element={<AdminDashboard />} />
-    <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
-    <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
-    <Route path="admin/bookings" element={<AdminBookingsPage />} />
-<Route path="admin/users" element={<AdminUsersPage />} />
-    <Route path="admin/suppliers/:id" element={<AdminSupplierDetailPage />} />
-  </Route>
-</Route>
+        <Route element={<AdminLayout />}>
+          <Route path="admin" element={<AdminDashboard />} />
+          <Route path="admin/suppliers" element={<AdminSuppliersPage />} />
+          <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
+          <Route path="admin/bookings" element={<AdminBookingsPage />} />
+          <Route path="admin/users" element={<AdminUsersPage />} />
+          <Route path="admin/suppliers/:id" element={<AdminSupplierDetailPage />} />
+        </Route>
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

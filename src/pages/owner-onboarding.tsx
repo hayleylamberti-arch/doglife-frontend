@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { safeInternalReturnPath } from "@/lib/safeReturnPath";
 
 type Suburb = {
   id: string;
@@ -14,7 +15,13 @@ type Suburb = {
 
 export default function OwnerOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, refreshMe } = useAuth();
+
+  const returnTo = safeInternalReturnPath(
+    (location.state as { returnTo?: unknown } | null)
+      ?.returnTo
+  );
 
   const [suburbs, setSuburbs] = useState<Suburb[]>([]);
   const [selectedSuburbId, setSelectedSuburbId] = useState(
@@ -35,9 +42,16 @@ export default function OwnerOnboarding() {
 
   useEffect(() => {
     if (user?.onboardingCompleted && !completed) {
-      navigate("/owner/dashboard", { replace: true });
+      navigate(returnTo || "/owner/dashboard", {
+        replace: true,
+      });
     }
-  }, [user?.onboardingCompleted, completed, navigate]);
+  }, [
+    user?.onboardingCompleted,
+    completed,
+    navigate,
+    returnTo,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -137,6 +151,10 @@ export default function OwnerOnboarding() {
 
       setCompleted(true);
       await refreshMe();
+
+      if (returnTo) {
+        navigate(returnTo, { replace: true });
+      }
     } catch (err: any) {
       setError(
         err?.response?.data?.error ||
