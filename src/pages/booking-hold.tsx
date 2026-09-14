@@ -5,6 +5,9 @@ import {
   useParams,
 } from "react-router-dom";
 
+import BookingHoldConfirmation, {
+  type BookingHoldService,
+} from "@/components/booking-hold-confirmation";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
@@ -18,6 +21,8 @@ type HoldState =
 
 type PublicHold = {
   state: HoldState;
+  supplierId?: string;
+  supplierServiceId?: string;
   serviceType?: string | null;
   startAt: string;
   endAt: string;
@@ -30,9 +35,7 @@ type PublicHold = {
     logoUrl?: string | null;
     publicSlug?: string | null;
   } | null;
-  service?: {
-    service?: string | null;
-  } | null;
+  service?: BookingHoldService | null;
 };
 
 type PublicHoldResponse = {
@@ -245,9 +248,9 @@ export default function BookingHoldPage() {
         "The supplier has cancelled this held slot. You can check their current availability.",
     },
     CONVERTED: {
-      title: "This booking link has already been used",
+      title: "Your booking request has been sent",
       message:
-        "This link can’t be used to create another booking.",
+        "The held slot has been converted into a booking request. The supplier can now review and confirm it.",
     },
   };
 
@@ -406,21 +409,30 @@ export default function BookingHoldPage() {
             >
               Complete setup to continue
             </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                disabled
-                className="w-full"
-              >
-                Continue booking
-              </Button>
-
-              <p className="mt-2 text-center text-xs text-gray-500">
-                Booking confirmation will be enabled in the next
-                Send a Slot stage.
+          ) : !token ||
+            !hold.supplierId ||
+            !hold.service ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-semibold text-red-900">
+                This booking link is missing required service
+                information.
               </p>
-            </>
+
+              <p className="mt-1 text-sm text-red-700">
+                Please ask the supplier to create and send a new
+                booking link.
+              </p>
+            </div>
+          ) : (
+            <BookingHoldConfirmation
+              token={token}
+              supplierId={hold.supplierId}
+              supplierName={supplierName}
+              requestedDogCount={hold.requestedDogCount}
+              service={hold.service}
+              isReturnJourney={hasReturnJourney}
+              onConverted={loadHold}
+            />
           )}
         </div>
       </div>
