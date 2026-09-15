@@ -19,6 +19,8 @@ type BookingSlotOption = {
   endTime?: string;
 };
 
+type JourneyType = "ONE_WAY" | "RETURN";
+
 const SERVICE_LABELS: Record<string, string> = {
   WALKING: "Dog Walking",
   GROOMING: "Grooming",
@@ -64,11 +66,13 @@ function normalizeSlot(slot: any): BookingSlotOption | null {
     return { startTime: slot };
   }
 
-  if (slot?.startTime) {
+  const startTime = slot?.startTime || slot?.start;
+
+  if (startTime) {
     return {
       id: slot.id,
-      startTime: slot.startTime,
-      endTime: slot.endTime,
+      startTime,
+      endTime: slot.endTime || slot.end,
     };
   }
 
@@ -83,9 +87,7 @@ function flattenBookableSlots(payload: any): BookingSlotOption[] {
     ...(groupedSlots.afternoon || []),
     ...(groupedSlots.evening || []),
   ]
-    .map((slot) =>
-      normalizeSlot(slot?.start || slot?.startTime || slot),
-    )
+    .map((slot) => normalizeSlot(slot))
     .filter(Boolean) as BookingSlotOption[];
 
   return Array.from(
@@ -144,13 +146,25 @@ export default function SendSlotCard() {
   const [dogCount, setDogCount] = useState(1);
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState(0);
+
+  const [journeyType, setJourneyType] =
+    useState<JourneyType>("ONE_WAY");
+  const [returnDate, setReturnDate] = useState(today);
+  const [returnSlots, setReturnSlots] =
+    useState<BookingSlotOption[]>([]);
+  const [selectedReturnSlot, setSelectedReturnSlot] = useState("");
 
   const [loadingServices, setLoadingServices] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingReturnSlots, setLoadingReturnSlots] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const [serviceError, setServiceError] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
+  const [returnSlotError, setReturnSlotError] = useState<string | null>(
+    null,
+  );
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [shareUrl, setShareUrl] = useState("");
@@ -174,6 +188,26 @@ export default function SendSlotCard() {
       ) || null,
     [appointmentServices, selectedServiceId],
   );
+
+  const isPetTransport = selectedService?.service === "PET_TRANSPORT";
+
+  const selectedSlotEndAt = useMemo(() => {
+    const option = slots.find((slot) => slot.startTime === selectedSlot);
+
+    if (option?.endTime) {
+      const endAt = new Date(option.endTime);
+
+      if (!Number.isNaN(endAt.getTime())) return endAt;
+    }
+
+    if (!selectedSlot || slotDurationMinutes <= 0) return null;
+
+    const startAt = new Date(selectedSlot);
+
+    if (Number.isNaN(startAt.getTime())) return null;
+
+    return new Date(startAt.getTime() + slotDurationMinutes * 60_000);
+  }, [selectedSlot, slotDurationMinutes, slots]);
 
   const maximumDogCount = useMemo(() => {
     if (!selectedService) return 1;
@@ -247,6 +281,28 @@ export default function SendSlotCard() {
   }, [dogCount, maximumDogCount]);
 
   useEffect(() => {
+    setJourneyType("ONE_WAY");
+    setReturnDate(date);
+    setReturnSlots([]);
+    setSelectedReturnSlot("");
+    setReturnSlotError(null);
+  }, [selectedServiceId]);
+
+  useEffect(() => {
+    setReturnDate(date);
+    setReturnSlots([]);
+    setSelectedReturnSlot("");
+    setReturnSlotError(null);
+  }, [date]);
+
+  useEffect(() => {
+    setShareUrl("");
+    setExpiresAt("");
+    setCopyMessage("");
+    setActionError(null);
+  }, [journeyType, returnDate, selectedReturnSlot, selectedSlot]);
+
+  useEffect(() => {
     let cancelled = false;
 
     setShareUrl("");
@@ -257,6 +313,7 @@ export default function SendSlotCard() {
 
     if (!selectedService || !date) {
       setSlots([]);
+      setSlotDurationMinutes(0);
       setSlotError(null);
       return;
     }
@@ -278,10 +335,14 @@ export default function SendSlotCard() {
 
         if (!cancelled) {
           setSlots(flattenBookableSlots(response.data));
+          setSlotDurationMinutes(
+            Number(response.data?.durationMinutes) || 0,
+          );
         }
       } catch (error) {
         if (!cancelled) {
           setSlots([]);
+          setSlotDurationMinutes(0);
           setSlotError(
             getErrorMessage(
               error,
@@ -303,6 +364,87 @@ export default function SendSlotCard() {
     };
   }, [date, dogCount, selectedService]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    setSelectedReturnSlot("");
+
+    if (
+      !selectedService ||
+      !isPetTransport ||
+      journeyType !== "RETURN" ||
+      !selectedSlot ||
+      !selectedSlotEndAt ||
+      !returnDate
+    ) {
+      setReturnSlots([]);
+      setReturnSlotError(null);
+      setLoadingReturnSlots(false);
+      return;
+    }
+
+    async function loadReturnSlots() {
+      setLoadingReturnSlots(true);
+      setReturnSlotError(null);
+
+      try {
+        const supplierId = encodeURIComponent(
+          selectedService!.supplierId,
+        );
+        const serviceId = encodeURIComponent(selectedService!.id);
+        const selectedDate = encodeURIComponent(returnDate);
+
+        const response = await api.get(
+          `/api/suppliers/${supplierId}/services/${serviceId}/bookable-slots?date=${selectedDate}&dogCount=${dogCount}&limit=50`,
+        );
+
+        const outboundEndTime = selectedSlotEndAt!.getTime();
+        const nextReturnSlots = flattenBookableSlots(response.data).filter(
+          (slot) => {
+            const returnStartAt = new Date(slot.startTime);
+
+            return (
+              !Number.isNaN(returnStartAt.getTime()) &&
+              returnStartAt.getTime() >= outboundEndTime
+            );
+          },
+        );
+
+        if (!cancelled) {
+          setReturnSlots(nextReturnSlots);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setReturnSlots([]);
+          setReturnSlotError(
+            getErrorMessage(
+              error,
+              "Available return times could not be loaded.",
+            ),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingReturnSlots(false);
+        }
+      }
+    }
+
+    loadReturnSlots();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    dogCount,
+    isPetTransport,
+    journeyType,
+    returnDate,
+    selectedService,
+    selectedSlot,
+    selectedSlotEndAt,
+  ]);
+
   async function createShareableSlot() {
     if (!selectedService || !selectedSlot) return;
 
@@ -310,6 +452,15 @@ export default function SendSlotCard() {
 
     if (Number.isNaN(startAt.getTime())) {
       setActionError("Please choose a valid time.");
+      return;
+    }
+
+    if (
+      isPetTransport &&
+      journeyType === "RETURN" &&
+      !selectedReturnSlot
+    ) {
+      setActionError("Please choose a return time.");
       return;
     }
 
@@ -324,8 +475,18 @@ export default function SendSlotCard() {
         startAt: startAt.toISOString(),
       };
 
-      if (selectedService.service === "PET_TRANSPORT") {
-        payload.journeyType = "ONE_WAY";
+      if (isPetTransport) {
+        payload.journeyType = journeyType;
+
+        if (journeyType === "RETURN") {
+          const returnStartAt = new Date(selectedReturnSlot);
+
+          if (Number.isNaN(returnStartAt.getTime())) {
+            throw new Error("Please choose a valid return time.");
+          }
+
+          payload.returnStartAt = returnStartAt.toISOString();
+        }
       }
 
       const response = await api.post("/api/booking-holds", payload);
@@ -413,7 +574,7 @@ export default function SendSlotCard() {
         <div className="mt-5 border-t border-gray-200 pt-5">
           {loadingServices ? (
             <p className="text-sm text-gray-600">
-              Loading your services…
+              Loading your servicesâ¦
             </p>
           ) : serviceError ? (
             <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -482,14 +643,36 @@ export default function SendSlotCard() {
                 </label>
               </div>
 
+              {isPetTransport ? (
+                <div className="mt-5 max-w-sm">
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Journey type
+                    </span>
+                    <select
+                      value={journeyType}
+                      onChange={(event) =>
+                        setJourneyType(
+                          event.target.value as JourneyType,
+                        )
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                    >
+                      <option value="ONE_WAY">One-way</option>
+                      <option value="RETURN">Return</option>
+                    </select>
+                  </label>
+                </div>
+              ) : null}
+
               <div className="mt-5">
                 <h3 className="text-sm font-semibold text-gray-900">
-                  Available times
+                  {isPetTransport ? "Outbound times" : "Available times"}
                 </h3>
 
                 {loadingSlots ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Checking availability…
+                    Checking availabilityâ¦
                   </p>
                 ) : slotError ? (
                   <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -527,16 +710,88 @@ export default function SendSlotCard() {
                 )}
               </div>
 
+              {isPetTransport && journeyType === "RETURN" ? (
+                <div className="mt-5 rounded-xl border border-gray-200 p-4">
+                  <label className="block max-w-sm">
+                    <span className="text-sm font-medium text-gray-700">
+                      Return date
+                    </span>
+                    <input
+                      type="date"
+                      min={date}
+                      value={returnDate}
+                      onChange={(event) =>
+                        setReturnDate(event.target.value)
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                    />
+                  </label>
+
+                  <h3 className="mt-4 text-sm font-semibold text-gray-900">
+                    Return times
+                  </h3>
+
+                  {!selectedSlot ? (
+                    <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+                      Choose an outbound time first.
+                    </p>
+                  ) : loadingReturnSlots ? (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Checking return availabilityâ¦
+                    </p>
+                  ) : returnSlotError ? (
+                    <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                      {returnSlotError}
+                    </p>
+                  ) : returnSlots.length === 0 ? (
+                    <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
+                      No return times are available after the outbound
+                      journey on this date.
+                    </p>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {returnSlots.map((slot) => {
+                        const selected =
+                          selectedReturnSlot === slot.startTime;
+
+                        return (
+                          <button
+                            key={slot.id || slot.startTime}
+                            type="button"
+                            onClick={() =>
+                              setSelectedReturnSlot(slot.startTime)
+                            }
+                            className={
+                              selected
+                                ? "rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
+                                : "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-blue-400"
+                            }
+                          >
+                            {formatSlotTime(slot.startTime)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
               {!shareUrl && (
                 <div className="mt-5">
                   <button
                     type="button"
-                    disabled={!selectedSlot || creating}
+                    disabled={
+                      !selectedSlot ||
+                      creating ||
+                      (isPetTransport &&
+                        journeyType === "RETURN" &&
+                        !selectedReturnSlot)
+                    }
                     onClick={createShareableSlot}
                     className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
                     {creating
-                      ? "Creating secure link…"
+                      ? "Creating secure linkâ¦"
                       : "Create booking link"}
                   </button>
                 </div>
@@ -595,6 +850,7 @@ export default function SendSlotCard() {
                         setExpiresAt("");
                         setCopyMessage("");
                         setSelectedSlot("");
+                        setSelectedReturnSlot("");
                       }}
                       className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-white"
                     >
