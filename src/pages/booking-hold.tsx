@@ -72,9 +72,19 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("en-ZA", {
   timeZone: "Africa/Johannesburg",
 });
 
-function serviceLabel(value?: string | null) {
+function serviceLabel(
+  value?: string | null,
+  bookingModel?: string | null
+) {
   if (!value) {
     return "Dog service";
+  }
+
+  if (
+    value === "PET_SITTING" &&
+    bookingModel === "BLOCK_CAPACITY"
+  ) {
+    return "Pet Visit";
   }
 
   return (
@@ -303,7 +313,10 @@ export default function BookingHoldPage() {
         <div className="mt-6 space-y-4 rounded-xl bg-gray-50 p-4">
           <SummaryRow
             label="Service"
-            value={serviceLabel(currentService)}
+            value={serviceLabel(
+              currentService,
+              hold.service?.bookingModel
+            )}
           />
 
           {hasReturnJourney &&

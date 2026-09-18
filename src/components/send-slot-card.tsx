@@ -17,6 +17,7 @@ type BookingSlotOption = {
   id?: string;
   startTime: string;
   endTime?: string;
+  label?: string;
 };
 
 type JourneyType = "ONE_WAY" | "RETURN";
@@ -105,6 +106,27 @@ function formatServiceName(service: string) {
   );
 }
 
+function isPetVisitService(service?: SupplierService | null) {
+  return (
+    service?.service === "PET_SITTING" &&
+    effectiveBookingModel(service) === "BLOCK_CAPACITY"
+  );
+}
+
+function formatSendSlotServiceName(service: SupplierService) {
+  return isPetVisitService(service)
+    ? "Pet Visit"
+    : formatServiceName(service.service);
+}
+
+function formatBlockTime(value: string) {
+  const [hours, minutes] = value.split(":");
+
+  if (hours == null || minutes == null) return value;
+
+  return `${hours}:${minutes}`;
+}
+
 function formatSlotTime(value: string) {
   const date = new Date(value);
 
@@ -171,25 +193,35 @@ export default function SendSlotCard() {
   const [expiresAt, setExpiresAt] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
 
-  const appointmentServices = useMemo(
+  const sendSlotServices = useMemo(
     () =>
       services.filter(
-        (service) =>
-          service.isActive !== false &&
-          effectiveBookingModel(service) === "APPOINTMENT",
+        (service) => {
+          if (service.isActive === false) return false;
+
+          const bookingModel = effectiveBookingModel(service);
+
+          if (bookingModel === "APPOINTMENT") return true;
+
+          return (
+            bookingModel === "BLOCK_CAPACITY" &&
+            service.service === "PET_SITTING"
+          );
+        },
       ),
     [services],
   );
 
   const selectedService = useMemo(
     () =>
-      appointmentServices.find(
+      sendSlotServices.find(
         (service) => service.id === selectedServiceId,
       ) || null,
-    [appointmentServices, selectedServiceId],
+    [sendSlotServices, selectedServiceId],
   );
 
   const isPetTransport = selectedService?.service === "PET_TRANSPORT";
+  const isPetVisit = isPetVisitService(selectedService);
 
   const selectedSlotEndAt = useMemo(() => {
     const option = slots.find((slot) => slot.startTime === selectedSlot);
@@ -265,14 +297,14 @@ export default function SendSlotCard() {
   }, []);
 
   useEffect(() => {
-    const selectionStillExists = appointmentServices.some(
+    const selectionStillExists = sendSlotServices.some(
       (service) => service.id === selectedServiceId,
     );
 
     if (!selectionStillExists) {
-      setSelectedServiceId(appointmentServices[0]?.id || "");
+      setSelectedServiceId(sendSlotServices[0]?.id || "");
     }
-  }, [appointmentServices, selectedServiceId]);
+  }, [sendSlotServices, selectedServiceId]);
 
   useEffect(() => {
     if (dogCount > maximumDogCount) {
@@ -330,14 +362,42 @@ export default function SendSlotCard() {
         const selectedDate = encodeURIComponent(date);
 
         const response = await api.get(
-          `/api/suppliers/${supplierId}/services/${serviceId}/bookable-slots?date=${selectedDate}&dogCount=${dogCount}&limit=50`,
+          isPetVisit
+            ? `/api/suppliers/${supplierId}/services/${serviceId}/bookable-blocks?date=${selectedDate}&dogCount=${dogCount}`
+            : `/api/suppliers/${supplierId}/services/${serviceId}/bookable-slots?date=${selectedDate}&dogCount=${dogCount}&limit=50`,
         );
 
         if (!cancelled) {
-          setSlots(flattenBookableSlots(response.data));
-          setSlotDurationMinutes(
-            Number(response.data?.durationMinutes) || 0,
-          );
+          if (isPetVisit) {
+            const blocks = Array.isArray(response.data?.blocks)
+              ? response.data.blocks
+              : [];
+
+            setSlots(
+              blocks
+                .filter(
+                  (block: any) =>
+                    typeof block?.id === "string" &&
+                    typeof block?.startTime === "string" &&
+                    typeof block?.endTime === "string",
+                )
+                .map((block: any) => ({
+                  id: block.id,
+                  label:
+                    typeof block.label === "string"
+                      ? block.label
+                      : "Pet Visit",
+                  startTime: block.startTime,
+                  endTime: block.endTime,
+                })),
+            );
+            setSlotDurationMinutes(0);
+          } else {
+            setSlots(flattenBookableSlots(response.data));
+            setSlotDurationMinutes(
+              Number(response.data?.durationMinutes) || 0,
+            );
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -362,7 +422,7 @@ export default function SendSlotCard() {
     return () => {
       cancelled = true;
     };
-  }, [date, dogCount, selectedService]);
+  }, [date, dogCount, isPetVisit, selectedService]);
 
   useEffect(() => {
     let cancelled = false;
@@ -448,9 +508,9 @@ export default function SendSlotCard() {
   async function createShareableSlot() {
     if (!selectedService || !selectedSlot) return;
 
-    const startAt = new Date(selectedSlot);
+    const startAt = isPetVisit ? null : new Date(selectedSlot);
 
-    if (Number.isNaN(startAt.getTime())) {
+    if (startAt && Number.isNaN(startAt.getTime())) {
       setActionError("Please choose a valid time.");
       return;
     }
@@ -472,8 +532,14 @@ export default function SendSlotCard() {
       const payload: Record<string, unknown> = {
         supplierServiceId: selectedService.id,
         requestedDogCount: dogCount,
-        startAt: startAt.toISOString(),
       };
+
+      if (isPetVisit) {
+        payload.date = date;
+        payload.serviceBookingBlockId = selectedSlot;
+      } else {
+        payload.startAt = startAt!.toISOString();
+      }
 
       if (isPetTransport) {
         payload.journeyType = journeyType;
@@ -574,16 +640,16 @@ export default function SendSlotCard() {
         <div className="mt-5 border-t border-gray-200 pt-5">
           {loadingServices ? (
             <p className="text-sm text-gray-600">
-              Loading your servicesâ¦
+              Loading your services…
             </p>
           ) : serviceError ? (
             <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
               {serviceError}
             </p>
-          ) : appointmentServices.length === 0 ? (
+          ) : sendSlotServices.length === 0 ? (
             <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-              No active appointment services are currently available
-              for Send a Slot.
+              No active services are currently available for Send a
+              Slot.
             </p>
           ) : (
             <>
@@ -599,9 +665,9 @@ export default function SendSlotCard() {
                     }
                     className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                   >
-                    {appointmentServices.map((service) => (
+                    {sendSlotServices.map((service) => (
                       <option key={service.id} value={service.id}>
-                        {formatServiceName(service.service)}
+                        {formatSendSlotServiceName(service)}
                       </option>
                     ))}
                   </select>
@@ -672,7 +738,7 @@ export default function SendSlotCard() {
 
                 {loadingSlots ? (
                   <p className="mt-2 text-sm text-gray-600">
-                    Checking availabilityâ¦
+                    Checking availability…
                   </p>
                 ) : slotError ? (
                   <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -680,29 +746,37 @@ export default function SendSlotCard() {
                   </p>
                 ) : slots.length === 0 ? (
                   <p className="mt-2 rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-                    No available appointment times were found for this
-                    date.
+                    No available {isPetVisit ? "Pet Visit blocks" : "appointment times"} were found for this date.
                   </p>
                 ) : (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {slots.map((slot) => {
-                      const selected =
-                        selectedSlot === slot.startTime;
+                      const slotValue =
+                        isPetVisit && slot.id
+                          ? slot.id
+                          : slot.startTime;
+                      const selected = selectedSlot === slotValue;
 
                       return (
                         <button
                           key={slot.id || slot.startTime}
                           type="button"
-                          onClick={() =>
-                            setSelectedSlot(slot.startTime)
-                          }
+                          onClick={() => setSelectedSlot(slotValue)}
                           className={
                             selected
                               ? "rounded-lg border border-blue-600 bg-blue-600 px-4 py-2 text-sm font-semibold text-white"
                               : "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:border-blue-400"
                           }
                         >
-                          {formatSlotTime(slot.startTime)}
+                          {isPetVisit ? (
+                            <>
+                              {slot.label} · {formatBlockTime(slot.startTime)}
+                              {" – "}
+                              {formatBlockTime(slot.endTime || "")}
+                            </>
+                          ) : (
+                            formatSlotTime(slot.startTime)
+                          )}
                         </button>
                       );
                     })}
@@ -737,7 +811,7 @@ export default function SendSlotCard() {
                     </p>
                   ) : loadingReturnSlots ? (
                     <p className="mt-2 text-sm text-gray-600">
-                      Checking return availabilityâ¦
+                      Checking return availability…
                     </p>
                   ) : returnSlotError ? (
                     <p className="mt-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
@@ -791,7 +865,7 @@ export default function SendSlotCard() {
                     className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                   >
                     {creating
-                      ? "Creating secure linkâ¦"
+                      ? "Creating secure link…"
                       : "Create booking link"}
                   </button>
                 </div>

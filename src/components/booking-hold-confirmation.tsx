@@ -139,6 +139,9 @@ export default function BookingHoldConfirmation({
     serviceType === "PET_TRANSPORT";
   const isMobileVet =
     serviceType === "MOBILE_VET";
+  const isPetVisit =
+    serviceType === "PET_SITTING" &&
+    service.bookingModel === "BLOCK_CAPACITY";
 
   const groomingTiers = useMemo(
     () =>
@@ -201,7 +204,7 @@ export default function BookingHoldConfirmation({
   ]);
 
   const requiresOwnerAddress =
-    isWalking || isMobileVet;
+    isWalking || isMobileVet || isPetVisit;
 
   const showsAccessInstructions =
     requiresOwnerAddress || isPetTransport;
