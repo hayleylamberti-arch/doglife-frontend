@@ -1,0 +1,122 @@
+import assert from "node:assert/strict";
+
+import {
+  buildBoardingHoldCreatePayload,
+  getBoardingDateValidationError,
+  getBoardingDogCountCeiling,
+  getBoardingHoldCreateError,
+  isEligibleBoardingSendSlotService,
+} from "./send-slot-card.logic.js";
+
+const boardingService = {
+  id: "boarding-service",
+  service: "BOARDING",
+  bookingModel: "DATE_RANGE_CAPACITY",
+  isActive: true,
+  maxDogsPerBooking: 4,
+  concurrentCapacityDogs: 20,
+};
+
+assert.equal(
+  isEligibleBoardingSendSlotService(
+    boardingService,
+    "DATE_RANGE_CAPACITY",
+  ),
+  true,
+);
+assert.equal(
+  isEligibleBoardingSendSlotService(
+    { ...boardingService, bookingModel: "APPOINTMENT" },
+    "APPOINTMENT",
+  ),
+  false,
+);
+assert.equal(
+  isEligibleBoardingSendSlotService(
+    { ...boardingService, isActive: false },
+    "DATE_RANGE_CAPACITY",
+  ),
+  false,
+);
+
+for (const concurrentCapacityDogs of [null, 0, -1]) {
+  assert.equal(
+    isEligibleBoardingSendSlotService(
+      { ...boardingService, concurrentCapacityDogs },
+      "DATE_RANGE_CAPACITY",
+    ),
+    false,
+  );
+}
+
+assert.equal(getBoardingDogCountCeiling(boardingService), 4);
+assert.equal(
+  getBoardingDogCountCeiling({
+    ...boardingService,
+    maxDogsPerBooking: 30,
+  }),
+  20,
+);
+assert.equal(
+  getBoardingDogCountCeiling({
+    ...boardingService,
+    maxDogsPerBooking: null,
+  }),
+  20,
+);
+
+assert.match(
+  getBoardingDateValidationError("2099-01-10", "2099-01-10") || "",
+  /at least one day/,
+);
+assert.match(
+  getBoardingDateValidationError("2099-01-10", "2099-01-09") || "",
+  /after arrival/,
+);
+assert.equal(
+  getBoardingDateValidationError("2099-01-10", "2099-01-11"),
+  null,
+);
+
+const payload = buildBoardingHoldCreatePayload({
+  supplierServiceId: "boarding-service",
+  arrivalDate: "2099-01-10",
+  departureDate: "2099-01-12",
+  requestedDogCount: 2,
+});
+
+assert.deepEqual(payload, {
+  supplierServiceId: "boarding-service",
+  arrivalDate: "2099-01-10",
+  departureDate: "2099-01-12",
+  requestedDogCount: 2,
+});
+assert.deepEqual(Object.keys(payload).sort(), [
+  "arrivalDate",
+  "departureDate",
+  "requestedDogCount",
+  "supplierServiceId",
+]);
+
+assert.equal(
+  getBoardingHoldCreateError({
+    response: {
+      status: 409,
+      data: { error: "Supplier can only handle 4 dogs on every night" },
+    },
+  }),
+  "There isn’t enough Boarding capacity for the full selected stay.",
+);
+assert.equal(
+  getBoardingHoldCreateError({
+    response: {
+      status: 409,
+      data: { error: "Boarding is unavailable for the selected dates" },
+    },
+  }),
+  "Boarding is unavailable for the full selected stay.",
+);
+assert.match(
+  getBoardingHoldCreateError(new Error("Network Error")),
+  /connect to DogLife/,
+);

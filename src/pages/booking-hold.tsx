@@ -12,6 +12,12 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import { safeInternalReturnPath } from "@/lib/safeReturnPath";
+import {
+  formatJohannesburgDate,
+  getBoardingPublicSummaryRows,
+  getPublicHoldServiceLabel,
+  isBoardingDateRangeHold,
+} from "@/pages/booking-hold.logic";
 
 type HoldState =
   | "ACTIVE"
@@ -49,22 +55,6 @@ type LoadState =
   | "INVALID"
   | "ERROR";
 
-const SERVICE_LABELS: Record<string, string> = {
-  WALKING: "Dog walking",
-  GROOMING: "Grooming",
-  TRAINING: "Training",
-  MOBILE_VET: "Mobile vet",
-  PET_TRANSPORT: "Pet transport",
-};
-
-const DATE_FORMATTER = new Intl.DateTimeFormat("en-ZA", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Africa/Johannesburg",
-});
-
 const TIME_FORMATTER = new Intl.DateTimeFormat("en-ZA", {
   hour: "2-digit",
   minute: "2-digit",
@@ -72,36 +62,8 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("en-ZA", {
   timeZone: "Africa/Johannesburg",
 });
 
-function serviceLabel(
-  value?: string | null,
-  bookingModel?: string | null
-) {
-  if (!value) {
-    return "Dog service";
-  }
-
-  if (
-    value === "PET_SITTING" &&
-    bookingModel === "BLOCK_CAPACITY"
-  ) {
-    return "Pet Visit";
-  }
-
-  return (
-    SERVICE_LABELS[value] ||
-    value
-      .toLowerCase()
-      .split("_")
-      .map(
-        (part) =>
-          part.charAt(0).toUpperCase() + part.slice(1)
-      )
-      .join(" ")
-  );
-}
-
 function formatDate(value: string) {
-  return DATE_FORMATTER.format(new Date(value));
+  return formatJohannesburgDate(value);
 }
 
 function formatTime(value: string) {
@@ -129,6 +91,8 @@ export default function BookingHoldPage() {
   const [hold, setHold] = useState<PublicHold | null>(
     null
   );
+  const [conversionTerminalError, setConversionTerminalError] =
+    useState("");
 
   const loadHold = useCallback(async () => {
     if (!token) {
@@ -169,6 +133,14 @@ export default function BookingHoldPage() {
   useEffect(() => {
     void loadHold();
   }, [loadHold]);
+
+  const handleConverted = useCallback(
+    async (terminalMessage?: string) => {
+      setConversionTerminalError(terminalMessage || "");
+      await loadHold();
+    },
+    [loadHold]
+  );
 
   const returnTo =
     safeInternalReturnPath(location.pathname) || "/";
@@ -231,6 +203,10 @@ export default function BookingHoldPage() {
 
   const currentService =
     hold.service?.service || hold.serviceType;
+  const isBoardingDateRange = isBoardingDateRangeHold(
+    currentService,
+    hold.service?.bookingModel
+  );
 
   const hasReturnJourney =
     Boolean(hold.returnStartAt) &&
@@ -239,6 +215,13 @@ export default function BookingHoldPage() {
   const dogCountText = `Up to ${
     hold.requestedDogCount
   } ${hold.requestedDogCount === 1 ? "dog" : "dogs"}`;
+  const boardingSummaryRows = isBoardingDateRange
+    ? getBoardingPublicSummaryRows({
+        startAt: hold.startAt,
+        endAt: hold.endAt,
+        requestedDogCount: hold.requestedDogCount,
+      })
+    : [];
 
   const lifecycleCopy: Record<
     Exclude<HoldState, "ACTIVE">,
@@ -305,7 +288,9 @@ export default function BookingHoldPage() {
           </h1>
 
           <p className="mt-2 text-sm text-gray-600">
-            Review the appointment details below, then sign in
+            Review the {isBoardingDateRange
+              ? "reservation"
+              : "appointment"} details below, then sign in
             or join DogLife to continue.
           </p>
         </div>
@@ -313,13 +298,25 @@ export default function BookingHoldPage() {
         <div className="mt-6 space-y-4 rounded-xl bg-gray-50 p-4">
           <SummaryRow
             label="Service"
-            value={serviceLabel(
+            value={getPublicHoldServiceLabel(
               currentService,
               hold.service?.bookingModel
             )}
           />
 
-          {hasReturnJourney &&
+          {isBoardingDateRange ? (
+            <>
+              {boardingSummaryRows
+                .filter((row) => row.label !== "Dogs")
+                .map((row) => (
+                  <SummaryRow
+                    key={row.label}
+                    label={row.label}
+                    value={row.value}
+                  />
+                ))}
+            </>
+          ) : hasReturnJourney &&
           hold.returnStartAt &&
           hold.returnEndAt ? (
             <>
@@ -351,7 +348,11 @@ export default function BookingHoldPage() {
 
           <SummaryRow
             label="Dogs"
-            value={dogCountText}
+            value={
+              boardingSummaryRows.find(
+                (row) => row.label === "Dogs"
+              )?.value || dogCountText
+            }
           />
 
           <SummaryRow
@@ -436,15 +437,26 @@ export default function BookingHoldPage() {
                 booking link.
               </p>
             </div>
+          ) : conversionTerminalError ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">
+                Booking link unavailable
+              </p>
+              <p className="mt-1 text-sm text-amber-800">
+                {conversionTerminalError}
+              </p>
+            </div>
           ) : (
             <BookingHoldConfirmation
               token={token}
               supplierId={hold.supplierId}
               supplierName={supplierName}
               requestedDogCount={hold.requestedDogCount}
+              startAt={hold.startAt}
+              endAt={hold.endAt}
               service={hold.service}
               isReturnJourney={hasReturnJourney}
-              onConverted={loadHold}
+              onConverted={handleConverted}
             />
           )}
         </div>

@@ -1,5 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  buildBoardingHoldConversionPayload,
+  calculateBoardingPriceEstimate,
+  classifyHoldConversionError,
+  formatBoardingHeldDate,
+  getHoldDogSelectionLimit,
+  isBoardingHoldConfirmation,
+  isBoardingKennelType,
+  type BoardingKennelType,
+} from "@/components/booking-hold-confirmation.logic";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -33,7 +43,10 @@ export type BookingHoldService = {
   service: string;
   bookingModel?: string | null;
   maxDogsPerBooking?: number | null;
+  concurrentCapacityDogs?: number | null;
+  baseRateCents?: number | null;
   additionalDogEnabled?: boolean;
+  additionalDogPriceCents?: number | null;
   pricingJson?: Record<string, unknown> | null;
   pricingTiers?: PricingTier[];
 };
@@ -43,9 +56,13 @@ type Props = {
   supplierId: string;
   supplierName: string;
   requestedDogCount: number;
+  startAt: string;
+  endAt: string;
   service: BookingHoldService;
   isReturnJourney: boolean;
-  onConverted: () => void | Promise<void>;
+  onConverted: (
+    terminalMessage?: string
+  ) => void | Promise<void>;
 };
 
 function formatLabel(value?: string | null) {
@@ -94,6 +111,8 @@ export default function BookingHoldConfirmation({
   supplierId,
   supplierName,
   requestedDogCount,
+  startAt,
+  endAt,
   service,
   isReturnJourney,
   onConverted,
@@ -119,6 +138,8 @@ export default function BookingHoldConfirmation({
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [notes, setNotes] = useState("");
+  const [kennelType, setKennelType] =
+    useState<BoardingKennelType>("SOCIAL");
   const [
     accessInstructions,
     setAccessInstructions,
@@ -131,6 +152,8 @@ export default function BookingHoldConfirmation({
     useState(false);
   const [submitError, setSubmitError] =
     useState("");
+  const [terminalError, setTerminalError] =
+    useState("");
 
   const serviceType = service.service;
   const isWalking = serviceType === "WALKING";
@@ -142,6 +165,10 @@ export default function BookingHoldConfirmation({
   const isPetVisit =
     serviceType === "PET_SITTING" &&
     service.bookingModel === "BLOCK_CAPACITY";
+  const isBoarding = isBoardingHoldConfirmation(
+    serviceType,
+    service.bookingModel
+  );
 
   const groomingTiers = useMemo(
     () =>
@@ -173,34 +200,53 @@ export default function BookingHoldConfirmation({
   );
 
   const selectionLimit = useMemo(() => {
-    const holdLimit = Math.max(
-      1,
-      requestedDogCount
-    );
-
-    const serviceLimit =
-      typeof service.maxDogsPerBooking ===
-        "number" &&
-      service.maxDogsPerBooking > 0
-        ? service.maxDogsPerBooking
-        : holdLimit;
-
-    const walkingLimit =
-      isWalking &&
-      !service.additionalDogEnabled
-        ? 1
-        : holdLimit;
-
-    return Math.min(
-      holdLimit,
-      serviceLimit,
-      walkingLimit
-    );
+    return getHoldDogSelectionLimit({
+      requestedDogCount,
+      maxDogsPerBooking: service.maxDogsPerBooking,
+      concurrentCapacityDogs: service.concurrentCapacityDogs,
+      isBoarding,
+      isWalking,
+      additionalDogEnabled: service.additionalDogEnabled,
+    });
   }, [
+    isBoarding,
     isWalking,
     requestedDogCount,
     service.additionalDogEnabled,
+    service.concurrentCapacityDogs,
     service.maxDogsPerBooking,
+  ]);
+
+  const boardingPrice = useMemo(() => {
+    if (
+      !isBoarding ||
+      selectedDogIds.length === 0 ||
+      typeof service.baseRateCents !== "number"
+    ) {
+      return null;
+    }
+
+    const selectedDogCount = selectedDogIds.length;
+    const estimate = calculateBoardingPriceEstimate({
+      startAt,
+      endAt,
+      selectedDogCount,
+      baseRateCents: Number(service.baseRateCents || 0),
+      additionalDogEnabled: Boolean(service.additionalDogEnabled),
+      additionalDogPriceCents: service.additionalDogPriceCents,
+      kennelType,
+    });
+
+    return { ...estimate, selectedDogCount };
+  }, [
+    endAt,
+    isBoarding,
+    kennelType,
+    selectedDogIds.length,
+    service.additionalDogEnabled,
+    service.additionalDogPriceCents,
+    service.baseRateCents,
+    startAt,
   ]);
 
   const requiresOwnerAddress =
@@ -209,22 +255,23 @@ export default function BookingHoldConfirmation({
   const showsAccessInstructions =
     requiresOwnerAddress || isPetTransport;
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadOwnerData = useCallback(async () => {
+    setDogsLoading(true);
+    setLoadError("");
 
-    async function loadOwnerData() {
-      setDogsLoading(true);
-      setLoadError("");
+    const applyDogs = (nextDogs: Dog[]) => {
+      setDogs(nextDogs);
+      const availableIds = new Set(nextDogs.map((dog) => dog.id));
+      setSelectedDogIds((current) =>
+        current.filter((dogId) => availableIds.has(dogId))
+      );
+    };
 
-      const [profileResult, dogsResult] =
-        await Promise.allSettled([
-          api.get("/api/owner/profile"),
-          api.get("/api/owner/dogs"),
-        ]);
-
-      if (cancelled) {
-        return;
-      }
+    const [profileResult, dogsResult] =
+      await Promise.allSettled([
+        api.get("/api/owner/profile"),
+        api.get("/api/owner/dogs"),
+      ]);
 
       const profileStatus =
         profileResult.status === "rejected"
@@ -240,7 +287,7 @@ export default function BookingHoldConfirmation({
         profileStatus === 401 ||
         dogsStatus === 401
       ) {
-        setDogs([]);
+        applyDogs([]);
         setLoadError(
           "Please log in again to continue."
         );
@@ -264,7 +311,7 @@ export default function BookingHoldConfirmation({
         }
 
         if (Array.isArray(profile?.dogs)) {
-          setDogs(profile.dogs);
+          applyDogs(profile.dogs);
         }
       }
 
@@ -276,7 +323,7 @@ export default function BookingHoldConfirmation({
           [];
 
         if (Array.isArray(payload)) {
-          setDogs(payload);
+          applyDogs(payload);
         }
       }
 
@@ -289,15 +336,12 @@ export default function BookingHoldConfirmation({
         );
       }
 
-      setDogsLoading(false);
-    }
-
-    void loadOwnerData();
-
-    return () => {
-      cancelled = true;
-    };
+    setDogsLoading(false);
   }, [isPetTransport]);
+
+  useEffect(() => {
+    void loadOwnerData();
+  }, [loadOwnerData]);
 
   useEffect(() => {
     if (!isMobileVet) {
@@ -495,6 +539,8 @@ export default function BookingHoldConfirmation({
   }
 
   async function submitBooking() {
+    if (submitting) return;
+
     setSubmitError("");
 
     if (selectedDogIds.length === 0) {
@@ -559,37 +605,35 @@ export default function BookingHoldConfirmation({
       return;
     }
 
-    const finalNotes = buildNotes();
+    let payload: Record<string, unknown>;
 
-    const payload: Record<
-      string,
-      unknown
-    > = {
-      holdToken: token,
-      dogIds: selectedDogIds,
-      healthSafetyAccepted: true,
-    };
+    if (isBoarding) {
+      try {
+        payload = buildBoardingHoldConversionPayload({
+          holdToken: token,
+          dogIds: selectedDogIds,
+          kennelType,
+          healthSafetyAccepted: acceptedHealthSafety,
+          notes,
+        });
+      } catch (error) {
+        setSubmitError(getErrorMessage(error));
+        return;
+      }
+    } else {
+      const finalNotes = buildNotes();
+      payload = {
+        holdToken: token,
+        dogIds: selectedDogIds,
+        healthSafetyAccepted: true,
+      };
 
-    if (finalNotes) {
-      payload.notes = finalNotes;
-    }
-
-    if (
-      showsAccessInstructions &&
-      accessInstructions.trim()
-    ) {
-      payload.accessInstructions =
-        accessInstructions.trim();
-    }
-
-    if (isGrooming) {
-      payload.groomingSelections =
-        groomingSelections;
-    }
-
-    if (isMobileVet) {
-      payload.mobileVetOffering =
-        mobileVetOffering;
+      if (finalNotes) payload.notes = finalNotes;
+      if (showsAccessInstructions && accessInstructions.trim()) {
+        payload.accessInstructions = accessInstructions.trim();
+      }
+      if (isGrooming) payload.groomingSelections = groomingSelections;
+      if (isMobileVet) payload.mobileVetOffering = mobileVetOffering;
     }
 
     setSubmitting(true);
@@ -619,12 +663,52 @@ export default function BookingHoldConfirmation({
 
       await onConverted();
     } catch (error) {
-      setSubmitError(
-        getErrorMessage(error)
-      );
+      const message = getErrorMessage(error);
+
+      if (!isBoarding) {
+        setSubmitError(message);
+        return;
+      }
+
+      const status = getHttpStatus(error);
+      const action = classifyHoldConversionError(status);
+
+      if (action === "TERMINAL_REFETCH") {
+        const terminalMessage =
+          "This Boarding reservation can no longer be completed. Please ask the supplier to send a new booking link.";
+        setTerminalError(terminalMessage);
+        try {
+          await onConverted(terminalMessage);
+        } catch {
+          // Keep the safe terminal message visible if the lifecycle refetch fails.
+        }
+      } else if (action === "NETWORK_RETRY") {
+        setSubmitError(
+          "We couldn’t reach DogLife. Your booking link is still open, so please try again."
+        );
+      } else {
+        setSubmitError(message);
+
+        if (/selected dogs? (are|is) invalid/i.test(message)) {
+          await loadOwnerData();
+        }
+      }
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (terminalError) {
+    return (
+      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-sm font-semibold text-amber-900">
+          Booking link unavailable
+        </p>
+        <p className="mt-1 text-sm text-amber-800">
+          {terminalError}
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -634,11 +718,33 @@ export default function BookingHoldConfirmation({
       </h2>
 
       <p className="mt-1 text-sm text-gray-600">
-        The held date and time can’t be
-        changed here. DogLife will check the
-        slot, service rules and final price
-        again when you submit.
+        The held {isBoarding
+          ? "arrival and departure dates can’t"
+          : "date and time can’t"} be changed here. DogLife will
+        check the slot, service rules and final price again when you
+        submit.
       </p>
+
+      {isBoarding ? (
+        <div className="mt-4 grid gap-3 rounded-xl bg-gray-50 p-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Arrival
+            </p>
+            <p className="mt-1 text-sm font-semibold text-gray-900">
+              {formatBoardingHeldDate(startAt)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Departure
+            </p>
+            <p className="mt-1 text-sm font-semibold text-gray-900">
+              {formatBoardingHeldDate(endAt)}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 space-y-5">
         <div>
@@ -700,7 +806,66 @@ export default function BookingHoldConfirmation({
               ))}
             </div>
           )}
+
+          {isBoarding ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={dogsLoading || submitting}
+              onClick={() => void loadOwnerData()}
+              className="mt-3 w-full sm:w-auto"
+            >
+              Refresh dogs
+            </Button>
+          ) : null}
         </div>
+
+        {isBoarding ? (
+          <div className="space-y-4 rounded-xl border border-gray-200 p-4">
+            <div>
+              <label
+                htmlFor="booking-hold-kennel-type"
+                className="text-sm font-medium text-gray-900"
+              >
+                Kennel preference
+              </label>
+
+              <select
+                id="booking-hold-kennel-type"
+                value={kennelType}
+                disabled={submitting}
+                onChange={(event) =>
+                  isBoardingKennelType(event.target.value)
+                    ? setKennelType(event.target.value)
+                    : setSubmitError("Select a valid kennel preference.")
+                }
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="SOCIAL">Social kennel</option>
+                <option value="PRIVATE">Private kennel</option>
+              </select>
+            </div>
+
+            {boardingPrice ? (
+              <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+                <p className="font-semibold">
+                  Current total: R
+                  {(boardingPrice.totalCents / 100).toFixed(2)}
+                </p>
+                <p className="mt-1 text-xs text-blue-800">
+                  {boardingPrice.nights}{" "}
+                  {boardingPrice.nights === 1 ? "night" : "nights"}
+                  {" · "}
+                  {boardingPrice.selectedDogCount}{" "}
+                  {boardingPrice.selectedDogCount === 1 ? "dog" : "dogs"}
+                </p>
+                <p className="mt-1 text-xs text-blue-800">
+                  Price is rechecked when you confirm.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {isGrooming &&
         selectedDogIds.length > 0 ? (
@@ -1025,7 +1190,10 @@ export default function BookingHoldConfirmation({
             submitting ||
             dogsLoading ||
             Boolean(loadError) ||
-            dogs.length === 0
+            dogs.length === 0 ||
+            (isBoarding &&
+              (selectedDogIds.length === 0 ||
+                !acceptedHealthSafety))
           }
           onClick={() =>
             void submitBooking()

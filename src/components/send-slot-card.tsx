@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
+import {
+  buildBoardingHoldCreatePayload,
+  getBoardingDateValidationError,
+  getBoardingDogCountCeiling,
+  getBoardingHoldCreateError,
+  isEligibleBoardingSendSlotService,
+} from "./send-slot-card.logic";
 
 type SupplierService = {
   id: string;
@@ -23,6 +30,7 @@ type BookingSlotOption = {
 type JourneyType = "ONE_WAY" | "RETURN";
 
 const SERVICE_LABELS: Record<string, string> = {
+  BOARDING: "Boarding",
   WALKING: "Dog Walking",
   GROOMING: "Grooming",
   TRAINING: "Training",
@@ -113,6 +121,21 @@ function isPetVisitService(service?: SupplierService | null) {
   );
 }
 
+function isBoardingDateRangeService(
+  service?: SupplierService | null,
+) {
+  return isEligibleBoardingSendSlotService(
+    service,
+    service ? effectiveBookingModel(service) : "",
+  );
+}
+
+function addLocalCalendarDays(dateValue: string, days: number) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return localDateValue(date);
+}
+
 function formatSendSlotServiceName(service: SupplierService) {
   return isPetVisitService(service)
     ? "Pet Visit"
@@ -165,6 +188,10 @@ export default function SendSlotCard() {
   const [services, setServices] = useState<SupplierService[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [date, setDate] = useState(today);
+  const [arrivalDate, setArrivalDate] = useState(today);
+  const [departureDate, setDepartureDate] = useState(
+    addLocalCalendarDays(today, 1),
+  );
   const [dogCount, setDogCount] = useState(1);
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -203,6 +230,8 @@ export default function SendSlotCard() {
 
           if (bookingModel === "APPOINTMENT") return true;
 
+          if (isBoardingDateRangeService(service)) return true;
+
           return (
             bookingModel === "BLOCK_CAPACITY" &&
             service.service === "PET_SITTING"
@@ -222,6 +251,10 @@ export default function SendSlotCard() {
 
   const isPetTransport = selectedService?.service === "PET_TRANSPORT";
   const isPetVisit = isPetVisitService(selectedService);
+  const isBoarding = isBoardingDateRangeService(selectedService);
+  const boardingDateError = isBoarding
+    ? getBoardingDateValidationError(arrivalDate, departureDate)
+    : null;
 
   const selectedSlotEndAt = useMemo(() => {
     const option = slots.find((slot) => slot.startTime === selectedSlot);
@@ -243,6 +276,10 @@ export default function SendSlotCard() {
 
   const maximumDogCount = useMemo(() => {
     if (!selectedService) return 1;
+
+    if (isBoardingDateRangeService(selectedService)) {
+      return getBoardingDogCountCeiling(selectedService);
+    }
 
     const configuredLimits = [
       selectedService.maxDogsPerBooking,
@@ -318,7 +355,9 @@ export default function SendSlotCard() {
     setReturnSlots([]);
     setSelectedReturnSlot("");
     setReturnSlotError(null);
-  }, [selectedServiceId]);
+    setArrivalDate(today);
+    setDepartureDate(addLocalCalendarDays(today, 1));
+  }, [selectedServiceId, today]);
 
   useEffect(() => {
     setReturnDate(date);
@@ -332,7 +371,14 @@ export default function SendSlotCard() {
     setExpiresAt("");
     setCopyMessage("");
     setActionError(null);
-  }, [journeyType, returnDate, selectedReturnSlot, selectedSlot]);
+  }, [
+    arrivalDate,
+    departureDate,
+    journeyType,
+    returnDate,
+    selectedReturnSlot,
+    selectedSlot,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,7 +389,7 @@ export default function SendSlotCard() {
     setSelectedSlot("");
     setActionError(null);
 
-    if (!selectedService || !date) {
+    if (!selectedService || !date || isBoarding) {
       setSlots([]);
       setSlotDurationMinutes(0);
       setSlotError(null);
@@ -422,7 +468,7 @@ export default function SendSlotCard() {
     return () => {
       cancelled = true;
     };
-  }, [date, dogCount, isPetVisit, selectedService]);
+  }, [date, dogCount, isBoarding, isPetVisit, selectedService]);
 
   useEffect(() => {
     let cancelled = false;
@@ -506,9 +552,23 @@ export default function SendSlotCard() {
   ]);
 
   async function createShareableSlot() {
-    if (!selectedService || !selectedSlot) return;
+    if (
+      !selectedService ||
+      (isBoarding
+        ? !arrivalDate || !departureDate
+        : !selectedSlot)
+    ) {
+      return;
+    }
 
-    const startAt = isPetVisit ? null : new Date(selectedSlot);
+    if (isBoarding && boardingDateError) {
+      setActionError(boardingDateError);
+      return;
+    }
+
+    const startAt = isPetVisit || isBoarding
+      ? null
+      : new Date(selectedSlot);
 
     if (startAt && Number.isNaN(startAt.getTime())) {
       setActionError("Please choose a valid time.");
@@ -529,16 +589,28 @@ export default function SendSlotCard() {
     setCopyMessage("");
 
     try {
-      const payload: Record<string, unknown> = {
-        supplierServiceId: selectedService.id,
-        requestedDogCount: dogCount,
-      };
+      let payload: Record<string, unknown>;
 
-      if (isPetVisit) {
-        payload.date = date;
-        payload.serviceBookingBlockId = selectedSlot;
+      if (isBoarding) {
+        payload = buildBoardingHoldCreatePayload({
+          supplierServiceId: selectedService.id,
+          arrivalDate,
+          departureDate,
+          requestedDogCount: dogCount,
+        });
+      } else if (isPetVisit) {
+        payload = {
+          supplierServiceId: selectedService.id,
+          requestedDogCount: dogCount,
+          date,
+          serviceBookingBlockId: selectedSlot,
+        };
       } else {
-        payload.startAt = startAt!.toISOString();
+        payload = {
+          supplierServiceId: selectedService.id,
+          requestedDogCount: dogCount,
+          startAt: startAt!.toISOString(),
+        };
       }
 
       if (isPetTransport) {
@@ -570,10 +642,12 @@ export default function SendSlotCard() {
       setExpiresAt(response.data?.hold?.expiresAt || "");
     } catch (error) {
       setActionError(
-        getErrorMessage(
-          error,
-          "The booking link could not be created.",
-        ),
+        isBoarding
+          ? getBoardingHoldCreateError(error)
+          : getErrorMessage(
+              error,
+              "The booking link could not be created.",
+            ),
       );
     } finally {
       setCreating(false);
@@ -622,8 +696,8 @@ export default function SendSlotCard() {
             Send a Slot
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            Choose an available appointment and create a secure link
-            for your client.
+            Choose a service and create a secure booking link for your
+            client.
           </p>
         </div>
 
@@ -653,7 +727,13 @@ export default function SendSlotCard() {
             </p>
           ) : (
             <>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div
+                className={`grid gap-4 ${
+                  isBoarding
+                    ? "sm:grid-cols-2 xl:grid-cols-4"
+                    : "md:grid-cols-3"
+                }`}
+              >
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">
                     Service
@@ -673,18 +753,66 @@ export default function SendSlotCard() {
                   </select>
                 </label>
 
-                <label className="block">
-                  <span className="text-sm font-medium text-gray-700">
-                    Date
-                  </span>
-                  <input
-                    type="date"
-                    min={today}
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                  />
-                </label>
+                {isBoarding ? (
+                  <>
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">
+                        Arrival
+                      </span>
+                      <input
+                        type="date"
+                        min={today}
+                        value={arrivalDate}
+                        onChange={(event) => {
+                          const nextArrival = event.target.value;
+                          setArrivalDate(nextArrival);
+
+                          if (
+                            !departureDate ||
+                            departureDate <= nextArrival
+                          ) {
+                            setDepartureDate(
+                              addLocalCalendarDays(nextArrival, 1),
+                            );
+                          }
+                        }}
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-sm font-medium text-gray-700">
+                        Departure
+                      </span>
+                      <input
+                        type="date"
+                        min={
+                          arrivalDate
+                            ? addLocalCalendarDays(arrivalDate, 1)
+                            : today
+                        }
+                        value={departureDate}
+                        onChange={(event) =>
+                          setDepartureDate(event.target.value)
+                        }
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">
+                      Date
+                    </span>
+                    <input
+                      type="date"
+                      min={today}
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                    />
+                  </label>
+                )}
 
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">
@@ -731,7 +859,13 @@ export default function SendSlotCard() {
                 </div>
               ) : null}
 
-              <div className="mt-5">
+              {isBoarding && boardingDateError ? (
+                <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                  {boardingDateError}
+                </p>
+              ) : null}
+
+              {!isBoarding ? <div className="mt-5">
                 <h3 className="text-sm font-semibold text-gray-900">
                   {isPetTransport ? "Outbound times" : "Available times"}
                 </h3>
@@ -782,7 +916,7 @@ export default function SendSlotCard() {
                     })}
                   </div>
                 )}
-              </div>
+              </div> : null}
 
               {isPetTransport && journeyType === "RETURN" ? (
                 <div className="mt-5 rounded-xl border border-gray-200 p-4">
@@ -855,7 +989,9 @@ export default function SendSlotCard() {
                   <button
                     type="button"
                     disabled={
-                      !selectedSlot ||
+                      (isBoarding
+                        ? Boolean(boardingDateError)
+                        : !selectedSlot) ||
                       creating ||
                       (isPetTransport &&
                         journeyType === "RETURN" &&
@@ -866,7 +1002,9 @@ export default function SendSlotCard() {
                   >
                     {creating
                       ? "Creating secure link…"
-                      : "Create booking link"}
+                      : isBoarding
+                        ? "Create secure booking link"
+                        : "Create booking link"}
                   </button>
                 </div>
               )}
