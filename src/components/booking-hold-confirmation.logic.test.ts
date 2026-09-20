@@ -8,6 +8,7 @@ import {
   formatBoardingHeldDate,
   getBoardingNightCount,
   getHoldDogSelectionLimit,
+  getPrivateTrainingSessionPriceCents,
   isBoardingHoldConfirmation,
   isBoardingKennelType,
 } from "./booking-hold-confirmation.logic.ts";
@@ -45,6 +46,37 @@ assert.equal(
     "2026-11-02T07:00:00.000Z"
   ),
   3
+);
+
+for (const selectedDogCount of [1, 2, 3]) {
+  assert.equal(
+    getPrivateTrainingSessionPriceCents({
+      service: "TRAINING",
+      bookingModel: "APPOINTMENT",
+      baseRateCents: 60_000,
+      additionalDogEnabled: false,
+      selectedDogCount,
+    }),
+    60_000,
+  );
+}
+assert.equal(
+  getPrivateTrainingSessionPriceCents({
+    service: "TRAINING",
+    bookingModel: "SESSION_EVENT",
+    baseRateCents: 60_000,
+    additionalDogEnabled: false,
+  }),
+  null,
+);
+assert.equal(
+  getPrivateTrainingSessionPriceCents({
+    service: "TRAINING",
+    bookingModel: "APPOINTMENT",
+    baseRateCents: 60_000,
+    additionalDogEnabled: true,
+  }),
+  null,
 );
 assert.match(formatBoardingHeldDate(oneNightStart), /12 October 2026/);
 assert.equal(formatBoardingHeldDate(oneNightStart).includes("09:00"), false);
@@ -237,6 +269,9 @@ assert.match(componentSource, /serviceType === "WALKING"/);
 assert.match(componentSource, /serviceType === "GROOMING"/);
 assert.match(componentSource, /serviceType === "PET_TRANSPORT"/);
 assert.match(componentSource, /serviceType === "PET_SITTING"/);
+assert.match(componentSource, /Current total: R/);
+assert.match(componentSource, /Private Training session/);
+assert.match(componentSource, /Price is rechecked when you confirm\./);
 assert.doesNotMatch(componentSource, /localStorage|sessionStorage|document\.cookie/);
 
 const holdPageSource = readFileSync(

@@ -6,6 +6,7 @@ import {
   classifyHoldConversionError,
   formatBoardingHeldDate,
   getHoldDogSelectionLimit,
+  getPrivateTrainingSessionPriceCents,
   isBoardingHoldConfirmation,
   isBoardingKennelType,
   type BoardingKennelType,
@@ -171,6 +172,14 @@ export default function BookingHoldConfirmation({
     serviceType,
     bookingModel
   );
+
+  const trainingSessionPriceCents =
+    getPrivateTrainingSessionPriceCents({
+      service: serviceType,
+      bookingModel,
+      baseRateCents: service.baseRateCents,
+      additionalDogEnabled: service.additionalDogEnabled,
+    });
 
   const groomingTiers = useMemo(
     () =>
@@ -866,6 +875,21 @@ export default function BookingHoldConfirmation({
                 </p>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {trainingSessionPriceCents != null ? (
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+            <p className="font-semibold">
+              Current total: R
+              {(trainingSessionPriceCents / 100).toFixed(2)}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Private Training session
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Price is rechecked when you confirm.
+            </p>
           </div>
         ) : null}
 

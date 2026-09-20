@@ -2,11 +2,56 @@ import assert from "node:assert/strict";
 
 import {
   buildBoardingHoldCreatePayload,
+  getEffectiveSendSlotBookingModel,
   getBoardingDateValidationError,
   getBoardingDogCountCeiling,
   getBoardingHoldCreateError,
+  getSendSlotDogCountMaximum,
   isEligibleBoardingSendSlotService,
+  isEligibleSendSlotService,
 } from "./send-slot-card.logic.js";
+
+const privateTrainingService = {
+  id: "training-service",
+  service: "TRAINING",
+  bookingModel: null,
+  trainingBookingMode: null,
+  isActive: true,
+  maxDogsPerBooking: null,
+  concurrentCapacityDogs: null,
+};
+
+assert.equal(
+  getEffectiveSendSlotBookingModel(privateTrainingService),
+  "APPOINTMENT",
+);
+assert.equal(isEligibleSendSlotService(privateTrainingService), true);
+assert.equal(
+  getSendSlotDogCountMaximum(privateTrainingService),
+  null,
+);
+assert.equal(
+  getSendSlotDogCountMaximum({
+    ...privateTrainingService,
+    maxDogsPerBooking: 3,
+    concurrentCapacityDogs: 1,
+  }),
+  3,
+);
+assert.equal(
+  isEligibleSendSlotService({
+    ...privateTrainingService,
+    trainingBookingMode: "SESSION_EVENT",
+  }),
+  false,
+);
+assert.equal(
+  getEffectiveSendSlotBookingModel({
+    ...privateTrainingService,
+    trainingBookingMode: "SESSION_EVENT",
+  }),
+  "SESSION_EVENT",
+);
 
 const boardingService = {
   id: "boarding-service",

@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import {
   buildBoardingHoldCreatePayload,
+  getEffectiveSendSlotBookingModel,
   getBoardingDateValidationError,
-  getBoardingDogCountCeiling,
   getBoardingHoldCreateError,
+  getSendSlotDogCountMaximum,
   isEligibleBoardingSendSlotService,
+  isEligibleSendSlotService,
 } from "./send-slot-card.logic";
 
 type SupplierService = {
@@ -47,27 +49,7 @@ function localDateValue(date: Date) {
 }
 
 function effectiveBookingModel(service: SupplierService) {
-  if (service.bookingModel) return service.bookingModel;
-
-  if (
-    service.service === "BOARDING" ||
-    service.service === "PET_SITTING"
-  ) {
-    return "DATE_RANGE_CAPACITY";
-  }
-
-  if (service.service === "DAYCARE") {
-    return "BLOCK_CAPACITY";
-  }
-
-  if (
-    service.service === "TRAINING" &&
-    service.trainingBookingMode === "SESSION_EVENT"
-  ) {
-    return "SESSION_EVENT";
-  }
-
-  return "APPOINTMENT";
+  return getEffectiveSendSlotBookingModel(service);
 }
 
 function normalizeSlot(slot: any): BookingSlotOption | null {
@@ -221,23 +203,7 @@ export default function SendSlotCard() {
   const [copyMessage, setCopyMessage] = useState("");
 
   const sendSlotServices = useMemo(
-    () =>
-      services.filter(
-        (service) => {
-          if (service.isActive === false) return false;
-
-          const bookingModel = effectiveBookingModel(service);
-
-          if (bookingModel === "APPOINTMENT") return true;
-
-          if (isBoardingDateRangeService(service)) return true;
-
-          return (
-            bookingModel === "BLOCK_CAPACITY" &&
-            service.service === "PET_SITTING"
-          );
-        },
-      ),
+    () => services.filter(isEligibleSendSlotService),
     [services],
   );
 
@@ -277,21 +243,7 @@ export default function SendSlotCard() {
   const maximumDogCount = useMemo(() => {
     if (!selectedService) return 1;
 
-    if (isBoardingDateRangeService(selectedService)) {
-      return getBoardingDogCountCeiling(selectedService);
-    }
-
-    const configuredLimits = [
-      selectedService.maxDogsPerBooking,
-      selectedService.concurrentCapacityDogs,
-    ].filter(
-      (value): value is number =>
-        typeof value === "number" && value > 0,
-    );
-
-    if (configuredLimits.length === 0) return 10;
-
-    return Math.max(1, Math.min(...configuredLimits));
+    return getSendSlotDogCountMaximum(selectedService);
   }, [selectedService]);
 
   useEffect(() => {
@@ -344,7 +296,7 @@ export default function SendSlotCard() {
   }, [sendSlotServices, selectedServiceId]);
 
   useEffect(() => {
-    if (dogCount > maximumDogCount) {
+    if (maximumDogCount != null && dogCount > maximumDogCount) {
       setDogCount(maximumDogCount);
     }
   }, [dogCount, maximumDogCount]);
@@ -818,22 +770,40 @@ export default function SendSlotCard() {
                   <span className="text-sm font-medium text-gray-700">
                     Number of dogs
                   </span>
-                  <select
-                    value={dogCount}
-                    onChange={(event) =>
-                      setDogCount(Number(event.target.value))
-                    }
-                    className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                  >
-                    {Array.from(
-                      { length: maximumDogCount },
-                      (_, index) => index + 1,
-                    ).map((count) => (
-                      <option key={count} value={count}>
-                        {count}
-                      </option>
-                    ))}
-                  </select>
+                  {maximumDogCount == null ? (
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="numeric"
+                      value={dogCount}
+                      onChange={(event) => {
+                        const nextCount = Number(event.target.value);
+
+                        if (Number.isInteger(nextCount) && nextCount > 0) {
+                          setDogCount(nextCount);
+                        }
+                      }}
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                    />
+                  ) : (
+                    <select
+                      value={dogCount}
+                      onChange={(event) =>
+                        setDogCount(Number(event.target.value))
+                      }
+                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                    >
+                      {Array.from(
+                        { length: maximumDogCount },
+                        (_, index) => index + 1,
+                      ).map((count) => (
+                        <option key={count} value={count}>
+                          {count}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
               </div>
 

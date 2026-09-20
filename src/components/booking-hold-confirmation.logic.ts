@@ -121,6 +121,35 @@ export function getHoldDogSelectionLimit({
   );
 }
 
+export function getPrivateTrainingSessionPriceCents({
+  service,
+  bookingModel,
+  baseRateCents,
+  additionalDogEnabled,
+  selectedDogCount,
+}: {
+  service?: string | null;
+  bookingModel?: string | null;
+  baseRateCents?: number | null;
+  additionalDogEnabled?: boolean;
+  selectedDogCount?: number;
+}) {
+  if (
+    service !== "TRAINING" ||
+    bookingModel !== "APPOINTMENT" ||
+    additionalDogEnabled === true ||
+    typeof baseRateCents !== "number" ||
+    !Number.isFinite(baseRateCents) ||
+    baseRateCents < 0 ||
+    (selectedDogCount != null &&
+      (!Number.isInteger(selectedDogCount) || selectedDogCount < 1))
+  ) {
+    return null;
+  }
+
+  return Math.round(baseRateCents);
+}
+
 export function calculateBoardingPriceEstimate({
   startAt,
   endAt,

@@ -7,6 +7,92 @@ export type BoardingSendSlotService = {
   concurrentCapacityDogs?: number | null;
 };
 
+export type SendSlotService = BoardingSendSlotService & {
+  trainingBookingMode?: string | null;
+};
+
+export function getEffectiveSendSlotBookingModel(
+  service: SendSlotService,
+) {
+  if (service.bookingModel) return service.bookingModel;
+
+  if (
+    service.service === "BOARDING" ||
+    service.service === "PET_SITTING"
+  ) {
+    return "DATE_RANGE_CAPACITY";
+  }
+
+  if (service.service === "DAYCARE") {
+    return "BLOCK_CAPACITY";
+  }
+
+  if (
+    service.service === "TRAINING" &&
+    service.trainingBookingMode === "SESSION_EVENT"
+  ) {
+    return "SESSION_EVENT";
+  }
+
+  return "APPOINTMENT";
+}
+
+export function isEligibleSendSlotService(service: SendSlotService) {
+  if (service.isActive === false) return false;
+
+  const bookingModel = getEffectiveSendSlotBookingModel(service);
+
+  if (bookingModel === "APPOINTMENT") return true;
+
+  if (
+    service.service === "BOARDING" &&
+    bookingModel === "DATE_RANGE_CAPACITY"
+  ) {
+    return isEligibleBoardingSendSlotService(service, bookingModel);
+  }
+
+  return (
+    bookingModel === "BLOCK_CAPACITY" &&
+    service.service === "PET_SITTING"
+  );
+}
+
+export function getSendSlotDogCountMaximum(
+  service: SendSlotService,
+): number | null {
+  if (
+    service.service === "BOARDING" &&
+    getEffectiveSendSlotBookingModel(service) === "DATE_RANGE_CAPACITY"
+  ) {
+    return getBoardingDogCountCeiling(service);
+  }
+
+  const configuredMaximum =
+    typeof service.maxDogsPerBooking === "number" &&
+    service.maxDogsPerBooking > 0
+      ? service.maxDogsPerBooking
+      : null;
+
+  if (
+    service.service === "TRAINING" &&
+    getEffectiveSendSlotBookingModel(service) === "APPOINTMENT"
+  ) {
+    return configuredMaximum;
+  }
+
+  const configuredLimits = [
+    configuredMaximum,
+    service.concurrentCapacityDogs,
+  ].filter(
+    (value): value is number =>
+      typeof value === "number" && value > 0,
+  );
+
+  if (configuredLimits.length === 0) return 10;
+
+  return Math.max(1, Math.min(...configuredLimits));
+}
+
 export function isEligibleBoardingSendSlotService(
   service: BoardingSendSlotService | null | undefined,
   effectiveBookingModel: string,
