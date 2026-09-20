@@ -42,7 +42,19 @@ export function isEligibleSendSlotService(service: SendSlotService) {
 
   const bookingModel = getEffectiveSendSlotBookingModel(service);
 
-  if (bookingModel === "APPOINTMENT") return true;
+  if (
+    service.service === "WALKING" &&
+    bookingModel === "APPOINTMENT"
+  ) {
+    return true;
+  }
+
+  if (
+    service.service === "TRAINING" &&
+    bookingModel === "APPOINTMENT"
+  ) {
+    return true;
+  }
 
   if (
     service.service === "BOARDING" &&
@@ -51,10 +63,7 @@ export function isEligibleSendSlotService(service: SendSlotService) {
     return isEligibleBoardingSendSlotService(service, bookingModel);
   }
 
-  return (
-    bookingModel === "BLOCK_CAPACITY" &&
-    service.service === "PET_SITTING"
-  );
+  return false;
 }
 
 export function getSendSlotDogCountMaximum(

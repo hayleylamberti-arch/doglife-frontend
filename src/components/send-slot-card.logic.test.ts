@@ -53,6 +53,51 @@ assert.equal(
   "SESSION_EVENT",
 );
 
+const walkingService = {
+  ...privateTrainingService,
+  id: "walking-service",
+  service: "WALKING",
+  bookingModel: "APPOINTMENT",
+  trainingBookingMode: null,
+};
+
+assert.equal(isEligibleSendSlotService(walkingService), true);
+
+for (const service of ["GROOMING", "PET_TRANSPORT", "MOBILE_VET"]) {
+  assert.equal(
+    isEligibleSendSlotService({
+      ...privateTrainingService,
+      id: `${service.toLowerCase()}-service`,
+      service,
+      bookingModel: "APPOINTMENT",
+      trainingBookingMode: null,
+    }),
+    false,
+  );
+}
+
+assert.equal(
+  isEligibleSendSlotService({
+    ...privateTrainingService,
+    id: "pet-sitting-service",
+    service: "PET_SITTING",
+    bookingModel: "BLOCK_CAPACITY",
+    trainingBookingMode: null,
+  }),
+  false,
+);
+
+assert.equal(
+  isEligibleSendSlotService({
+    ...privateTrainingService,
+    id: "daycare-service",
+    service: "DAYCARE",
+    bookingModel: "BLOCK_CAPACITY",
+    trainingBookingMode: null,
+  }),
+  false,
+);
+
 const boardingService = {
   id: "boarding-service",
   service: "BOARDING",
@@ -61,6 +106,8 @@ const boardingService = {
   maxDogsPerBooking: 4,
   concurrentCapacityDogs: 20,
 };
+
+assert.equal(isEligibleSendSlotService(boardingService), true);
 
 assert.equal(
   isEligibleBoardingSendSlotService(
