@@ -30,6 +30,7 @@ type PublicHold = {
   supplierId?: string;
   supplierServiceId?: string;
   serviceType?: string | null;
+  bookingModel?: string | null;
   startAt: string;
   endAt: string;
   returnStartAt?: string | null;
@@ -203,9 +204,11 @@ export default function BookingHoldPage() {
 
   const currentService =
     hold.service?.service || hold.serviceType;
+  const bookingModel =
+    hold.bookingModel ?? hold.service?.bookingModel;
   const isBoardingDateRange = isBoardingDateRangeHold(
     currentService,
-    hold.service?.bookingModel
+    bookingModel
   );
 
   const hasReturnJourney =
@@ -300,7 +303,7 @@ export default function BookingHoldPage() {
             label="Service"
             value={getPublicHoldServiceLabel(
               currentService,
-              hold.service?.bookingModel
+              bookingModel
             )}
           />
 
@@ -455,6 +458,7 @@ export default function BookingHoldPage() {
               startAt={hold.startAt}
               endAt={hold.endAt}
               service={hold.service}
+              bookingModel={bookingModel}
               isReturnJourney={hasReturnJourney}
               onConverted={handleConverted}
             />

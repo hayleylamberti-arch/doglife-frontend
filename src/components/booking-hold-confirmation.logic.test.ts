@@ -24,6 +24,17 @@ assert.equal(
   isBoardingHoldConfirmation("PET_SITTING", "DATE_RANGE_CAPACITY"),
   false
 );
+const holdWithEffectiveBoardingModel = {
+  bookingModel: "DATE_RANGE_CAPACITY",
+  service: { bookingModel: null },
+};
+const authoritativeBookingModel =
+  holdWithEffectiveBoardingModel.bookingModel ??
+  holdWithEffectiveBoardingModel.service.bookingModel;
+assert.equal(
+  isBoardingHoldConfirmation("BOARDING", authoritativeBookingModel),
+  true
+);
 
 const oneNightStart = "2026-10-12T07:00:00.000Z";
 const oneNightEnd = "2026-10-13T07:00:00.000Z";
@@ -218,6 +229,10 @@ assert.match(componentSource, /await onConverted\(\);/);
 assert.match(componentSource, /classifyHoldConversionError\(status\)/);
 assert.match(componentSource, /formatBoardingHeldDate\(startAt\)/);
 assert.match(componentSource, /formatBoardingHeldDate\(endAt\)/);
+assert.match(
+  componentSource,
+  /isBoardingHoldConfirmation\(\s*serviceType,\s*bookingModel\s*\)/
+);
 assert.match(componentSource, /serviceType === "WALKING"/);
 assert.match(componentSource, /serviceType === "GROOMING"/);
 assert.match(componentSource, /serviceType === "PET_TRANSPORT"/);

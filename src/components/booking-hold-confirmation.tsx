@@ -59,6 +59,7 @@ type Props = {
   startAt: string;
   endAt: string;
   service: BookingHoldService;
+  bookingModel?: string | null;
   isReturnJourney: boolean;
   onConverted: (
     terminalMessage?: string
@@ -114,6 +115,7 @@ export default function BookingHoldConfirmation({
   startAt,
   endAt,
   service,
+  bookingModel,
   isReturnJourney,
   onConverted,
 }: Props) {
@@ -167,7 +169,7 @@ export default function BookingHoldConfirmation({
     service.bookingModel === "BLOCK_CAPACITY";
   const isBoarding = isBoardingHoldConfirmation(
     serviceType,
-    service.bookingModel
+    bookingModel
   );
 
   const groomingTiers = useMemo(
