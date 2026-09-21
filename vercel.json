@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://doglife-backend-dev.onrender.com/api/:path*"
+      "destination": "https://api.doglife.app/api/:path*"
     },
     {
       "source": "/(.*)",
