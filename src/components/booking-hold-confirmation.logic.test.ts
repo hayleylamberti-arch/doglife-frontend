@@ -9,6 +9,7 @@ import {
   getBoardingNightCount,
   getHoldDogSelectionLimit,
   getPrivateTrainingSessionPriceCents,
+  getWalkingPriceCents,
   isBoardingHoldConfirmation,
   isBoardingKennelType,
 } from "./booking-hold-confirmation.logic.ts";
@@ -77,6 +78,44 @@ assert.equal(
     additionalDogEnabled: true,
   }),
   null,
+);
+
+assert.equal(
+  getWalkingPriceCents({
+    service: "WALKING",
+    bookingModel: "APPOINTMENT",
+    baseRateCents: 15_000,
+    additionalDogEnabled: true,
+    additionalDogPriceCents: 7_500,
+    additionalDogDiscountPct: null,
+    selectedDogCount: 2,
+  }),
+  22_500
+);
+
+assert.equal(
+  getWalkingPriceCents({
+    service: "WALKING",
+    bookingModel: "APPOINTMENT",
+    baseRateCents: 15_000,
+    additionalDogEnabled: true,
+    additionalDogPriceCents: 7_500,
+    additionalDogDiscountPct: 10,
+    selectedDogCount: 2,
+  }),
+  21_000
+);
+
+assert.equal(
+  getWalkingPriceCents({
+    service: "WALKING",
+    bookingModel: "APPOINTMENT",
+    baseRateCents: 15_000,
+    additionalDogEnabled: false,
+    additionalDogPriceCents: 7_500,
+    selectedDogCount: 2,
+  }),
+  null
 );
 assert.match(formatBoardingHeldDate(oneNightStart), /12 October 2026/);
 assert.equal(formatBoardingHeldDate(oneNightStart).includes("09:00"), false);
@@ -270,6 +309,8 @@ assert.match(componentSource, /serviceType === "GROOMING"/);
 assert.match(componentSource, /serviceType === "PET_TRANSPORT"/);
 assert.match(componentSource, /serviceType === "PET_SITTING"/);
 assert.match(componentSource, /Current total: R/);
+assert.match(componentSource, /Dog Walking/);
+assert.match(componentSource, /walkingPriceCents/);
 assert.match(componentSource, /Private Training session/);
 assert.match(componentSource, /Price is rechecked when you confirm\./);
 assert.doesNotMatch(componentSource, /localStorage|sessionStorage|document\.cookie/);

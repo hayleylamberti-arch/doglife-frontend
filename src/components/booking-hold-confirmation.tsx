@@ -7,6 +7,7 @@ import {
   formatBoardingHeldDate,
   getHoldDogSelectionLimit,
   getPrivateTrainingSessionPriceCents,
+  getWalkingPriceCents,
   isBoardingHoldConfirmation,
   isBoardingKennelType,
   type BoardingKennelType,
@@ -48,6 +49,7 @@ export type BookingHoldService = {
   baseRateCents?: number | null;
   additionalDogEnabled?: boolean;
   additionalDogPriceCents?: number | null;
+  additionalDogDiscountPct?: number | null;
   pricingJson?: Record<string, unknown> | null;
   pricingTiers?: PricingTier[];
 };
@@ -172,6 +174,16 @@ export default function BookingHoldConfirmation({
     serviceType,
     bookingModel
   );
+
+  const walkingPriceCents = getWalkingPriceCents({
+    service: serviceType,
+    bookingModel,
+    baseRateCents: service.baseRateCents,
+    additionalDogEnabled: service.additionalDogEnabled,
+    additionalDogPriceCents: service.additionalDogPriceCents,
+    additionalDogDiscountPct: service.additionalDogDiscountPct,
+    selectedDogCount: selectedDogIds.length,
+  });
 
   const trainingSessionPriceCents =
     getPrivateTrainingSessionPriceCents({
@@ -875,6 +887,22 @@ export default function BookingHoldConfirmation({
                 </p>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {walkingPriceCents != null ? (
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+            <p className="font-semibold">
+              Current total: R
+              {(walkingPriceCents / 100).toFixed(2)}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Dog Walking · {selectedDogIds.length}{" "}
+              {selectedDogIds.length === 1 ? "dog" : "dogs"}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Price is rechecked when you confirm.
+            </p>
           </div>
         ) : null}
 

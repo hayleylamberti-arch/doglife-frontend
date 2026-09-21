@@ -150,6 +150,67 @@ export function getPrivateTrainingSessionPriceCents({
   return Math.round(baseRateCents);
 }
 
+export function getWalkingPriceCents({
+  service,
+  bookingModel,
+  baseRateCents,
+  additionalDogEnabled,
+  additionalDogPriceCents,
+  additionalDogDiscountPct,
+  selectedDogCount,
+}: {
+  service?: string | null;
+  bookingModel?: string | null;
+  baseRateCents?: number | null;
+  additionalDogEnabled?: boolean;
+  additionalDogPriceCents?: number | null;
+  additionalDogDiscountPct?: number | null;
+  selectedDogCount: number;
+}) {
+  if (
+    service !== "WALKING" ||
+    bookingModel !== "APPOINTMENT" ||
+    typeof baseRateCents !== "number" ||
+    !Number.isFinite(baseRateCents) ||
+    baseRateCents < 0 ||
+    !Number.isInteger(selectedDogCount) ||
+    selectedDogCount < 1
+  ) {
+    return null;
+  }
+
+  let totalCents = baseRateCents;
+
+  if (selectedDogCount > 1) {
+    if (!additionalDogEnabled) {
+      return null;
+    }
+
+    const extraDogs = selectedDogCount - 1;
+
+    if (
+      typeof additionalDogPriceCents === "number" &&
+      Number.isFinite(additionalDogPriceCents)
+    ) {
+      totalCents += extraDogs * additionalDogPriceCents;
+    }
+
+    if (
+      typeof additionalDogDiscountPct === "number" &&
+      Number.isFinite(additionalDogDiscountPct)
+    ) {
+      const discount =
+        baseRateCents *
+        (additionalDogDiscountPct / 100) *
+        extraDogs;
+
+      totalCents -= Math.round(discount);
+    }
+  }
+
+  return Math.round(totalCents);
+}
+
 export function calculateBoardingPriceEstimate({
   startAt,
   endAt,
