@@ -777,6 +777,7 @@ export default function SendSlotCard() {
                       step={1}
                       inputMode="numeric"
                       value={dogCount}
+                      onFocus={(event) => event.currentTarget.select()}
                       onChange={(event) => {
                         const nextCount = Number(event.target.value);
 

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   buildBoardingHoldCreatePayload,
@@ -211,4 +212,14 @@ assert.equal(
 assert.match(
   getBoardingHoldCreateError(new Error("Network Error")),
   /connect to DogLife/,
+);
+
+const sendSlotComponentSource = readFileSync(
+  new URL("./send-slot-card.tsx", import.meta.url),
+  "utf8",
+);
+
+assert.match(
+  sendSlotComponentSource,
+  /onFocus=\{\(event\) => event\.currentTarget\.select\(\)\}/,
 );
