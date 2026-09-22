@@ -221,5 +221,21 @@ const sendSlotComponentSource = readFileSync(
 
 assert.match(
   sendSlotComponentSource,
-  /onFocus=\{\(event\) => event\.currentTarget\.select\(\)\}/,
+  /const \[dogCountInput, setDogCountInput\] = useState\("1"\)/,
+);
+assert.match(
+  sendSlotComponentSource,
+  /value=\{dogCountInput\}/,
+);
+assert.match(
+  sendSlotComponentSource,
+  /setDogCountInput\(nextValue\)/,
+);
+assert.match(
+  sendSlotComponentSource,
+  /if \(nextValue === ""\) return/,
+);
+assert.match(
+  sendSlotComponentSource,
+  /setDogCountInput\(String\(dogCount\)\)/,
 );

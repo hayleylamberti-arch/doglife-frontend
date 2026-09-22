@@ -175,6 +175,7 @@ export default function SendSlotCard() {
     addLocalCalendarDays(today, 1),
   );
   const [dogCount, setDogCount] = useState(1);
+  const [dogCountInput, setDogCountInput] = useState("1");
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(0);
@@ -300,6 +301,10 @@ export default function SendSlotCard() {
       setDogCount(maximumDogCount);
     }
   }, [dogCount, maximumDogCount]);
+
+  useEffect(() => {
+    setDogCountInput(String(dogCount));
+  }, [dogCount]);
 
   useEffect(() => {
     setJourneyType("ONE_WAY");
@@ -776,15 +781,30 @@ export default function SendSlotCard() {
                       min={1}
                       step={1}
                       inputMode="numeric"
-                      value={dogCount}
-                      onFocus={(event) => event.currentTarget.select()}
-                      onChange={(event) => {
-                        const nextCount = Number(event.target.value);
+                    value={dogCountInput}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setDogCountInput(nextValue);
 
-                        if (Number.isInteger(nextCount) && nextCount > 0) {
-                          setDogCount(nextCount);
-                        }
-                      }}
+                      if (nextValue === "") return;
+
+                      const nextCount = Number(nextValue);
+
+                      if (Number.isInteger(nextCount) && nextCount > 0) {
+                        setDogCount(nextCount);
+                      }
+                    }}
+                    onBlur={() => {
+                      const nextCount = Number(dogCountInput);
+
+                      if (
+                        dogCountInput === "" ||
+                        !Number.isInteger(nextCount) ||
+                        nextCount <= 0
+                      ) {
+                        setDogCountInput(String(dogCount));
+                      }
+                    }}
                       className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
                     />
                   ) : (
