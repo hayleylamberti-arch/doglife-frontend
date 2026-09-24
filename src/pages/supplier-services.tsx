@@ -454,6 +454,16 @@ export default function SupplierServicesPage() {
       if (!editForm) throw new Error("Nothing to update");
 
       if (
+        service.service === "TRAINING" &&
+        service.bookingModel !== "SESSION_EVENT" &&
+        (!editForm.maxDogsPerBooking ||
+          !Number.isInteger(Number(editForm.maxDogsPerBooking)) ||
+          Number(editForm.maxDogsPerBooking) <= 0)
+      ) {
+        throw new Error("Enter the maximum dogs per private session");
+      }
+
+      if (
         service.service === "WALKING" &&
         editForm.additionalDogEnabled &&
         (!editForm.maxDogsPerBooking ||
@@ -479,16 +489,21 @@ export default function SupplierServicesPage() {
       const payload: any = {
         bufferMinutes: Number(editForm.bufferMinutes || "0"),
         maxDogsPerBooking:
-          editForm.maxDogsPerBooking === ""
-            ? null
-            : Number(editForm.maxDogsPerBooking),
+          service.service === "TRAINING" &&
+          service.bookingModel === "SESSION_EVENT"
+            ? undefined
+            : editForm.maxDogsPerBooking === ""
+              ? null
+              : Number(editForm.maxDogsPerBooking),
         concurrentCapacityDogs:
-  service.service === "PET_SITTING" &&
-  service.bookingModel === "BLOCK_CAPACITY"
-    ? null
-    : editForm.concurrentCapacityDogs === ""
-      ? null
-      : Number(editForm.concurrentCapacityDogs),
+          service.service === "TRAINING"
+            ? undefined
+            : service.service === "PET_SITTING" &&
+                service.bookingModel === "BLOCK_CAPACITY"
+              ? null
+              : editForm.concurrentCapacityDogs === ""
+                ? null
+                : Number(editForm.concurrentCapacityDogs),
         additionalDogEnabled: editForm.additionalDogEnabled,
         additionalDogPriceCents: editForm.additionalDogEnabled
           ? Math.round(Number(editForm.additionalDogPrice || "0") * 100)
@@ -667,6 +682,16 @@ export default function SupplierServicesPage() {
         Number(maxDogsPerBooking) <= 0
       ) {
         throw new Error("Enter a valid maximum dogs per booking");
+      }
+
+      if (
+        serviceType === "TRAINING" &&
+        trainingBookingMode === "APPOINTMENT" &&
+        (!maxDogsPerBooking ||
+          !Number.isInteger(Number(maxDogsPerBooking)) ||
+          Number(maxDogsPerBooking) <= 0)
+      ) {
+        throw new Error("Enter the maximum dogs per private session");
       }
 
       if (
@@ -861,15 +886,21 @@ export default function SupplierServicesPage() {
                   petSittingLocation: petSittingBookingMode === "BLOCK_CAPACITY" ? "OWNER_HOME" : petSittingLocation,
                 }
               : expectationsPricingJson,
-            maxDogsPerBooking: showDogCapacity
-              ? Number(maxDogsPerBooking || "0") || null
-              : null,
+            maxDogsPerBooking:
+              isTraining && !isSessionEventTraining
+                ? Number(maxDogsPerBooking)
+                : showDogCapacity
+                  ? Number(maxDogsPerBooking || "0") || null
+                  : null,
             concurrentCapacityDogs:
-  isPetSitting && petSittingBookingMode === "BLOCK_CAPACITY"
-    ? null
-    : showDogCapacity
-      ? Number(concurrentCapacityDogs || "0") || null
-      : null,
+              isTraining
+                ? undefined
+                : isPetSitting &&
+                    petSittingBookingMode === "BLOCK_CAPACITY"
+                  ? null
+                  : showDogCapacity
+                    ? Number(concurrentCapacityDogs || "0") || null
+                    : null,
           },
         ],
       });
@@ -1246,6 +1277,38 @@ export default function SupplierServicesPage() {
           }
           className="border rounded px-3 py-2 block w-full"
         />
+
+        {s.service === "TRAINING" &&
+        s.bookingModel !== "SESSION_EVENT" ? (
+          <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+            <label
+              htmlFor={`training-max-dogs-${s.id}`}
+              className="block text-sm font-medium text-gray-700"
+            >
+              Maximum dogs per private session
+            </label>
+
+            <input
+              id={`training-max-dogs-${s.id}`}
+              type="number"
+              min="1"
+              step="1"
+              value={editForm.maxDogsPerBooking}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  maxDogsPerBooking: e.target.value,
+                })
+              }
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="text-sm text-gray-500">
+              The maximum number of dogs from one household that can attend a
+              private training session. This does not change the session price.
+            </p>
+          </div>
+        ) : null}
 
         {showCapacity ? (
           <>
@@ -2431,6 +2494,32 @@ export default function SupplierServicesPage() {
                 className="border rounded px-3 py-2 block w-full"
               />
             ) : null}
+          </div>
+        ) : null}
+
+        {isTraining && !isSessionEventTraining ? (
+          <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+            <label
+              htmlFor="training-max-dogs"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Maximum dogs per private session
+            </label>
+
+            <input
+              id="training-max-dogs"
+              type="number"
+              min="1"
+              step="1"
+              value={maxDogsPerBooking}
+              onChange={(e) => setMaxDogsPerBooking(e.target.value)}
+              className="border rounded px-3 py-2 block w-full"
+            />
+
+            <p className="text-sm text-gray-500">
+              The maximum number of dogs from one household that can attend a
+              private training session. This does not change the session price.
+            </p>
           </div>
         ) : null}
 

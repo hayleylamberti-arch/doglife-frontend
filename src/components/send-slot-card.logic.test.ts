@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 
 import {
   buildBoardingHoldCreatePayload,
@@ -10,6 +9,7 @@ import {
   getSendSlotDogCountMaximum,
   isEligibleBoardingSendSlotService,
   isEligibleSendSlotService,
+  isPrivateTrainingSetupRequired,
 } from "./send-slot-card.logic.js";
 
 const privateTrainingService = {
@@ -27,6 +27,7 @@ assert.equal(
   "APPOINTMENT",
 );
 assert.equal(isEligibleSendSlotService(privateTrainingService), true);
+assert.equal(isPrivateTrainingSetupRequired(privateTrainingService), true);
 assert.equal(
   getSendSlotDogCountMaximum(privateTrainingService),
   null,
@@ -38,6 +39,13 @@ assert.equal(
     concurrentCapacityDogs: 1,
   }),
   3,
+);
+assert.equal(
+  isPrivateTrainingSetupRequired({
+    ...privateTrainingService,
+    maxDogsPerBooking: 3,
+  }),
+  false,
 );
 assert.equal(
   isEligibleSendSlotService({
@@ -212,30 +220,4 @@ assert.equal(
 assert.match(
   getBoardingHoldCreateError(new Error("Network Error")),
   /connect to DogLife/,
-);
-
-const sendSlotComponentSource = readFileSync(
-  new URL("./send-slot-card.tsx", import.meta.url),
-  "utf8",
-);
-
-assert.match(
-  sendSlotComponentSource,
-  /const \[dogCountInput, setDogCountInput\] = useState\("1"\)/,
-);
-assert.match(
-  sendSlotComponentSource,
-  /value=\{dogCountInput\}/,
-);
-assert.match(
-  sendSlotComponentSource,
-  /setDogCountInput\(nextValue\)/,
-);
-assert.match(
-  sendSlotComponentSource,
-  /if \(nextValue === ""\) return/,
-);
-assert.match(
-  sendSlotComponentSource,
-  /setDogCountInput\(String\(dogCount\)\)/,
 );

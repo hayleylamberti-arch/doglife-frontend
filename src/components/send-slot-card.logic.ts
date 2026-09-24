@@ -66,6 +66,16 @@ export function isEligibleSendSlotService(service: SendSlotService) {
   return false;
 }
 
+export function isPrivateTrainingSetupRequired(service: SendSlotService) {
+  return (
+    service.service === "TRAINING" &&
+    getEffectiveSendSlotBookingModel(service) === "APPOINTMENT" &&
+    (typeof service.maxDogsPerBooking !== "number" ||
+      !Number.isInteger(service.maxDogsPerBooking) ||
+      (service.maxDogsPerBooking ?? 0) <= 0)
+  );
+}
+
 export function getSendSlotDogCountMaximum(
   service: SendSlotService,
 ): number | null {

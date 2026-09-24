@@ -9,6 +9,7 @@ import {
   getSendSlotDogCountMaximum,
   isEligibleBoardingSendSlotService,
   isEligibleSendSlotService,
+  isPrivateTrainingSetupRequired,
 } from "./send-slot-card.logic";
 
 type SupplierService = {
@@ -175,7 +176,6 @@ export default function SendSlotCard() {
     addLocalCalendarDays(today, 1),
   );
   const [dogCount, setDogCount] = useState(1);
-  const [dogCountInput, setDogCountInput] = useState("1");
   const [slots, setSlots] = useState<BookingSlotOption[]>([]);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [slotDurationMinutes, setSlotDurationMinutes] = useState(0);
@@ -219,6 +219,9 @@ export default function SendSlotCard() {
   const isPetTransport = selectedService?.service === "PET_TRANSPORT";
   const isPetVisit = isPetVisitService(selectedService);
   const isBoarding = isBoardingDateRangeService(selectedService);
+  const trainingSetupRequired =
+    selectedService != null &&
+    isPrivateTrainingSetupRequired(selectedService);
   const boardingDateError = isBoarding
     ? getBoardingDateValidationError(arrivalDate, departureDate)
     : null;
@@ -301,10 +304,6 @@ export default function SendSlotCard() {
       setDogCount(maximumDogCount);
     }
   }, [dogCount, maximumDogCount]);
-
-  useEffect(() => {
-    setDogCountInput(String(dogCount));
-  }, [dogCount]);
 
   useEffect(() => {
     setJourneyType("ONE_WAY");
@@ -685,10 +684,8 @@ export default function SendSlotCard() {
           ) : (
             <>
               <div
-                className={`grid gap-4 ${
-                  isBoarding
-                    ? "sm:grid-cols-2 xl:grid-cols-4"
-                    : "md:grid-cols-3"
+                className={`grid gap-4 sm:grid-cols-2 ${
+                  isBoarding ? "xl:grid-cols-4" : "xl:grid-cols-3"
                 }`}
               >
                 <label className="block">
@@ -776,37 +773,9 @@ export default function SendSlotCard() {
                     Number of dogs
                   </span>
                   {maximumDogCount == null ? (
-                    <input
-                      type="number"
-                      min={1}
-                      step={1}
-                      inputMode="numeric"
-                    value={dogCountInput}
-                    onChange={(event) => {
-                      const nextValue = event.target.value;
-                      setDogCountInput(nextValue);
-
-                      if (nextValue === "") return;
-
-                      const nextCount = Number(nextValue);
-
-                      if (Number.isInteger(nextCount) && nextCount > 0) {
-                        setDogCount(nextCount);
-                      }
-                    }}
-                    onBlur={() => {
-                      const nextCount = Number(dogCountInput);
-
-                      if (
-                        dogCountInput === "" ||
-                        !Number.isInteger(nextCount) ||
-                        nextCount <= 0
-                      ) {
-                        setDogCountInput(String(dogCount));
-                      }
-                    }}
-                      className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
-                    />
+                    <span className="mt-1 block rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                      Set up this service first
+                    </span>
                   ) : (
                     <select
                       value={dogCount}
@@ -827,6 +796,13 @@ export default function SendSlotCard() {
                   )}
                 </label>
               </div>
+
+              {trainingSetupRequired ? (
+                <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+                  This private Training service has no maximum dogs per
+                  session. Set it in Services before creating a booking link.
+                </p>
+              ) : null}
 
               {isPetTransport ? (
                 <div className="mt-5 max-w-sm">
@@ -983,6 +959,7 @@ export default function SendSlotCard() {
                       (isBoarding
                         ? Boolean(boardingDateError)
                         : !selectedSlot) ||
+                      trainingSetupRequired ||
                       creating ||
                       (isPetTransport &&
                         journeyType === "RETURN" &&
