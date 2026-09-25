@@ -19,16 +19,32 @@ export async function apiRequest(
   const method = options?.method || "GET";
   const token = localStorage.getItem("authToken");
 
-  // 🧠 Detect base URL automatically
-  const baseURL =
-    import.meta.env.VITE_API_BASE ||
-    (window?.location?.hostname?.includes("replit.dev")
-      ? `https://${window.location.hostname.replace(/\d+/, "00")}`
-      : "http://localhost:5000");
+  /*
+   * An explicitly empty VITE_API_BASE is intentional in the isolated
+   * Pet Visits Vercel Preview. It keeps browser requests same-origin
+   * so /api/* is handled by the Vercel rewrite.
+   *
+   * An undefined VITE_API_BASE keeps the existing local-development
+   * fallback behaviour.
+   */
+  const configuredBase = import.meta.env.VITE_API_BASE;
 
-  const fullUrl = import.meta.env?.VITE_API_BASE && url.startsWith("/api/")
-    ? apiUrl(url)
-    : `${baseURL}${url.startsWith("/") ? url : `/${url}`}`;
+  const baseURL =
+    configuredBase === ""
+      ? ""
+      : configuredBase ||
+        (window?.location?.hostname?.includes("replit.dev")
+          ? `https://${window.location.hostname.replace(/\d+/, "00")}`
+          : "http://localhost:5000");
+
+  const normalizedPath = url.startsWith("/") ? url : `/${url}`;
+
+  const fullUrl =
+    configuredBase === ""
+      ? normalizedPath
+      : configuredBase && url.startsWith("/api/")
+        ? apiUrl(url)
+        : `${baseURL}${normalizedPath}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -48,6 +64,7 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
@@ -56,6 +73,7 @@ export const getQueryFn: <T>(options: {
     const token = localStorage.getItem("authToken");
 
     const path = queryKey[0] as string;
+
     const res = await fetch(queryApiUrl(path), {
       credentials: "include",
       headers: token

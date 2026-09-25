@@ -57,7 +57,9 @@ function validateReviewApiBase(env: ApiEnvironment): string {
   return base;
 }
 
-if (isPetVisitsReviewPreview(process.env.VERCEL_ENV)) {
+const reviewPreview = isPetVisitsReviewPreview(process.env.VERCEL_ENV);
+
+if (reviewPreview) {
   validateReviewApiBase({
     VITE_API_BASE: process.env.VITE_API_BASE,
     VITE_API_URL: process.env.VITE_API_URL,
@@ -67,6 +69,22 @@ if (isPetVisitsReviewPreview(process.env.VERCEL_ENV)) {
 
 export default defineConfig({
   plugins: [react()],
+
+  /*
+   * The deployment still requires and validates VITE_API_BASE so Vercel can
+   * safely proxy /api/* to the temporary Render backend.
+   *
+   * In the browser bundle for this isolated Preview, however, API requests
+   * must remain same-origin so Safari can retain the HttpOnly auth cookie.
+   */
+  ...(reviewPreview
+    ? {
+        define: {
+          "import.meta.env.VITE_API_BASE": JSON.stringify(""),
+        },
+      }
+    : {}),
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -78,10 +96,12 @@ export default defineConfig({
       "@layouts": path.resolve(__dirname, "./src/layouts"),
     },
   },
+
   build: {
     outDir: "dist",
     sourcemap: false,
   },
+
   server: {
     port: 5173,
     open: true,
