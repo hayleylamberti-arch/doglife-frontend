@@ -1,15 +1,17 @@
 import axios from "axios";
+import { configuredApiBase } from "./api-base";
 
 /* ================================
    AXIOS INSTANCE
 ================================ */
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE,
-  withCredentials: true,
-});
+export function createApiClient(base = configuredApiBase()) {
+  return axios.create({ baseURL: base, withCredentials: true });
+}
 
-console.log("API BASE:", import.meta.env.VITE_API_BASE);
+export const api = createApiClient();
+
+console.log("API BASE:", configuredApiBase());
 
 /* ================================
    OLD TOKEN CLEANUP

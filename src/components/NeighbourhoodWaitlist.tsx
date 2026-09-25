@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { apiUrl } from "@/lib/api-base";
 
 export default function NeighbourhoodWaitlist() {
   const [email, setEmail] = useState("");
@@ -67,7 +67,7 @@ export default function NeighbourhoodWaitlist() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE_URL}/api/waitlist`, {
+      const res = await fetch(apiUrl("/api/waitlist"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

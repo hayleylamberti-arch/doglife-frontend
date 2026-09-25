@@ -125,19 +125,16 @@ export function getPrivateTrainingSessionPriceCents({
   service,
   bookingModel,
   baseRateCents,
-  additionalDogEnabled,
   selectedDogCount,
 }: {
   service?: string | null;
   bookingModel?: string | null;
   baseRateCents?: number | null;
-  additionalDogEnabled?: boolean;
   selectedDogCount?: number;
 }) {
   if (
     service !== "TRAINING" ||
     bookingModel !== "APPOINTMENT" ||
-    additionalDogEnabled === true ||
     typeof baseRateCents !== "number" ||
     !Number.isFinite(baseRateCents) ||
     baseRateCents < 0 ||
@@ -148,6 +145,45 @@ export function getPrivateTrainingSessionPriceCents({
   }
 
   return Math.round(baseRateCents);
+}
+
+export function getPetVisitPriceCents({
+  service,
+  bookingModel,
+  blockPriceCents,
+  selectedDogCount,
+  additionalDogEnabled,
+  additionalDogPriceCents,
+  additionalDogDiscountPct,
+}: {
+  service?: string | null;
+  bookingModel?: string | null;
+  blockPriceCents?: number | null;
+  selectedDogCount: number;
+  additionalDogEnabled?: boolean;
+  additionalDogPriceCents?: number | null;
+  additionalDogDiscountPct?: number | null;
+}) {
+  if (
+    service !== "PET_SITTING" ||
+    bookingModel !== "BLOCK_CAPACITY" ||
+    !Number.isInteger(blockPriceCents) ||
+    (blockPriceCents ?? -1) < 0 ||
+    !Number.isInteger(selectedDogCount) ||
+    selectedDogCount < 1
+  ) {
+    return null;
+  }
+
+  if (!additionalDogEnabled) return blockPriceCents! * selectedDogCount;
+
+  const additionalDogRateCents = additionalDogPriceCents != null
+    ? additionalDogPriceCents
+    : additionalDogDiscountPct
+      ? Math.round(blockPriceCents! * (1 - additionalDogDiscountPct / 100))
+      : blockPriceCents!;
+
+  return blockPriceCents! + (selectedDogCount - 1) * additionalDogRateCents;
 }
 
 export function getWalkingPriceCents({

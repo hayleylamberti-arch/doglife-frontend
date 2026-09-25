@@ -8,6 +8,7 @@ import {
   formatBoardingHeldDate,
   getBoardingNightCount,
   getHoldDogSelectionLimit,
+  getPetVisitPriceCents,
   getPrivateTrainingSessionPriceCents,
   getWalkingPriceCents,
   isBoardingHoldConfirmation,
@@ -55,7 +56,6 @@ for (const selectedDogCount of [1, 2, 3]) {
       service: "TRAINING",
       bookingModel: "APPOINTMENT",
       baseRateCents: 60_000,
-      additionalDogEnabled: false,
       selectedDogCount,
     }),
     60_000,
@@ -66,7 +66,6 @@ assert.equal(
     service: "TRAINING",
     bookingModel: "SESSION_EVENT",
     baseRateCents: 60_000,
-    additionalDogEnabled: false,
   }),
   null,
 );
@@ -75,7 +74,56 @@ assert.equal(
     service: "TRAINING",
     bookingModel: "APPOINTMENT",
     baseRateCents: 60_000,
+    selectedDogCount: 2,
+  }),
+  60_000,
+);
+
+assert.equal(
+  getPetVisitPriceCents({
+    service: "PET_SITTING",
+    bookingModel: "BLOCK_CAPACITY",
+    blockPriceCents: 20_000,
+    selectedDogCount: 2,
+    additionalDogEnabled: false,
+  }),
+  40_000,
+);
+assert.equal(
+  getPetVisitPriceCents({
+    service: "PET_SITTING",
+    bookingModel: "BLOCK_CAPACITY",
+    blockPriceCents: 20_000,
+    selectedDogCount: 2,
     additionalDogEnabled: true,
+    additionalDogPriceCents: 7_500,
+  }),
+  27_500,
+);
+for (const [pricing, expected] of [
+  [{ additionalDogDiscountPct: 25 }, 35_000],
+  [{ additionalDogPriceCents: 7_500, additionalDogDiscountPct: 25 }, 27_500],
+  [{ additionalDogPriceCents: 0, additionalDogDiscountPct: 25 }, 20_000],
+  [{ additionalDogPriceCents: 0 }, 20_000],
+  [{}, 40_000],
+] as const) {
+  assert.equal(
+    getPetVisitPriceCents({
+      service: "PET_SITTING",
+      bookingModel: "BLOCK_CAPACITY",
+      blockPriceCents: 20_000,
+      selectedDogCount: 2,
+      additionalDogEnabled: true,
+      ...pricing,
+    }),
+    expected,
+  );
+}
+assert.equal(
+  getPetVisitPriceCents({
+    service: "PET_SITTING",
+    bookingModel: "BLOCK_CAPACITY",
+    selectedDogCount: 1,
   }),
   null,
 );

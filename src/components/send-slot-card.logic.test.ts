@@ -7,6 +7,7 @@ import {
   getBoardingDogCountCeiling,
   getBoardingHoldCreateError,
   getSendSlotDogCountMaximum,
+  getSendSlotEligibleServices,
   isEligibleBoardingSendSlotService,
   isEligibleSendSlotService,
   isPrivateTrainingSetupRequired,
@@ -72,6 +73,48 @@ const walkingService = {
 
 assert.equal(isEligibleSendSlotService(walkingService), true);
 
+const dropdownServices = getSendSlotEligibleServices([
+  walkingService,
+  privateTrainingService,
+  {
+    ...privateTrainingService,
+    id: "class",
+    bookingModel: "SESSION_EVENT",
+    trainingBookingMode: "SESSION_EVENT",
+  },
+  { ...privateTrainingService, id: "inactive", isActive: false },
+  { ...privateTrainingService, id: "grooming", service: "GROOMING" },
+  {
+    ...privateTrainingService,
+    id: "pet-visit",
+    service: "PET_SITTING",
+    bookingModel: "BLOCK_CAPACITY",
+  },
+]);
+assert.deepEqual(dropdownServices.map((service) => service.id), [
+  "walking-service",
+  "training-service",
+  "pet-visit",
+]);
+assert.equal(isPrivateTrainingSetupRequired(dropdownServices[1]), true);
+assert.equal(getSendSlotDogCountMaximum(dropdownServices[1]), null);
+assert.equal(
+  isPrivateTrainingSetupRequired({
+    ...dropdownServices[1],
+    maxDogsPerBooking: 2,
+  }),
+  false,
+);
+
+assert.equal(
+  isEligibleSendSlotService({
+    ...privateTrainingService,
+    service: "PET_SITTING",
+    bookingModel: null,
+  }),
+  false,
+);
+
 for (const service of ["GROOMING", "PET_TRANSPORT", "MOBILE_VET"]) {
   assert.equal(
     isEligibleSendSlotService({
@@ -93,7 +136,7 @@ assert.equal(
     bookingModel: "BLOCK_CAPACITY",
     trainingBookingMode: null,
   }),
-  false,
+  true,
 );
 
 assert.equal(

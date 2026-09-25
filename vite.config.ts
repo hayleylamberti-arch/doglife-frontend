@@ -1,6 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { isPetVisitsReviewPreview, validateReviewApiBase } from "./src/lib/api-base";
+
+if (isPetVisitsReviewPreview(process.env.VERCEL_ENV)) {
+  validateReviewApiBase(process.env);
+}
 
 export default defineConfig({
   plugins: [react()],

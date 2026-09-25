@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { apiUrl } from "@/lib/api-base";
 
 /* -------------------------------------------------------------------------- */
 /* 🔐 Password Strength Helper                                                */
@@ -59,7 +60,7 @@ export default function ResetPassword() {
 
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
+        apiUrl("/api/auth/reset-password"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -6,6 +6,7 @@ import {
   classifyHoldConversionError,
   formatBoardingHeldDate,
   getHoldDogSelectionLimit,
+  getPetVisitPriceCents,
   getPrivateTrainingSessionPriceCents,
   getWalkingPriceCents,
   isBoardingHoldConfirmation,
@@ -63,6 +64,7 @@ type Props = {
   endAt: string;
   service: BookingHoldService;
   bookingModel?: string | null;
+  blockPriceCents?: number | null;
   isReturnJourney: boolean;
   onConverted: (
     terminalMessage?: string
@@ -119,6 +121,7 @@ export default function BookingHoldConfirmation({
   endAt,
   service,
   bookingModel,
+  blockPriceCents,
   isReturnJourney,
   onConverted,
 }: Props) {
@@ -190,8 +193,18 @@ export default function BookingHoldConfirmation({
       service: serviceType,
       bookingModel,
       baseRateCents: service.baseRateCents,
-      additionalDogEnabled: service.additionalDogEnabled,
+      selectedDogCount: selectedDogIds.length || undefined,
     });
+
+  const petVisitPriceCents = getPetVisitPriceCents({
+    service: serviceType,
+    bookingModel,
+    blockPriceCents,
+    selectedDogCount: selectedDogIds.length,
+    additionalDogEnabled: service.additionalDogEnabled,
+    additionalDogPriceCents: service.additionalDogPriceCents,
+    additionalDogDiscountPct: service.additionalDogDiscountPct,
+  });
 
   const groomingTiers = useMemo(
     () =>
@@ -914,6 +927,21 @@ export default function BookingHoldConfirmation({
             </p>
             <p className="mt-1 text-xs text-blue-800">
               Private Training session
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Price is rechecked when you confirm.
+            </p>
+          </div>
+        ) : null}
+
+        {petVisitPriceCents != null ? (
+          <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-900">
+            <p className="font-semibold">
+              Current total: R{(petVisitPriceCents / 100).toFixed(2)}
+            </p>
+            <p className="mt-1 text-xs text-blue-800">
+              Pet Visit · {selectedDogIds.length}{" "}
+              {selectedDogIds.length === 1 ? "dog" : "dogs"}
             </p>
             <p className="mt-1 text-xs text-blue-800">
               Price is rechecked when you confirm.

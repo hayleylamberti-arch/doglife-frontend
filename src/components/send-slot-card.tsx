@@ -7,8 +7,8 @@ import {
   getBoardingDateValidationError,
   getBoardingHoldCreateError,
   getSendSlotDogCountMaximum,
+  getSendSlotEligibleServices,
   isEligibleBoardingSendSlotService,
-  isEligibleSendSlotService,
   isPrivateTrainingSetupRequired,
 } from "./send-slot-card.logic";
 
@@ -204,7 +204,7 @@ export default function SendSlotCard() {
   const [copyMessage, setCopyMessage] = useState("");
 
   const sendSlotServices = useMemo(
-    () => services.filter(isEligibleSendSlotService),
+    () => getSendSlotEligibleServices(services),
     [services],
   );
 
@@ -508,6 +508,22 @@ export default function SendSlotCard() {
   ]);
 
   async function createShareableSlot() {
+    if (trainingSetupRequired) {
+      setActionError(
+        "Set the maximum dogs per private Training session in Services first.",
+      );
+      return;
+    }
+
+    if (
+      maximumDogCount == null ||
+      dogCount < 1 ||
+      dogCount > maximumDogCount
+    ) {
+      setActionError("Choose a valid number of dogs for this service.");
+      return;
+    }
+
     if (
       !selectedService ||
       (isBoarding
@@ -683,11 +699,7 @@ export default function SendSlotCard() {
             </p>
           ) : (
             <>
-              <div
-                className={`grid gap-4 sm:grid-cols-2 ${
-                  isBoarding ? "xl:grid-cols-4" : "xl:grid-cols-3"
-                }`}
-              >
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">
                     Service

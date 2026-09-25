@@ -37,6 +37,10 @@ type PublicHold = {
   returnEndAt?: string | null;
   requestedDogCount: number;
   expiresAt: string;
+  block?: {
+    label: string;
+    priceCents: number;
+  } | null;
   supplier?: {
     businessName?: string | null;
     logoUrl?: string | null;
@@ -459,6 +463,7 @@ export default function BookingHoldPage() {
               endAt={hold.endAt}
               service={hold.service}
               bookingModel={bookingModel}
+              blockPriceCents={hold.block?.priceCents}
               isReturnJourney={hasReturnJourney}
               onConverted={handleConverted}
             />

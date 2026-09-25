@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { apiUrl, queryApiUrl } from "./api-base";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -25,7 +26,9 @@ export async function apiRequest(
       ? `https://${window.location.hostname.replace(/\d+/, "00")}`
       : "http://localhost:5000");
 
-  const fullUrl = `${baseURL}${url.startsWith("/") ? url : `/${url}`}`;
+  const fullUrl = import.meta.env?.VITE_API_BASE && url.startsWith("/api/")
+    ? apiUrl(url)
+    : `${baseURL}${url.startsWith("/") ? url : `/${url}`}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -52,7 +55,8 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const token = localStorage.getItem("authToken");
 
-    const res = await fetch(queryKey[0] as string, {
+    const path = queryKey[0] as string;
+    const res = await fetch(queryApiUrl(path), {
       credentials: "include",
       headers: token
         ? {

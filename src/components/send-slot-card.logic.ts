@@ -57,6 +57,13 @@ export function isEligibleSendSlotService(service: SendSlotService) {
   }
 
   if (
+    service.service === "PET_SITTING" &&
+    bookingModel === "BLOCK_CAPACITY"
+  ) {
+    return true;
+  }
+
+  if (
     service.service === "BOARDING" &&
     bookingModel === "DATE_RANGE_CAPACITY"
   ) {
@@ -64,6 +71,12 @@ export function isEligibleSendSlotService(service: SendSlotService) {
   }
 
   return false;
+}
+
+export function getSendSlotEligibleServices<T extends SendSlotService>(
+  services: T[],
+): T[] {
+  return services.filter(isEligibleSendSlotService);
 }
 
 export function isPrivateTrainingSetupRequired(service: SendSlotService) {
