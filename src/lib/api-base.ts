@@ -6,10 +6,13 @@ type ApiEnvironment = {
 
 const PET_VISITS_REVIEW_API_ORIGIN =
   "https://doglife-pet-visits-it-20260924.onrender.com";
+const PET_VISITS_REVIEW_BRANCH = "dev/send-a-slot-pet-visits-review-20260924";
 
-export function isPetVisitsReviewPreview(environment: string | undefined) {
-  // This source tree is review-only: every Preview built from it must fail closed.
-  return environment === "preview";
+export function isPetVisitsReviewPreview(
+  environment: string | undefined,
+  branch: string | undefined,
+) {
+  return environment === "preview" && branch === PET_VISITS_REVIEW_BRANCH;
 }
 
 export function validateReviewApiBase(env: ApiEnvironment): string {

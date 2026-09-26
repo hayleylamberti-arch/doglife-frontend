@@ -1,5 +1,6 @@
 import process from "node:process";
 import { routes, type VercelConfig } from "@vercel/config/v1";
+import { isPetVisitsReviewPreview } from "./src/lib/api-base";
 
 type ApiEnvironment = {
   VITE_API_BASE?: string;
@@ -9,10 +10,6 @@ type ApiEnvironment = {
 
 const PET_VISITS_REVIEW_API_ORIGIN =
   "https://doglife-pet-visits-it-20260924.onrender.com";
-
-function isPetVisitsReviewPreview(environment: string | undefined) {
-  return environment === "preview";
-}
 
 function validateReviewApiBase(env: ApiEnvironment): string {
   const base = env.VITE_API_BASE?.trim();
@@ -57,7 +54,10 @@ function validateReviewApiBase(env: ApiEnvironment): string {
   return base;
 }
 
-const reviewPreview = isPetVisitsReviewPreview(process.env.VERCEL_ENV);
+const reviewPreview = isPetVisitsReviewPreview(
+  process.env.VERCEL_ENV,
+  process.env.VERCEL_GIT_COMMIT_REF,
+);
 
 const apiOrigin = reviewPreview
   ? validateReviewApiBase({

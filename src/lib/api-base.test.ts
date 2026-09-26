@@ -1,12 +1,13 @@
 /// <reference types="node" />
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
   apiUrl,
+  isPetVisitsReviewPreview,
   queryApiUrl,
   validateReviewApiBase,
 } from "./api-base";
@@ -62,21 +63,19 @@ function runPreviewBuild(overrides: Record<string, string | undefined> = {}) {
 }
 
 function builtJavascriptContains(value: string) {
-  const manifestPath = "dist/.vite/manifest.json";
-
-  try {
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-
-    return Object.values<any>(manifest)
-      .filter((entry) => typeof entry?.file === "string")
-      .some((entry) => {
-        const content = readFileSync(`dist/${entry.file}`, "utf8");
-        return content.includes(value);
-      });
-  } catch {
-    return false;
-  }
+  const bundles = readdirSync("dist/assets").filter((file) => file.endsWith(".js"));
+  assert.ok(bundles.length > 0, "the build must produce a browser bundle");
+  return bundles.some((file) =>
+    readFileSync(`dist/assets/${file}`, "utf8").includes(value),
+  );
 }
+
+test("Pet Visits review Preview requires both environment and branch", () => {
+  assert.equal(isPetVisitsReviewPreview("preview", branch), true);
+  assert.equal(isPetVisitsReviewPreview("preview", "feature/daycare"), false);
+  assert.equal(isPetVisitsReviewPreview("preview", undefined), false);
+  assert.equal(isPetVisitsReviewPreview("production", branch), false);
+});
 
 test("review Preview configuration fails closed without a backend", () => {
   const result = loadVercelConfig({ VITE_API_BASE: undefined });
@@ -181,6 +180,42 @@ test("review Preview browser bundle does not contain the temporary Render origin
   );
 });
 
+test("unrelated Preview uses normal routing and keeps its configured browser base", () => {
+  const normalPreviewBase = "https://normal-preview.example";
+  const env = {
+    VERCEL_GIT_COMMIT_REF: "feature/daycare",
+    VITE_API_BASE: normalPreviewBase,
+  };
+  const configResult = loadVercelConfig(env);
+  assert.equal(configResult.status, 0, configResult.stderr);
+  assert.equal(
+    JSON.parse(configResult.stdout).rewrites[0].destination,
+    "https://api.doglife.app/api/:path*",
+  );
+
+  const buildResult = runPreviewBuild(env);
+  assert.equal(buildResult.status, 0, buildResult.stdout + buildResult.stderr);
+  assert.equal(builtJavascriptContains(normalPreviewBase), true);
+  assert.equal(builtJavascriptContains(base), false);
+
+  const missingBaseResult = loadVercelConfig({
+    VERCEL_GIT_COMMIT_REF: "feature/daycare",
+    VITE_API_BASE: undefined,
+  });
+  assert.equal(missingBaseResult.status, 0, missingBaseResult.stderr);
+
+  const missingBaseBuild = runPreviewBuild({
+    VERCEL_GIT_COMMIT_REF: "feature/daycare",
+    VITE_API_BASE: undefined,
+  });
+  assert.equal(
+    missingBaseBuild.status,
+    0,
+    missingBaseBuild.stdout + missingBaseBuild.stderr,
+  );
+  assert.equal(builtJavascriptContains(base), false);
+});
+
 test("normal configured API helpers retain existing direct-base behaviour", () => {
   assert.equal(
     createApiClient(base).defaults.baseURL,
@@ -220,4 +255,13 @@ test("normal Vercel deployment keeps the existing production rewrite", () => {
     JSON.parse(result.stdout).rewrites[0].destination,
     "https://api.doglife.app/api/:path*",
   );
+
+  const productionBase = "https://api.doglife.app";
+  const buildResult = runPreviewBuild({
+    VERCEL_ENV: "production",
+    VITE_API_BASE: productionBase,
+  });
+  assert.equal(buildResult.status, 0, buildResult.stdout + buildResult.stderr);
+  assert.equal(builtJavascriptContains(productionBase), true);
+  assert.equal(builtJavascriptContains(base), false);
 });
