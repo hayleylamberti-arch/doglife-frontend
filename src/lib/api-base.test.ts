@@ -13,7 +13,7 @@ import {
 import { createApiClient } from "./api";
 
 const branch = "dev/send-a-slot-pet-visits-review-20260924";
-const base = "https://pet-visits-temporary.onrender.com";
+const base = "https://doglife-pet-visits-it-20260924.onrender.com";
 
 function loadVercelConfig(overrides: Record<string, string | undefined>) {
   const env = {
@@ -103,6 +103,35 @@ test("review Preview rejects the production API", () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.stderr,
+    /temporary Render HTTPS origin/,
+  );
+});
+
+test("review Preview rejects another Render service", () => {
+  const otherRenderOrigin = "https://some-other-service.onrender.com";
+
+  const configResult = loadVercelConfig({
+    VITE_API_BASE: otherRenderOrigin,
+  });
+
+  assert.notEqual(configResult.status, 0);
+  assert.match(
+    configResult.stderr,
+    /temporary Render HTTPS origin/,
+  );
+
+  const buildResult = runPreviewBuild({
+    VITE_API_BASE: otherRenderOrigin,
+  });
+
+  assert.notEqual(buildResult.status, 0);
+  assert.match(
+    buildResult.stdout + buildResult.stderr,
+    /temporary Render HTTPS origin/,
+  );
+
+  assert.throws(
+    () => validateReviewApiBase({ VITE_API_BASE: otherRenderOrigin }),
     /temporary Render HTTPS origin/,
   );
 });

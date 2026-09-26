@@ -4,6 +4,9 @@ type ApiEnvironment = {
   VITE_API_BASE_URL?: string;
 };
 
+const PET_VISITS_REVIEW_API_ORIGIN =
+  "https://doglife-pet-visits-it-20260924.onrender.com";
+
 export function isPetVisitsReviewPreview(environment: string | undefined) {
   // This source tree is review-only: every Preview built from it must fail closed.
   return environment === "preview";
@@ -21,9 +24,7 @@ export function validateReviewApiBase(env: ApiEnvironment): string {
   }
 
   if (
-    url.protocol !== "https:" ||
-    !url.hostname.endsWith(".onrender.com") ||
-    url.hostname === "doglife-backend-dev.onrender.com" ||
+    url.origin !== PET_VISITS_REVIEW_API_ORIGIN ||
     url.username || url.password || url.port || url.pathname !== "/" || url.search || url.hash ||
     base !== url.origin
   ) {
